@@ -1,0 +1,46 @@
+{
+  "meta": {
+    "slug": "comercio-base",
+    "category": "comercio",
+    "page": "comercio",
+    "branding": {
+      "name": "Comercio Base",
+      "primaryColor": "#1e88e5",
+      "secondaryColor": "#4a6fa5",
+      "backgroundColor": "",
+      "textColor": "",
+      "buttonColor": "#1e88e5",
+      "buttonTextColor": "#ffffff",
+      "borderColor": "#c9d4e7"
+    }
+  },
+  "checkout": {
+    "mode": "whatsapp",
+    "whatsappNumber": "+5492615893590",
+    "messageTemplate": "Hola! Me gustaría realizar el siguiente pedido:"
+  },
+  "filters": {
+    "categories": ["Destacados", "Liquidaciones", "Más vendidos", "Nuevo"],
+    "synonyms": {
+      "tv": ["televisor"],
+      "celular": ["smartphone", "móvil"],
+      "auriculares": ["audífonos", "headphones"]
+    }
+  },
+  "catalog": [
+    {
+      "id": "base-001",
+      "name": "Producto Base 1",
+      "price": 29999,
+      "imageSrc": "Imagenes/producto2.webp",
+      "tags": ["Destacados"]
+    },
+    {
+      "id": "base-002",
+      "name": "Producto Base 2",
+      "price": 45999,
+      "imageSrc": "Imagenes/producto3.webp",
+      "tags": ["Más vendidos"]
+    }
+  ]
+}

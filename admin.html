@@ -1,0 +1,1666 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel de Administración - Gastronomía</title>
+  <link rel="stylesheet" href="index.css" />
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 16px; }
+    header { display:flex; align-items:center; justify-content:space-between; margin-bottom: 16px; }
+    .controls { display:flex; gap:12px; align-items:center; flex-wrap: wrap; }
+    .controls input, .controls select { height: 32px; }
+    .controls button { height: 32px; padding: 0 12px; }
+    .mobile-filters summary { cursor: pointer; padding: 6px 10px; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9; }
+    .mobile-filters > div { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+    .status-badge { padding: 2px 8px; border-radius: 8px; font-size: 12px; color:#fff; }
+    .status-pendiente { background:#8a8a8a; }
+    .status-preparacion { background:#1976d2; }
+    .status-listo { background:#2e7d32; }
+    .status-en_camino { background:#fb8c00; }
+    .status-entregado { background:#6a1b9a; }
+    .status-cancelado { background:#c62828; }
+    table { width:100%; border-collapse: collapse; }
+    th, td { border-bottom: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background: #f5f5f5; }
+    .actions { display:flex; gap:8px; align-items:center; }
+    .small { font-size: 12px; color: #666; }
+    .pill { display:inline-block; padding:2px 6px; background:#eee; border-radius: 12px; font-size: 12px; }
+    /* Layout de escritorio: lista de pedidos a la izquierda, detalle a la derecha */
+    .grid { display:grid; grid-template-columns: 2fr 1fr; grid-template-areas: "orders detail"; gap: 16px; align-items:start; }
+    .grid > div:first-child { grid-area: orders; }
+    .grid > div:last-child { grid-area: detail; }
+    .sla-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-left:6px; background:#bbb; }
+    .sla-warning { background:#ff9800; }
+    .sla-critical { background:#f44336; }
+    .sla-label { margin-left:4px; font-size:12px; color:#666; }
+    .delivered summary { cursor:pointer; padding:6px 10px; border:1px solid #ddd; border-radius:8px; background:#f9f9f9; }
+    .canceled summary, .archived summary { cursor:pointer; padding:6px 10px; border:1px solid #ddd; border-radius:8px; background:#f9f9f9; }
+    .pager { display:flex; gap:8px; align-items:center; margin-top:8px; }
+    @media (max-width: 960px) {
+      .grid { grid-template-columns: 1fr; grid-template-areas: "orders" "detail"; }
+    }
+    /* Panel de detalle */
+    #order-detail { background:#fff; border:1px solid #e0e0e0; border-radius:8px; padding:12px; }
+    #order-detail h3 { margin-top: 12px; margin-bottom: 8px; }
+    .detail-items-table { width:100%; border-collapse: collapse; }
+    .detail-items-table th, .detail-items-table td { border-bottom:1px solid #eee; padding:6px 8px; font-size:14px; }
+    .detail-summary { margin-top: 8px; font-weight: 600; }
+
+    /* Responsivo: evitar scroll horizontal en móviles */
+    @media (max-width: 720px) {
+      .controls { flex-direction: column; align-items: stretch; gap: 8px; }
+      .controls > * { width: 100%; }
+      .controls input, .controls select, .controls button { width: 100%; }
+      .mobile-filters > div { flex-direction: column; align-items: stretch; gap: 6px; }
+      .mobile-filters summary { padding: 8px 12px; }
+      table { table-layout: fixed; }
+      th, td { padding: 6px; font-size: 13px; word-break: break-word; }
+      /* Ocultar columnas menos críticas para reducir ancho: Fecha (2) y Destino (4) */
+      th:nth-child(2), td:nth-child(2),
+      th:nth-child(4), td:nth-child(4) { display: none; }
+      .actions { flex-wrap: wrap; gap: 6px; }
+      .actions select { max-width: 140px; }
+      .actions button { flex: 0 0 auto; }
+    }
+    @media print {
+      body * { visibility: hidden; }
+      #order-detail, #order-detail * { visibility: visible; }
+      #order-detail { position: absolute; left: 0; top: 0; width: 100%; }
+      #order-detail { font-size: 12px; line-height: 1.3; }
+      .detail-items-table { width: 100%; border-collapse: collapse; }
+      .detail-items-table th, .detail-items-table td { padding: 4px; }
+    }
+  </style>
+  </head>
+<body>
+  <header>
+    <h1>Panel de Administración (KDS)</h1>
+    <div class="controls">
+      <label>Establecimiento:
+        <input id="tenant-input" list="tenants-list" type="text" value="gastronomia-local1" />
+        <datalist id="tenants-list"></datalist>
+      </label>
+      <label>Estado:
+        <select id="status-filter">
+          <option value="">Todos</option>
+          <option value="pendiente">Pendiente</option>
+          <option value="preparacion">Preparación</option>
+          <option value="listo">Listo</option>
+          <option value="en_camino">En camino</option>
+          <option value="entregado">Entregado</option>
+          <option value="cancelado">Cancelado</option>
+        </select>
+      </label>
+      <input id="search-input" type="text" placeholder="Buscar por ID, nombre, teléfono o destino" />
+      <button id="search-btn">Buscar</button>
+      <details class="mobile-filters">
+        <summary>Más filtros</summary>
+        <div>
+          <label>Desde <input id="from-date" type="date" /></label>
+          <label>Hasta <input id="to-date" type="date" /></label>
+          <label>Tamaño
+            <select id="page-size">
+              <option value="20">20</option>
+              <option value="50" selected>50</option>
+              <option value="100">100</option>
+            </select>
+          </label>
+          <button id="export-btn">Exportar CSV</button>
+        </div>
+      </details>
+      <button id="refresh-btn">Refrescar</button>
+    </div>
+  </header>
+
+  <div id="metrics" class="small" style="margin-bottom:12px;"></div>
+
+  <div id="login-box" style="display:none; border:1px solid #e0e0e0; border-radius:8px; padding:12px; margin-bottom:16px; max-width:360px;">
+    <h2>Ingresar</h2>
+    <label style="display:block; margin-bottom:8px;">Usuario
+      <input id="login-user" type="text" style="width:100%; height:32px;" />
+    </label>
+    <label style="display:block; margin-bottom:12px;">Clave
+      <input id="login-pass" type="password" style="width:100%; height:32px;" />
+    </label>
+    <button id="login-btn" style="height:32px;">Entrar</button>
+    <p class="small" id="login-error" style="color:#c62828; display:none; margin-top:8px;">Credenciales inválidas</p>
+  </div>
+
+  <section class="grid">
+    <div>
+      <h2>Pedidos</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Fecha</th>
+            <th>Tipo</th>
+            <th>Destino</th>
+            <th>Teléfono</th>
+            <th>Total</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+      <tbody id="orders-tbody"></tbody>
+    </table>
+    <p class="small" id="orders-count"></p>
+    <div class="pager">
+      <button id="prev-page">Anterior</button>
+      <span id="page-info" class="small"></span>
+      <button id="next-page">Siguiente</button>
+    </div>
+    <details class="delivered" id="delivered-box">
+      <summary>Entregados</summary>
+      <div class="actions" style="margin:8px 0;">
+        <button id="archive-delivered-all">Archivar entregados >24h</button>
+        <span id="delivered-eligible-count" class="small" style="margin-left:8px;"></span>
+      </div>
+      <div class="pager" style="margin:8px 0;">
+        <label>Tamaño
+          <select id="del-page-size">
+            <option value="20">20</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+          </select>
+        </label>
+        <button id="del-prev">Anterior</button>
+        <button id="del-next">Siguiente</button>
+        <span id="del-page-info" class="small" style="margin-left:8px;color:#666;"></span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Fecha</th>
+            <th>Tipo</th>
+            <th>Destino</th>
+            <th>Teléfono</th>
+            <th>Total</th>
+            <th>Total c/propina</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="delivered-tbody"></tbody>
+      </table>
+    </details>
+    <details class="canceled" id="canceled-box">
+      <summary>Cancelados</summary>
+      <div class="actions" style="margin:8px 0;">
+        <button id="archive-canceled-all">Archivar cancelados >24h</button>
+        <span id="canceled-eligible-count" class="small" style="margin-left:8px;"></span>
+      </div>
+      <div class="pager" style="margin:8px 0;">
+        <label>Tamaño
+          <select id="can-page-size">
+            <option value="20">20</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+          </select>
+        </label>
+        <button id="can-prev">Anterior</button>
+        <button id="can-next">Siguiente</button>
+        <span id="can-page-info" class="small" style="margin-left:8px;color:#666;"></span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Fecha</th>
+            <th>Tipo</th>
+            <th>Destino</th>
+            <th>Total</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="canceled-tbody"></tbody>
+      </table>
+    </details>
+    <details class="archived" id="archived-box">
+      <summary>Archivados</summary>
+      <div class="controls" style="margin:8px 0;">
+        <input id="arch-search" type="text" placeholder="Buscar ID o destino" />
+        <label>Desde <input id="arch-from" type="date" /></label>
+        <label>Hasta <input id="arch-to" type="date" /></label>
+        <label>Filtrar por
+          <select id="arch-date-mode">
+            <option value="archived" selected>Fecha de archivado</option>
+            <option value="order">Fecha de pedido</option>
+          </select>
+        </label>
+        <button id="arch-filter-btn">Buscar archivados</button>
+        <button id="arch-export-btn">Exportar archivados (CSV)</button>
+      </div>
+      <div class="pager" style="margin:8px 0;">
+        <label>Tamaño
+          <select id="arch-page-size">
+            <option value="20">20</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+          </select>
+        </label>
+        <button id="arch-prev">Anterior</button>
+        <button id="arch-next">Siguiente</button>
+        <button id="arch-reload">Recargar</button>
+        <span id="arch-page-info" class="small" style="margin-left:8px;color:#666;"></span>
+      </div>
+      <div id="archived-metrics" class="small" style="margin:6px 0;color:#444;"></div>
+      <h3 class="small">Entregados archivados <span id="arch-del-count"></span></h3>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Fecha</th>
+            <th>Tipo</th>
+            <th>Destino</th>
+            <th>Total</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody id="archived-delivered-tbody"></tbody>
+      </table>
+      <h3 class="small" style="margin-top:12px;">Cancelados archivados <span id="arch-can-count"></span></h3>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Fecha</th>
+            <th>Tipo</th>
+            <th>Destino</th>
+            <th>Total</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody id="archived-canceled-tbody"></tbody>
+      </table>
+    </details>
+  </div>
+  <div>
+    <h2>Detalle</h2>
+    <div id="order-detail">Selecciona un pedido para ver detalles.</div>
+    <div class="actions" style="margin-top:8px;">
+      <button id="print-btn">Imprimir detalle</button>
+    </div>
+  </div>
+</section>
+
+  <script>
+    const statusClasses = {
+      pendiente: 'status-pendiente',
+      preparacion: 'status-preparacion',
+      listo: 'status-listo',
+      en_camino: 'status-en_camino',
+      entregado: 'status-entregado',
+      cancelado: 'status-cancelado'
+    };
+    const statusOptions = Object.keys(statusClasses);
+    // Firma de la última renderización para evitar parpadeos por re-render innecesario
+    let lastOrdersSignature = '';
+
+    const tenantInput = document.getElementById('tenant-input');
+    const filterSelect = document.getElementById('status-filter');
+    const refreshBtn = document.getElementById('refresh-btn');
+    const tbody = document.getElementById('orders-tbody');
+    const countEl = document.getElementById('orders-count');
+    const detailEl = document.getElementById('order-detail');
+    const archiveDeliveredAllBtn = document.getElementById('archive-delivered-all');
+    const archiveCanceledAllBtn = document.getElementById('archive-canceled-all');
+    const deliveredEligibleEl = document.getElementById('delivered-eligible-count');
+    const canceledEligibleEl = document.getElementById('canceled-eligible-count');
+    const archSearchInput = document.getElementById('arch-search');
+    const archFromInput = document.getElementById('arch-from');
+    const archToInput = document.getElementById('arch-to');
+    const archFilterBtn = document.getElementById('arch-filter-btn');
+    const archExportBtn = document.getElementById('arch-export-btn');
+    const archDateModeSelect = document.getElementById('arch-date-mode');
+    const archivedMetricsEl = document.getElementById('archived-metrics');
+    const archPageSizeSelect = document.getElementById('arch-page-size');
+    const archPrevBtn = document.getElementById('arch-prev');
+    const archNextBtn = document.getElementById('arch-next');
+    const archReloadBtn = document.getElementById('arch-reload');
+    const archPageInfoEl = document.getElementById('arch-page-info');
+    const delPageSizeSelect = document.getElementById('del-page-size');
+    const delPrevBtn = document.getElementById('del-prev');
+    const delNextBtn = document.getElementById('del-next');
+    const delPageInfoEl = document.getElementById('del-page-info');
+    const canPageSizeSelect = document.getElementById('can-page-size');
+    const canPrevBtn = document.getElementById('can-prev');
+    const canNextBtn = document.getElementById('can-next');
+    const canPageInfoEl = document.getElementById('can-page-info');
+    let archLimit = 50;
+    let archOffset = 0;
+    let deliveredLimit = 50;
+    let deliveredOffset = 0;
+    let canceledLimit = 50;
+    let canceledOffset = 0;
+    (function(){
+      const today = (new Date()).toISOString().slice(0,10);
+      const y = new Date(); y.setDate(y.getDate()-1);
+      const yesterday = y.toISOString().slice(0,10);
+      if (archFromInput && !archFromInput.value) archFromInput.value = yesterday;
+      if (archToInput && !archToInput.value) archToInput.value = today;
+      window.archivedFrom = archFromInput ? archFromInput.value : '';
+      window.archivedTo = archToInput ? archToInput.value : '';
+      window.archivedSearch = '';
+    })();
+    [archSearchInput, archFromInput, archToInput].forEach(el => {
+      if (el) el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && archFilterBtn) archFilterBtn.click();
+      });
+    });
+    
+    // Usar el mismo origen (Flask en 8000) y derivar slug por defecto desde la URL
+    const API_BASE = (function(){
+      const origin = window.location.origin || '';
+      if (/^file:/i.test(origin)) return 'http://127.0.0.1:8000';
+      return origin;
+    })();
+    let csrfToken = '';
+    let isAuthed = false;
+    let currentSlaThresholds = { warning: 15, critical: 30 };
+    let currentTipPercent = 10;
+    let currentTipDefaultEnabled = true;
+    let currentTicketFormat = 'full';
+    let currentOffset = 0;
+    let currentLimit = 50;
+    let currentSearch = '';
+    let currentFrom = '';
+    let currentTo = '';
+    let slaTimer = null;
+    let isLoading = false;
+    async function fetchArchived(type) {
+      const slug = tenantInput.value.trim() || defaultSlug();
+      const url = new URL('/api/archive', API_BASE);
+      url.searchParams.set('tenant_slug', slug);
+      url.searchParams.set('type', type);
+      if (window.archivedSearch) url.searchParams.set('q', window.archivedSearch);
+      if (window.archivedFrom) url.searchParams.set('from', window.archivedFrom);
+      if (window.archivedTo) url.searchParams.set('to', window.archivedTo);
+      if (window.archDateMode) url.searchParams.set('date_field', window.archDateMode);
+      url.searchParams.set('limit', String(archLimit));
+      url.searchParams.set('offset', String(archOffset));
+      const resp = await fetch(url.toString());
+      if (!resp.ok) throw new Error('Error al obtener archivados');
+      const data = await resp.json();
+      return Array.isArray(data.archives) ? data.archives : [];
+    }
+    async function archiveSnapshot(order, type) {
+      const resp = await fetch(new URL('/api/archive', API_BASE).toString(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+        body: JSON.stringify({ order_id: order.id, type })
+      });
+      if (!resp.ok) throw new Error('Error al archivar');
+      return resp.json();
+    }
+    async function archiveBulk(type) {
+      const slug = tenantInput.value.trim() || defaultSlug();
+      if (!csrfToken) {
+        try { await fetchCSRF(); } catch (_) {}
+      }
+      const resp = await fetch(new URL('/api/archive/bulk', API_BASE).toString(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+        body: JSON.stringify({ type, tenant_slug: slug, hours: 24 })
+      });
+      if (!resp.ok) {
+        let msg = 'Error al archivar en lote';
+        try { const j = await resp.json(); if (j && j.error) msg = j.error; } catch (_) {}
+        throw new Error(msg);
+      }
+      return resp.json();
+    }
+    async function fetchEligibleCount(type) {
+      const slug = tenantInput.value.trim() || defaultSlug();
+      const url = new URL('/api/archive/eligible_count', API_BASE);
+      url.searchParams.set('type', type);
+      url.searchParams.set('tenant_slug', slug);
+      url.searchParams.set('hours', '24');
+      const resp = await fetch(url.toString());
+      if (!resp.ok) return 0;
+      const j = await resp.json();
+      return Number(j.count || 0);
+    }
+    async function updateEligibleCounts() {
+      try {
+        const d = await fetchEligibleCount('delivered');
+        const c = await fetchEligibleCount('canceled');
+        if (deliveredEligibleEl) deliveredEligibleEl.textContent = `(listos: ${d})`;
+        if (canceledEligibleEl) canceledEligibleEl.textContent = `(listos: ${c})`;
+      } catch (_) {}
+    }
+    function defaultSlug() {
+      const dataSlug = (document.body && document.body.dataset && document.body.dataset.tenant) ? document.body.dataset.tenant.trim() : '';
+      if (dataSlug) return dataSlug;
+      try {
+        const name = (window.location.pathname.split('/').pop() || '').replace(/\.html$/,'');
+        if (name) return name;
+      } catch (_) {}
+      return 'gastronomia-local1';
+    }
+    // Preferencia de propina (10%) por tenant
+    function tipKey(name) {
+      const slug = tenantInput.value.trim() || defaultSlug();
+      return `tip_${name}:${slug}`;
+    }
+    function getTipPrefMap() {
+      try { return JSON.parse(localStorage.getItem(tipKey('pref')) || '{}'); } catch (_) { return {}; }
+    }
+    function setTipPrefMap(map) {
+      try { localStorage.setItem(tipKey('pref'), JSON.stringify(map)); } catch (_) {}
+    }
+    function getTipPref(orderId) {
+      const map = getTipPrefMap();
+      return Boolean(map[String(orderId)]);
+    }
+    function hasTipPref(orderId) {
+      const map = getTipPrefMap();
+      return Object.prototype.hasOwnProperty.call(map, String(orderId));
+    }
+    function setTipPref(orderId, enabled) {
+      const map = getTipPrefMap();
+      map[String(orderId)] = !!enabled;
+      setTipPrefMap(map);
+    }
+    function computeTipAmount(total) {
+      const t = Number(total || 0);
+      return Math.max(0, Math.round(t * (currentTipPercent/100)));
+    }
+    function formatMoney(n) {
+      const v = Number(n || 0);
+      return `$${v}`;
+    }
+    // Prefill del establecimiento si no hay valor
+    if (!document.getElementById('tenant-input').value) {
+      document.getElementById('tenant-input').value = defaultSlug();
+    }
+
+    async function fetchOrders() {
+      const slug = tenantInput.value.trim() || defaultSlug();
+      const status = filterSelect.value.trim();
+      const url = new URL('/api/orders', API_BASE);
+      url.searchParams.set('tenant_slug', slug);
+      if (status) url.searchParams.set('status', status);
+      url.searchParams.set('limit', currentLimit);
+      url.searchParams.set('offset', currentOffset);
+      if (currentSearch) url.searchParams.set('q', currentSearch);
+      if (currentFrom) url.searchParams.set('from', currentFrom);
+      if (currentTo) url.searchParams.set('to', currentTo);
+      const resp = await fetch(url.toString());
+      if (!resp.ok) throw new Error('Error al obtener pedidos');
+      return resp.json();
+    }
+
+    async function updateStatus(orderId, status) {
+      const resp = await fetch(new URL(`/api/orders/${orderId}/status`, API_BASE).toString(), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+        body: JSON.stringify({ status })
+      });
+      if (!resp.ok) throw new Error('Error al actualizar estado');
+      return resp.json();
+    }
+
+    async function fetchTenants() {
+      const url = new URL('/api/tenants', API_BASE);
+      const resp = await fetch(url.toString());
+      if (!resp.ok) return [];
+      const data = await resp.json();
+      return Array.isArray(data.tenants) ? data.tenants : [];
+    }
+    async function populateTenantsList() {
+      try {
+        const list = await fetchTenants();
+        const dl = document.getElementById('tenants-list');
+        dl.innerHTML = '';
+        for (const t of list) {
+          const opt = document.createElement('option');
+          opt.value = t.slug;
+          dl.appendChild(opt);
+        }
+      } catch (_) {}
+    }
+
+    async function loadTenantPrefs() {
+      try {
+        const slug = tenantInput.value.trim() || defaultSlug();
+        const url = new URL('/api/tenant_prefs', API_BASE);
+        url.searchParams.set('tenant_slug', slug);
+        const resp = await fetch(url.toString());
+        if (!resp.ok) return;
+        const p = await resp.json();
+        currentTipPercent = Math.max(0, Math.min(100, Number(p.tip_percent || 10)));
+        currentTipDefaultEnabled = !!p.tip_default_enabled;
+        currentTicketFormat = (p.ticket_format === 'compact') ? 'compact' : 'full';
+      } catch (_) {}
+    }
+
+    async function fetchOrderDetail(orderId) {
+      const url = new URL(`/api/orders/${orderId}`, API_BASE);
+      const resp = await fetch(url.toString());
+      if (!resp.ok) throw new Error('Error al obtener detalle');
+      return resp.json();
+    }
+
+    // Auto-refresh cada 10 segundos
+    async function loadOrdersSafe() {
+      if (isLoading) return;
+      isLoading = true;
+      try {
+        const data = await fetchOrders();
+        await renderOrders(data);
+      } catch (e) {
+        console.warn('Fallo al refrescar pedidos', e);
+      } finally {
+        isLoading = false;
+      }
+    }
+    let refreshTimer = null;
+    filterSelect.addEventListener('change', () => { if (refreshTimer) loadOrdersSafe(); });
+    tenantInput.addEventListener('change', async () => { await loadSlaThresholds(); await loadTenantPrefs(); if (refreshTimer) loadOrdersSafe(); });
+
+    async function renderOrders(data) {
+      const orders = data.orders || [];
+      const total = Number(data.total || orders.length || 0);
+      const page = Math.floor(currentOffset / currentLimit) + 1;
+      const totalPages = Math.max(1, Math.ceil(total / currentLimit));
+      // Construir una firma ligera del estado actual (id, status, total) para detectar cambios reales
+      const newSignature = JSON.stringify(orders.map(o => ({id:o.id, s:o.status, t:o.total})));
+      // Si la firma no cambió y ya hay filas, evitar reconstrucción para prevenir parpadeo
+      if (newSignature === lastOrdersSignature && tbody.children.length > 0) {
+        countEl.textContent = `Mostrando ${orders.filter(o => o.status !== 'entregado' && o.status !== 'cancelado').length} pedido(s) activos`;
+        const pageInfo = document.getElementById('page-info');
+        pageInfo.textContent = `Página ${page} de ${totalPages}`;
+        return;
+      }
+      const active = orders.filter(o => o.status !== 'entregado' && o.status !== 'cancelado');
+      tbody.innerHTML = '';
+      // Auto-archivar pedidos entregados/cancelados con más de 24 horas desde el cambio de estado
+      async function getStatusChangeTs(orderId, status) {
+        try {
+          const detail = await fetchOrderDetail(orderId);
+          const history = detail.history || [];
+          const target = history.filter(h => h.status === status).slice(-1)[0];
+          if (!target || !target.changed_at) return NaN;
+          return parseDateSafe(target.changed_at);
+        } catch (_) { return NaN; }
+      }
+      async function autoArchiveByStatus(list, status, type) {
+        let didArchive = false;
+        const now = Date.now();
+        const DAY_MS = 24 * 60 * 60 * 1000;
+        for (const o of list) {
+          const ts = await getStatusChangeTs(o.id, status);
+          if (!Number.isNaN(ts) && (now - ts) >= DAY_MS) {
+            try { await archiveSnapshot(o, type); } catch (_) {}
+            didArchive = true;
+          }
+        }
+        return didArchive;
+      }
+      // Archivado automático movido a backend o manejado bajo demanda
+      countEl.textContent = `Mostrando ${active.length} pedido(s) activos`;
+      const pageInfo = document.getElementById('page-info');
+      pageInfo.textContent = `Página ${page} de ${totalPages}`;
+      const frag = document.createDocumentFragment();
+      for (const o of active) {
+        const tr = document.createElement('tr');
+        const dest = o.order_type === 'mesa' ? `Mesa ${o.table_number || ''}` : (o.address_json || '').slice(0, 64);
+        const phoneRaw = (o.order_type === 'direccion' && o.customer_phone) ? String(o.customer_phone) : '';
+        const phoneDigits = phoneRaw.replace(/\D/g, '');
+        const waUrl = phoneDigits ? `https://wa.me/${phoneDigits}` : '';
+        const statusClass = statusClasses[o.status] || 'status-pendiente';
+        tr.innerHTML = `
+          <td>${o.id}</td>
+          <td><span class="small">${formatARDate(o.created_at || '')}</span></td>
+          <td><span class="pill">${o.order_type}</span></td>
+          <td>${dest}</td>
+          <td>
+            ${phoneRaw ? `<span class="small">${phoneRaw}</span>` : '<span class="small">-</span>'}
+            ${phoneDigits ? `<button class="copy-phone small" data-phone="${phoneRaw}" style="margin-left:6px;">Copiar</button>` : ''}
+            ${waUrl ? `<a class="small" href="${waUrl}" target="_blank" rel="noopener" style="margin-left:6px;">WhatsApp</a>` : ''}
+          </td>
+          <td>
+            <span class="order-total" data-orderid="${o.id}" data-total="${o.total}">$${o.total}</span>
+            <span class="order-total-tip small" style="margin-left:6px;color:#666;"></span>
+          </td>
+          <td><span class="status-badge ${statusClass}">${o.status}</span>${renderSLA(o)}</td>
+          <td class="actions">
+            <select class="status-select">
+              ${statusOptions.map(s => `<option value="${s}" ${s===o.status?'selected':''}>${s}</option>`).join('')}
+            </select>
+            <button class="apply-status">Aplicar</button>
+            <button class="ver-detalle">Ver</button>
+            <label class="small" style="display:block;margin-top:6px;">
+              <input type="checkbox" class="tip-toggle"> Propina 10%
+            </label>
+          </td>
+        `;
+        frag.appendChild(tr);
+        const copyBtn = tr.querySelector('.copy-phone');
+        if (copyBtn) {
+          copyBtn.addEventListener('click', async () => {
+            try { await navigator.clipboard.writeText(copyBtn.getAttribute('data-phone') || ''); } catch (_) {}
+          });
+        }
+        const select = tr.querySelector('.status-select');
+        const applyBtn = tr.querySelector('.apply-status');
+        if (!isAuthed) { applyBtn.disabled = true; }
+        const viewBtn = tr.querySelector('.ver-detalle');
+        const tipToggle = tr.querySelector('.tip-toggle');
+        const totalEl = tr.querySelector('.order-total');
+        const totalTipEl = tr.querySelector('.order-total-tip');
+        const baseTotal = Number(o.total || 0);
+        // Inicializar estado de propina
+        let tipEnabled = getTipPref(o.id);
+        if (!tipEnabled && currentTipDefaultEnabled) { tipEnabled = true; }
+        tipToggle.checked = tipEnabled;
+        const updateTipDisplay = () => {
+          if (tipToggle.checked) {
+            const tip = computeTipAmount(baseTotal);
+            const totalWithTip = baseTotal + tip;
+            totalTipEl.textContent = `(c/propina ${currentTipPercent}%: ${formatMoney(totalWithTip)})`;
+          } else {
+            totalTipEl.textContent = '';
+          }
+        };
+        updateTipDisplay();
+        tipToggle.addEventListener('change', () => {
+          setTipPref(o.id, tipToggle.checked);
+          updateTipDisplay();
+        });
+        applyBtn.addEventListener('click', async () => {
+          const newStatus = select.value;
+          applyBtn.disabled = true;
+          try {
+            await updateStatus(o.id, newStatus);
+            // Si cambia a "preparacion", reiniciar cronómetro y acumular el tiempo previo
+            if (newStatus === 'preparacion') {
+              const nowIso = new Date().toISOString();
+              // Preferir timestamp normalizado desde el DOM para evitar desajustes de zona horaria
+              const rowSla = tr.querySelector('.sla-container');
+              const domCreatedTs = rowSla ? Number(rowSla.getAttribute('data-created-ts') || NaN) : NaN;
+              const createdTs = !Number.isNaN(domCreatedTs) ? domCreatedTs : parseDateSafe(o.created_at);
+              const prevStartTs = getSlaOverride(o.id);
+              const baseStart = (!Number.isNaN(prevStartTs)) ? prevStartTs : createdTs;
+              const nowMs = Date.now();
+              if (!Number.isNaN(baseStart)) {
+                const prevElapsedSec = Math.max(0, Math.floor((nowMs - baseStart) / 1000));
+                addSlaAccumulated(o.id, prevElapsedSec);
+              }
+              setSlaOverride(o.id, nowIso);
+            } else if (newStatus === 'entregado') {
+              // Al entregar, sumar el último tramo y registrar total final
+              const nowMs = Date.now();
+              // Preferir timestamp normalizado desde el DOM
+              const rowSla = tr.querySelector('.sla-container');
+              const domCreatedTs = rowSla ? Number(rowSla.getAttribute('data-created-ts') || NaN) : NaN;
+              const createdTs = !Number.isNaN(domCreatedTs) ? domCreatedTs : parseDateSafe(o.created_at);
+              const overrideStart = getSlaOverride(o.id);
+              const baseStart = (!Number.isNaN(overrideStart)) ? overrideStart : createdTs;
+              let segmentSec = 0;
+              if (!Number.isNaN(baseStart)) {
+                segmentSec = Math.max(0, Math.floor((nowMs - baseStart) / 1000));
+              }
+              const totalSec = getSlaAccumulated(o.id) + segmentSec;
+              setSlaFinal(o.id, totalSec);
+            }
+            await load();
+          } catch (e) {
+            alert('No se pudo actualizar el estado');
+          } finally {
+            applyBtn.disabled = false;
+          }
+        });
+        viewBtn.addEventListener('click', async () => {
+          detailEl.textContent = 'Cargando detalle...';
+          try {
+            const detail = await fetchOrderDetail(o.id);
+            const order = detail.order || o;
+            const items = detail.items || [];
+            const history = detail.history || [];
+            const destino = order.order_type === 'mesa' ? `Mesa ${order.table_number || ''}` : (order.address_json || '');
+            const telefono = (order.order_type === 'direccion' && order.customer_phone) ? String(order.customer_phone) : '';
+            const box = document.createElement('div');
+            const itemsRows = items.map(it => {
+              const qty = Number(it.qty || 0);
+              const unit = Number(it.unit_price || 0);
+              const subtotal = qty * unit;
+              const notes = it.notes ? String(it.notes) : '';
+              return `<tr><td>${qty}</td><td>${it.name}</td><td>$${unit}</td><td>$${subtotal}</td></tr>${notes ? `<tr><td colspan=4 class="small">Nota: ${notes}</td></tr>` : ''}`;
+            }).join('');
+            const itemsHtml = items.length ? `
+              <h3>Ítems</h3>
+              <table class="detail-items-table">
+                <thead><tr><th>Cant.</th><th>Producto</th><th>Unitario</th><th>Subtotal</th></tr></thead>
+                <tbody>${itemsRows}</tbody>
+              </table>
+              <p class="detail-summary">Total: $${order.total}</p>
+            ` : '<p class="small">Sin ítems registrados.</p>';
+            // Propina en detalle
+            const tipEnabledDetailRaw = getTipPref(order.id);
+            const tipEnabledDetail = hasTipPref(order.id) ? tipEnabledDetailRaw : currentTipDefaultEnabled;
+            const tipAmt = computeTipAmount(order.total);
+            const totalWithTip = Number(order.total || 0) + tipAmt;
+            const tipBlock = `
+              <div class="tip-section" style="margin-top:8px;">
+              <label class="small"><input type="checkbox" class="tip-detail-toggle" ${tipEnabledDetail?'checked':''}> Aplicar propina (${currentTipPercent}%)</label>
+                <div class="small" style="margin-top:4px;">
+                  Propina (${currentTipPercent}%): <span class="tip-amount">${formatMoney(tipAmt)}</span>
+                </div>
+                <p class="detail-summary">Total con propina: <span class="tip-total">${formatMoney(tipEnabledDetail ? totalWithTip : order.total)}</span></p>
+              </div>
+            `;
+            const timeline = history.length ? `
+              <h3>Historial de estados</h3>
+              <div>
+                ${history.map(h => `<div class="small">${h.status} — ${formatARDate(h.changed_at)}</div>`).join('')}
+              </div>
+            ` : '';
+            // Si el pedido está entregado, mostrar el tiempo total
+            let totalTimeHtml = '';
+            if (order.status === 'entregado') {
+              let totalSec = getSlaFinal(order.id);
+              if (!totalSec || totalSec <= 0) {
+                const endHist = history.filter(h => h.status === 'entregado').slice(-1)[0];
+                const endTs = endHist ? parseDateSafe(endHist.changed_at) : Date.now();
+                const overrideStart = getSlaOverride(order.id);
+                const createdTs = parseDateSafe(order.created_at);
+                const baseStart = (!Number.isNaN(overrideStart)) ? overrideStart : createdTs;
+                const prevSec = getSlaAccumulated(order.id);
+                if (!Number.isNaN(baseStart)) {
+                  const segmentSec = Math.max(0, Math.floor((endTs - baseStart) / 1000));
+                  totalSec = prevSec + segmentSec;
+                }
+              }
+              if (totalSec && totalSec > 0) {
+                const th = String(Math.floor(totalSec / 3600)).padStart(2, '0');
+                const tm = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
+                const ts = String(totalSec % 60).padStart(2, '0');
+                totalTimeHtml = `<p class="small">Tiempo total: ${th}:${tm}:${ts}</p>`;
+              }
+            }
+            box.innerHTML = `
+              <p><strong>Pedido #${order.id}</strong></p>
+              <p>Establecimiento: ${order.tenant_slug}</p>
+              <p>Fecha: ${formatARDate(order.created_at)}</p>
+              <p>Tipo: ${order.order_type}</p>
+              <p>Destino: ${destino}</p>
+              ${telefono ? `<p>Teléfono de contacto: ${telefono}</p>` : ''}
+              <p>Estado: ${order.status}</p>
+              ${order.order_notes ? `<p>Detalle adicional: ${order.order_notes}</p>` : ''}
+              ${itemsHtml}
+              ${tipBlock}
+              ${timeline}
+              ${totalTimeHtml}
+            `;
+            detailEl.innerHTML = '';
+            detailEl.appendChild(box);
+            // Wire tip toggle in detalle
+            const tipToggleDetail = box.querySelector('.tip-detail-toggle');
+            const tipAmtEl = box.querySelector('.tip-amount');
+            const tipTotalEl = box.querySelector('.tip-total');
+            const baseTotalDet = Number(order.total || 0);
+            const refreshDetailTip = () => {
+              const enabled = tipToggleDetail.checked;
+              const tip = computeTipAmount(baseTotalDet);
+              tipAmtEl.textContent = formatMoney(tip);
+              tipTotalEl.textContent = formatMoney(enabled ? (baseTotalDet + tip) : baseTotalDet);
+            };
+            tipToggleDetail.addEventListener('change', () => {
+              setTipPref(order.id, tipToggleDetail.checked);
+              refreshDetailTip();
+            });
+            refreshDetailTip();
+          } catch (e) {
+            detailEl.textContent = 'No se pudo cargar el detalle.';
+          }
+        });
+      }
+      tbody.appendChild(frag);
+      initSLAClock();
+      const delivered = orders.filter(o => o.status === 'entregado');
+      const canceled = orders.filter(o => o.status === 'cancelado');
+      window.deliveredCurrent = delivered;
+      window.canceledCurrent = canceled;
+      await renderDelivered(delivered);
+      await renderCanceled(canceled);
+      lastOrdersSignature = newSignature;
+    }
+
+    async function renderDelivered(list) {
+      const dtbody = document.getElementById('delivered-tbody');
+      let archDelList = [];
+      try { archDelList = await fetchArchived('delivered'); } catch (_) { archDelList = []; }
+      const archDeliveredIds = new Set(archDelList.map(x => x.id));
+      const filtered = list.filter(x => !archDeliveredIds.has(x.id));
+      const total = filtered.length;
+      const pageList = filtered.slice(deliveredOffset, deliveredOffset + deliveredLimit);
+      dtbody.innerHTML = '';
+      if (!pageList.length) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td colspan="9" class="small">Sin resultados</td>`;
+        dtbody.appendChild(tr);
+      }
+      for (const o of pageList) {
+        const tr = document.createElement('tr');
+        const dest = o.order_type === 'mesa' ? `Mesa ${o.table_number || ''}` : (o.address_json || '').slice(0, 64);
+        const phoneRaw = (o.order_type === 'direccion' && o.customer_phone) ? String(o.customer_phone) : '';
+        const phoneDigits = phoneRaw.replace(/\D/g, '');
+        const waUrl = phoneDigits ? `https://wa.me/${phoneDigits}` : '';
+        const statusClass = statusClasses[o.status] || 'status-entregado';
+        const baseTotal = Number(o.total || 0);
+        const tip = computeTipAmount(baseTotal);
+        const totalWithTip = baseTotal + tip;
+        tr.innerHTML = `
+          <td>${o.id}</td>
+          <td><span class="small">${formatARDate(o.created_at || '')}</span></td>
+          <td><span class="pill">${o.order_type}</span></td>
+          <td>${dest}</td>
+          <td>
+            ${phoneRaw ? `<span class="small">${phoneRaw}</span>` : '<span class="small">-</span>'}
+            ${phoneDigits ? `<button class="copy-phone small" data-phone="${phoneRaw}" style="margin-left:6px;">Copiar</button>` : ''}
+            ${waUrl ? `<a class="small" href="${waUrl}" target="_blank" rel="noopener" style="margin-left:6px;">WhatsApp</a>` : ''}
+          </td>
+          <td>$${o.total}</td>
+          <td>${formatMoney(totalWithTip)}</td>
+          <td><span class="status-badge ${statusClass}">${o.status}</span></td>
+          <td class="actions">
+            <button class="ver-detalle">Ver</button>
+            <button class="archivar">Archivar</button>
+          </td>
+        `;
+        dtbody.appendChild(tr);
+        const copyBtn = tr.querySelector('.copy-phone');
+        if (copyBtn) {
+          copyBtn.addEventListener('click', async () => {
+            try { await navigator.clipboard.writeText(copyBtn.getAttribute('data-phone') || ''); } catch (_) {}
+          });
+        }
+        const viewBtn = tr.querySelector('.ver-detalle');
+        const archiveBtn = tr.querySelector('.archivar');
+        if (!isAuthed) { archiveBtn.disabled = true; }
+        if (!isAuthed) { archiveBtn.disabled = true; }
+        viewBtn.addEventListener('click', async () => {
+          detailEl.textContent = 'Cargando detalle...';
+          try {
+            const detail = await fetchOrderDetail(o.id);
+            const order = detail.order || o;
+            const items = detail.items || [];
+            const history = detail.history || [];
+            const destino = order.order_type === 'mesa' ? `Mesa ${order.table_number || ''}` : (order.address_json || '');
+            const telefono = (order.order_type === 'direccion' && order.customer_phone) ? String(order.customer_phone) : '';
+            const box = document.createElement('div');
+            const itemsRows = items.map(it => {
+              const qty = Number(it.qty || 0);
+              const unit = Number(it.unit_price || 0);
+              const subtotal = qty * unit;
+              const notes = it.notes ? String(it.notes) : '';
+              return `<tr><td>${qty}</td><td>${it.name}</td><td>$${unit}</td><td>$${subtotal}</td></tr>${notes ? `<tr><td colspan=4 class=\"small\">Nota: ${notes}</td></tr>` : ''}`;
+            }).join('');
+            const itemsHtml = items.length ? `
+              <h3>Ítems</h3>
+              <table class="detail-items-table">
+                <thead><tr><th>Cant.</th><th>Producto</th><th>Unitario</th><th>Subtotal</th></tr></thead>
+                <tbody>${itemsRows}</tbody>
+              </table>
+              <p class="detail-summary">Total: $${order.total}</p>
+            ` : '<p class="small">Sin ítems registrados.</p>';
+            const timeline = history.length ? `
+              <h3>Historial de estados</h3>
+              <div>
+                ${history.map(h => `<div class=\"small\">${h.status} — ${formatARDate(h.changed_at)}</div>`).join('')}
+              </div>
+            ` : '';
+            // Si el pedido está entregado, mostrar el tiempo total
+            let totalTimeHtml = '';
+            if (order.status === 'entregado') {
+              let totalSec = getSlaFinal(order.id);
+              if (!totalSec || totalSec <= 0) {
+                const endHist = history.filter(h => h.status === 'entregado').slice(-1)[0];
+                const endTs = endHist ? parseDateSafe(endHist.changed_at) : Date.now();
+                const overrideStart = getSlaOverride(order.id);
+                const createdTs = parseDateSafe(order.created_at);
+                const baseStart = (!Number.isNaN(overrideStart)) ? overrideStart : createdTs;
+                const prevSec = getSlaAccumulated(order.id);
+                if (!Number.isNaN(baseStart)) {
+                  const segmentSec = Math.max(0, Math.floor((endTs - baseStart) / 1000));
+                  totalSec = prevSec + segmentSec;
+                }
+              }
+              if (totalSec && totalSec > 0) {
+                const th = String(Math.floor(totalSec / 3600)).padStart(2, '0');
+                const tm = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
+                const ts = String(totalSec % 60).padStart(2, '0');
+                totalTimeHtml = `<p class=\"small\">Tiempo total: ${th}:${tm}:${ts}</p>`;
+              }
+            }
+            box.innerHTML = `
+              <p><strong>Pedido #${order.id}</strong></p>
+              <p>Establecimiento: ${order.tenant_slug}</p>
+              <p>Fecha: ${formatARDate(order.created_at)}</p>
+              <p>Tipo: ${order.order_type}</p>
+              <p>Destino: ${destino}</p>
+              ${telefono ? `<p>Teléfono de contacto: ${telefono}</p>` : ''}
+              <p>Estado: ${order.status}</p>
+              ${order.order_notes ? `<p>Detalle adicional: ${order.order_notes}</p>` : ''}
+              ${itemsHtml}
+              ${timeline}
+              ${totalTimeHtml}
+            `;
+            detailEl.innerHTML = '';
+            detailEl.appendChild(box);
+          } catch (e) {
+            detailEl.textContent = 'No se pudo cargar el detalle.';
+          }
+        });
+        archiveBtn.addEventListener('click', async () => {
+          try {
+            await archiveSnapshot(o, 'delivered');
+            tr.remove();
+            try { await renderArchived(); } catch (_) {}
+            try { await renderMetricsBox(); } catch (_) {}
+          } catch (_) {
+            alert('No se pudo archivar el pedido');
+          }
+        });
+      }
+      const pageNum = Math.floor(deliveredOffset / deliveredLimit) + 1;
+      const totalPages = Math.max(1, Math.ceil(total / deliveredLimit));
+      if (delPageInfoEl) delPageInfoEl.textContent = `Página ${pageNum} de ${totalPages} · Total: ${total}`;
+      if (delPrevBtn) delPrevBtn.disabled = (deliveredOffset === 0);
+      const atEndDel = deliveredOffset + deliveredLimit >= total;
+      if (delNextBtn) delNextBtn.disabled = atEndDel;
+    }
+
+    async function renderCanceled(list) {
+      const ctbody = document.getElementById('canceled-tbody');
+      let archCanList = [];
+      try { archCanList = await fetchArchived('canceled'); } catch (_) { archCanList = []; }
+      const archCanceledIds = new Set(archCanList.map(x => x.id));
+      const filtered = list.filter(x => !archCanceledIds.has(x.id));
+      const total = filtered.length;
+      const pageList = filtered.slice(canceledOffset, canceledOffset + canceledLimit);
+      ctbody.innerHTML = '';
+      if (!pageList.length) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td colspan="7" class="small">Sin resultados</td>`;
+        ctbody.appendChild(tr);
+      }
+      for (const o of pageList) {
+        const tr = document.createElement('tr');
+        const dest = o.order_type === 'mesa' ? `Mesa ${o.table_number || ''}` : (o.address_json || '').slice(0, 64);
+        const statusClass = statusClasses[o.status] || 'status-cancelado';
+        tr.innerHTML = `
+          <td>${o.id}</td>
+          <td><span class="small">${formatARDate(o.created_at || '')}</span></td>
+          <td><span class="pill">${o.order_type}</span></td>
+          <td>${dest}</td>
+          <td>$${o.total}</td>
+          <td><span class="status-badge ${statusClass}">${o.status}</span></td>
+          <td class="actions">
+            <button class="ver-detalle">Ver</button>
+            <button class="archivar">Archivar</button>
+          </td>
+        `;
+        ctbody.appendChild(tr);
+        const viewBtn = tr.querySelector('.ver-detalle');
+        const archiveBtn = tr.querySelector('.archivar');
+        viewBtn.addEventListener('click', async () => {
+          detailEl.textContent = 'Cargando detalle...';
+          try {
+            const detail = await fetchOrderDetail(o.id);
+            const order = detail.order || o;
+            const items = detail.items || [];
+            const history = detail.history || [];
+            const destino = order.order_type === 'mesa' ? `Mesa ${order.table_number || ''}` : (order.address_json || '');
+            const box = document.createElement('div');
+            const itemsRows = items.map(it => {
+              const qty = Number(it.qty || 0);
+              const unit = Number(it.unit_price || 0);
+              const subtotal = qty * unit;
+              const notes = it.notes ? String(it.notes) : '';
+              return `<tr><td>${qty}</td><td>${it.name}</td><td>$${unit}</td><td>$${subtotal}</td></tr>${notes ? `<tr><td colspan=4 class=\"small\">Nota: ${notes}</td></tr>` : ''}`;
+            }).join('');
+            const itemsHtml = items.length ? `
+              <h3>Ítems</h3>
+              <table class="detail-items-table">
+                <thead><tr><th>Cant.</th><th>Producto</th><th>Unitario</th><th>Subtotal</th></tr></thead>
+                <tbody>${itemsRows}</tbody>
+              </table>
+              <p class="detail-summary">Total: $${order.total}</p>
+            ` : '<p class="small">Sin ítems registrados.</p>';
+            const timeline = history.length ? `
+              <h3>Historial de estados</h3>
+              <div>
+                ${history.map(h => `<div class=\"small\">${h.status} — ${formatARDate(h.changed_at)}</div>`).join('')}
+              </div>
+            ` : '';
+            box.innerHTML = `
+              <p><strong>Pedido #${order.id}</strong></p>
+              <p>Establecimiento: ${order.tenant_slug}</p>
+              <p>Fecha: ${formatARDate(order.created_at)}</p>
+              <p>Tipo: ${order.order_type}</p>
+              <p>Destino: ${destino}</p>
+              <p>Estado: ${order.status}</p>
+              ${order.order_notes ? `<p>Detalle adicional: ${order.order_notes}</p>` : ''}
+              ${itemsHtml}
+              ${timeline}
+            `;
+            detailEl.innerHTML = '';
+            detailEl.appendChild(box);
+          } catch (e) {
+            detailEl.textContent = 'No se pudo cargar el detalle.';
+          }
+        });
+        archiveBtn.addEventListener('click', async () => {
+          try {
+            await archiveSnapshot(o, 'canceled');
+            tr.remove();
+            try { await renderArchived(); } catch (_) {}
+            try { await renderMetricsBox(); } catch (_) {}
+          } catch (_) {
+            alert('No se pudo archivar el pedido');
+          }
+        });
+      }
+      const pageNum = Math.floor(canceledOffset / canceledLimit) + 1;
+      const totalPages = Math.max(1, Math.ceil(total / canceledLimit));
+      if (canPageInfoEl) canPageInfoEl.textContent = `Página ${pageNum} de ${totalPages} · Total: ${total}`;
+      if (canPrevBtn) canPrevBtn.disabled = (canceledOffset === 0);
+      const atEndCan = canceledOffset + canceledLimit >= total;
+      if (canNextBtn) canNextBtn.disabled = atEndCan;
+    }
+
+    async function renderArchived() {
+      const atDel = document.getElementById('archived-delivered-tbody');
+      const atCan = document.getElementById('archived-canceled-tbody');
+      const delCountEl = document.getElementById('arch-del-count');
+      const canCountEl = document.getElementById('arch-can-count');
+      const fetchPage = async (type) => {
+        const slug = tenantInput.value.trim() || defaultSlug();
+        const url = new URL('/api/archive', API_BASE);
+        url.searchParams.set('tenant_slug', slug);
+        url.searchParams.set('type', type);
+        if (window.archivedSearch) url.searchParams.set('q', window.archivedSearch);
+        if (window.archivedFrom) url.searchParams.set('from', window.archivedFrom);
+        if (window.archivedTo) url.searchParams.set('to', window.archivedTo);
+        if (window.archDateMode) url.searchParams.set('date_field', window.archDateMode);
+        url.searchParams.set('limit', String(archLimit + 1));
+        url.searchParams.set('offset', String(archOffset));
+        const resp = await fetch(url.toString());
+        if (!resp.ok) throw new Error('Error al obtener archivados');
+        const data = await resp.json();
+        const arr = Array.isArray(data.archives) ? data.archives : [];
+        const hasMore = arr.length > archLimit;
+        const total = Number(data.total_count || 0);
+        return { list: arr.slice(0, archLimit), hasMore, total };
+      };
+      const delData = await fetchPage('delivered');
+      const canData = await fetchPage('canceled');
+      const archDel = delData.list;
+      const archCan = canData.list;
+      atDel.innerHTML = '';
+      atCan.innerHTML = '';
+      if (delCountEl) delCountEl.textContent = `(${archDel.length})`;
+      if (canCountEl) canCountEl.textContent = `(${archCan.length})`;
+      if (!archDel.length) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td colspan="6" class="small">Sin resultados</td>`;
+        atDel.appendChild(tr);
+      }
+      for (const o of archDel) {
+        const dest = o.order_type === 'mesa' ? `Mesa ${o.table_number || ''}` : (o.address_json || '').slice(0, 64);
+        const phoneRaw = String(o.customer_phone || '').trim();
+        const phoneDigits = phoneRaw.replace(/\D+/g, '');
+        const waUrl = phoneDigits ? `https://wa.me/${phoneDigits}` : '';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${o.id}</td>
+          <td><span class=\"small\">${formatARDate(o.created_at || '')}</span></td>
+          <td><span class=\"pill\">${o.order_type}</span></td>
+          <td>${dest}</td>
+          <td>
+            ${phoneRaw ? `<span class=\"small\">${phoneRaw}</span>` : '<span class=\"small\">-</span>'}
+            ${phoneDigits ? `<button class=\"copy-phone small\" data-phone=\"${phoneRaw}\" style=\"margin-left:6px;\">Copiar</button>` : ''}
+            ${waUrl ? `<a class=\"small\" href=\"${waUrl}\" target=\"_blank\" rel=\"noopener\" style=\"margin-left:6px;\">WhatsApp</a>` : ''}
+          </td>
+          <td>$${o.total}</td>
+          <td>
+            <span class=\"status-badge ${statusClasses['entregado']}\">entregado</span>
+            <span class=\"small\" style=\"margin-left:6px;color:#666;\">último: ${(o.last_status||'').trim()||'-'} ${o.last_change? '('+formatARDate(o.last_change)+')':''}</span>
+          </td>
+        `;
+        atDel.appendChild(tr);
+        const copyBtn = tr.querySelector('.copy-phone');
+        if (copyBtn) {
+          copyBtn.addEventListener('click', async () => {
+            try { await navigator.clipboard.writeText(copyBtn.getAttribute('data-phone') || ''); } catch (_) {}
+          });
+        }
+      }
+      if (!archCan.length) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td colspan="6" class="small">Sin resultados</td>`;
+        atCan.appendChild(tr);
+      }
+      for (const o of archCan) {
+        const dest = o.order_type === 'mesa' ? `Mesa ${o.table_number || ''}` : (o.address_json || '').slice(0, 64);
+        const phoneRaw = String(o.customer_phone || '').trim();
+        const phoneDigits = phoneRaw.replace(/\D+/g, '');
+        const waUrl = phoneDigits ? `https://wa.me/${phoneDigits}` : '';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${o.id}</td>
+          <td><span class=\"small\">${formatARDate(o.created_at || '')}</span></td>
+          <td><span class=\"pill\">${o.order_type}</span></td>
+          <td>${dest}</td>
+          <td>
+            ${phoneRaw ? `<span class=\"small\">${phoneRaw}</span>` : '<span class=\"small\">-</span>'}
+            ${phoneDigits ? `<button class=\"copy-phone small\" data-phone=\"${phoneRaw}\" style=\"margin-left:6px;\">Copiar</button>` : ''}
+            ${waUrl ? `<a class=\"small\" href=\"${waUrl}\" target=\"_blank\" rel=\"noopener\" style=\"margin-left:6px;\">WhatsApp</a>` : ''}
+          </td>
+          <td>$${o.total}</td>
+          <td>
+            <span class=\"status-badge ${statusClasses['cancelado']}\">cancelado</span>
+            <span class=\"small\" style=\"margin-left:6px;color:#666;\">último: ${(o.last_status||'').trim()||'-'} ${o.last_change? '('+formatARDate(o.last_change)+')':''}</span>
+          </td>
+        `;
+        atCan.appendChild(tr);
+        const copyBtn = tr.querySelector('.copy-phone');
+        if (copyBtn) {
+          copyBtn.addEventListener('click', async () => {
+            try { await navigator.clipboard.writeText(copyBtn.getAttribute('data-phone') || ''); } catch (_) {}
+          });
+        }
+      }
+      if (archPrevBtn) archPrevBtn.disabled = (archOffset === 0);
+      const totalAll = Number(delData.total || 0) + Number(canData.total || 0);
+      const atEnd = (archOffset + archLimit) >= totalAll;
+      if (archNextBtn) archNextBtn.disabled = atEnd;
+      const pageNum = Math.floor(archOffset / archLimit) + 1;
+      const totalPages = Math.max(1, Math.ceil((totalAll || 1) / archLimit));
+      if (archPageInfoEl) archPageInfoEl.textContent = `Página ${pageNum} de ${totalPages} · Total: ${totalAll}`;
+    }
+    async function fetchArchivedMetrics() {
+      const slug = tenantInput.value.trim() || defaultSlug();
+      const url = new URL('/api/archive/metrics', API_BASE);
+      url.searchParams.set('tenant_slug', slug);
+      if (window.archivedFrom) url.searchParams.set('from', window.archivedFrom);
+      if (window.archivedTo) url.searchParams.set('to', window.archivedTo);
+      if (archDateModeSelect && archDateModeSelect.value) url.searchParams.set('date_field', archDateModeSelect.value);
+      const resp = await fetch(url.toString());
+      if (!resp.ok) return null;
+      return resp.json();
+    }
+    async function renderArchivedMetrics() {
+      try {
+        const m = await fetchArchivedMetrics();
+        if (!m || !archivedMetricsEl) return;
+        archivedMetricsEl.textContent = `Entregados: ${m.delivered_count} · Total entregados: $${m.delivered_total} · Propina(10%): $${m.delivered_tip_10} · Total c/propina: $${m.delivered_total_with_tip} · Cancelados: ${m.canceled_count} · Total cancelados: $${m.canceled_total}`;
+      } catch (_) {}
+    }
+
+    function renderSLA(o) {
+      if (o.status === 'entregado' || o.status === 'cancelado') return '';
+      const created = o.created_at || '';
+      const createdTs = (function(c){
+        const t = parseDateSafe(c);
+        return Number.isNaN(t) ? Date.now() : t;
+      })(created);
+      return `<span class="sla-container" data-orderid="${o.id}" data-created="${created}" data-created-ts="${createdTs}" data-status="${o.status}"><span class="sla-dot"></span><span class="sla-label">00:00:00</span><span class="sla-prev small" style="margin-left:4px;color:#888;"></span></span>`;
+    }
+
+    // Parseo robusto para 'YYYY-MM-DD[ T]HH:MM:SS(.ffffff)?'
+    function parseDateSafe(str) {
+      try {
+        let s = String(str || '').trim();
+        if (!s) return NaN;
+        s = s.replace(' ', 'T');
+        s = s.replace(/(\d{2}:\d{2}:\d{2})\.(\d{3,})/, (m, base, frac) => `${base}.${frac.slice(0,3)}`);
+        // Si no hay zona horaria explícita, asumir UTC (backend usa UTC)
+        const hasTZ = /[zZ]|[\+\-]\d{2}:?\d{2}$/.test(s);
+        const sForParse = hasTZ ? s : s + 'Z';
+        let t = Date.parse(sForParse);
+        if (!Number.isNaN(t)) return t;
+        const m = s.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?/);
+        if (m) {
+          const y = Number(m[1]);
+          const mo = Number(m[2]) - 1;
+          const d = Number(m[3]);
+          const h = Number(m[4]);
+          const mi = Number(m[5]);
+          const se = Number(m[6] || '0');
+          const ms = Number(m[7] || '0');
+          return Date.UTC(y, mo, d, h, mi, se, ms);
+        }
+      } catch (_) {}
+      return NaN;
+    }
+    function formatARDate(str) {
+      try {
+        const ts = parseDateSafe(str);
+        if (Number.isNaN(ts)) return String(str || '');
+        const d = new Date(ts);
+        return new Intl.DateTimeFormat('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(d).replace(',', '');
+      } catch (_) { return String(str || ''); }
+    }
+
+    // Gestión de SLA (override y tiempo previo) almacenado por tenant
+    function slaKey(name) {
+      const slug = tenantInput.value.trim() || defaultSlug();
+      return `sla_${name}:${slug}`;
+    }
+    function getSlaOverridesMap() {
+      try { return JSON.parse(localStorage.getItem(slaKey('override_start')) || '{}'); } catch (_) { return {}; }
+    }
+    function setSlaOverridesMap(map) {
+      try { localStorage.setItem(slaKey('override_start'), JSON.stringify(map)); } catch (_) {}
+    }
+    function getSlaAccumulatedMap() {
+      try { return JSON.parse(localStorage.getItem(slaKey('accumulated_before')) || '{}'); } catch (_) { return {}; }
+    }
+    function setSlaAccumulatedMap(map) {
+      try { localStorage.setItem(slaKey('accumulated_before'), JSON.stringify(map)); } catch (_) {}
+    }
+    function getSlaOverride(orderId) {
+      const map = getSlaOverridesMap();
+      const v = map[String(orderId)];
+      if (!v) return NaN;
+      return parseDateSafe(v);
+    }
+    function setSlaOverride(orderId, isoString) {
+      const map = getSlaOverridesMap();
+      map[String(orderId)] = isoString;
+      setSlaOverridesMap(map);
+    }
+    function getSlaAccumulated(orderId) {
+      const map = getSlaAccumulatedMap();
+      return Number(map[String(orderId)] || 0);
+    }
+    function addSlaAccumulated(orderId, seconds) {
+      const map = getSlaAccumulatedMap();
+      const key = String(orderId);
+      map[key] = Number(map[key] || 0) + Number(seconds || 0);
+      setSlaAccumulatedMap(map);
+    }
+
+    // Tiempo final (entregado) almacenado por tenant
+    function getSlaFinalMap() {
+      try { return JSON.parse(localStorage.getItem(slaKey('final_total')) || '{}'); } catch (_) { return {}; }
+    }
+    function setSlaFinalMap(map) {
+      try { localStorage.setItem(slaKey('final_total'), JSON.stringify(map)); } catch (_) {}
+    }
+    function getSlaFinal(orderId) {
+      const map = getSlaFinalMap();
+      return Number(map[String(orderId)] || 0);
+    }
+    function setSlaFinal(orderId, seconds) {
+      const map = getSlaFinalMap();
+      map[String(orderId)] = Number(seconds || 0);
+      setSlaFinalMap(map);
+    }
+
+    function initSLAClock() {
+      if (slaTimer) clearInterval(slaTimer);
+      const thresholds = currentSlaThresholds;
+      const update = () => {
+        const now = Date.now();
+        const nodes = Array.from(document.querySelectorAll('.sla-container'));
+        for (const n of nodes) {
+          const createdStr = n.getAttribute('data-created') || '';
+          const createdAttrTs = Number(n.getAttribute('data-created-ts') || NaN);
+          const orderId = n.getAttribute('data-orderid') || '';
+          const dot = n.querySelector('.sla-dot');
+          const label = n.querySelector('.sla-label');
+          const prevEl = n.querySelector('.sla-prev');
+          if (!dot || !label) continue;
+          let created = createdAttrTs;
+          if (Number.isNaN(created)) {
+            created = parseDateSafe(createdStr);
+          }
+          if (Number.isNaN(created)) {
+            created = Date.now();
+          }
+          let startTs = created;
+          const overrideStart = orderId ? getSlaOverride(orderId) : NaN;
+          if (!Number.isNaN(overrideStart)) startTs = overrideStart;
+          const diffMs = now - startTs;
+          const currentSec = Math.max(0, Math.floor(diffMs / 1000));
+          const hh = String(Math.floor(currentSec / 3600)).padStart(2, '0');
+          const mm = String(Math.floor((currentSec % 3600) / 60)).padStart(2, '0');
+          const ss = String(currentSec % 60).padStart(2, '0');
+          label.textContent = `${hh}:${mm}:${ss}`;
+          if (prevEl) {
+            const prevSec = orderId ? getSlaAccumulated(orderId) : 0;
+            if (prevSec > 0) {
+              const phh = String(Math.floor(prevSec / 3600)).padStart(2, '0');
+              const pmm = String(Math.floor((prevSec % 3600) / 60)).padStart(2, '0');
+              const pss = String(prevSec % 60).padStart(2, '0');
+              prevEl.textContent = `(prev: ${phh}:${pmm}:${pss})`;
+            } else {
+              prevEl.textContent = '';
+            }
+          }
+          const totalElapsedSec = (orderId ? getSlaAccumulated(orderId) : 0) + currentSec;
+          const mins = Math.floor(totalElapsedSec / 60);
+          dot.classList.remove('sla-warning', 'sla-critical');
+          if (mins >= thresholds.critical) {
+            dot.classList.add('sla-critical');
+            dot.style.background = '#f44336';
+          } else if (mins >= thresholds.warning) {
+            dot.classList.add('sla-warning');
+            dot.style.background = '#ff9800';
+          } else {
+            dot.style.background = '#bbb';
+          }
+        }
+      };
+      update();
+      slaTimer = setInterval(update, 1000);
+    }
+
+    async function load() {
+      if (isLoading) return;
+      isLoading = true;
+      try {
+        const data = await fetchOrders();
+        await renderOrders(data);
+        await renderMetricsBox();
+      } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="7">Error al cargar pedidos</td></tr>';
+      } finally {
+        isLoading = false;
+      }
+    }
+
+    refreshBtn.addEventListener('click', load);
+    filterSelect.addEventListener('change', () => { currentOffset = 0; load(); });
+    document.getElementById('search-btn').addEventListener('click', () => {
+      currentSearch = document.getElementById('search-input').value.trim();
+      currentFrom = document.getElementById('from-date').value;
+      currentTo = document.getElementById('to-date').value;
+      currentLimit = parseInt(document.getElementById('page-size').value, 10) || 50;
+      currentOffset = 0;
+      load();
+      renderMetricsBox();
+    });
+    document.getElementById('search-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        document.getElementById('search-btn').click();
+      }
+    });
+    document.getElementById('page-size').addEventListener('change', () => {
+      currentLimit = parseInt(document.getElementById('page-size').value, 10) || 50;
+      currentOffset = 0;
+      load();
+    });
+    document.getElementById('prev-page').addEventListener('click', () => {
+      currentOffset = Math.max(0, currentOffset - currentLimit);
+      load();
+    });
+    document.getElementById('next-page').addEventListener('click', () => {
+      currentOffset += currentLimit;
+      load();
+    });
+    document.getElementById('export-btn').addEventListener('click', () => {
+      const slug = tenantInput.value.trim() || defaultSlug();
+      const status = filterSelect.value.trim();
+      const url = new URL('/api/orders/export.csv', API_BASE);
+      url.searchParams.set('tenant_slug', slug);
+      if (status) url.searchParams.set('status', status);
+      if (currentSearch) url.searchParams.set('q', currentSearch);
+      if (currentFrom) url.searchParams.set('from', currentFrom);
+      if (currentTo) url.searchParams.set('to', currentTo);
+      url.searchParams.set('limit', currentLimit);
+      url.searchParams.set('offset', currentOffset);
+      window.open(url.toString(), '_blank');
+    });
+    document.getElementById('print-btn').addEventListener('click', () => window.print());
+    if (archiveDeliveredAllBtn) {
+      archiveDeliveredAllBtn.addEventListener('click', async () => {
+        try {
+          if (!isAuthed) { alert('Requiere sesión de administrador'); return; }
+          await archiveBulk('delivered');
+          load();
+          updateEligibleCounts();
+        } catch (e) {
+          alert('No se pudo archivar entregados');
+        }
+      });
+    }
+    if (archiveCanceledAllBtn) {
+      archiveCanceledAllBtn.addEventListener('click', async () => {
+        try {
+          if (!isAuthed) { alert('Requiere sesión de administrador'); return; }
+          await archiveBulk('canceled');
+          load();
+          updateEligibleCounts();
+        } catch (e) {
+          alert('No se pudo archivar cancelados');
+        }
+      });
+    }
+    const deliveredBox = document.getElementById('delivered-box');
+    const canceledBox = document.getElementById('canceled-box');
+    if (deliveredBox) {
+      deliveredBox.addEventListener('toggle', async () => {
+        if (deliveredBox.open) { updateEligibleCounts(); }
+      });
+    }
+    if (canceledBox) {
+      canceledBox.addEventListener('toggle', async () => {
+        if (canceledBox.open) { updateEligibleCounts(); }
+      });
+    }
+    if (tenantInput) {
+      tenantInput.addEventListener('change', () => { updateEligibleCounts(); });
+      tenantInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') updateEligibleCounts(); });
+    }
+    if (archFilterBtn) {
+      archFilterBtn.addEventListener('click', () => { updateEligibleCounts(); });
+    }
+
+    async function fetchCSRF() {
+      const resp = await fetch(new URL('/api/auth/csrf', API_BASE).toString());
+      if (!resp.ok) throw new Error('No se pudo obtener CSRF');
+      const data = await resp.json();
+      csrfToken = String(data.token || '');
+    }
+
+    async function ensureAuth() {
+      try {
+        const resp = await fetch(new URL('/api/auth/me', API_BASE).toString());
+        const data = await resp.json();
+        if (data && data.authenticated) {
+          isAuthed = true;
+          await fetchCSRF();
+          document.getElementById('login-box').style.display = 'none';
+          return true;
+        }
+      } catch (_) {}
+      isAuthed = false;
+      document.getElementById('login-box').style.display = 'block';
+      return false;
+    }
+
+    async function init() {
+      await ensureAuth();
+      await populateTenantsList();
+      await loadSlaThresholds();
+      await loadTenantPrefs();
+      await load();
+      refreshTimer = setInterval(loadOrdersSafe, 10000);
+    }
+
+    document.getElementById('login-btn').addEventListener('click', async () => {
+      const u = document.getElementById('login-user').value.trim();
+      const p = document.getElementById('login-pass').value;
+      const resp = await fetch(new URL('/api/auth/login', API_BASE).toString(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: u, password: p })
+      });
+      if (!resp.ok) {
+        document.getElementById('login-error').style.display = 'block';
+        return;
+      }
+      document.getElementById('login-error').style.display = 'none';
+      await fetchCSRF();
+      isAuthed = true;
+      document.getElementById('login-box').style.display = 'none';
+      await loadSlaThresholds();
+      await load();
+      refreshTimer = setInterval(loadOrdersSafe, 10000);
+    });
+
+    document.addEventListener('DOMContentLoaded', init);
+
+    // Cargar archivados bajo demanda al abrir el panel correspondiente
+    const archivedBox = document.getElementById('archived-box');
+    if (archivedBox) {
+      archivedBox.addEventListener('toggle', async () => {
+        if (archivedBox.open) {
+          try { await renderArchived(); } catch (_) {}
+          try { await renderArchivedMetrics(); } catch (_) {}
+        }
+      });
+    }
+    if (archFilterBtn) {
+      archFilterBtn.addEventListener('click', async () => {
+        window.archivedSearch = archSearchInput.value.trim();
+        window.archivedFrom = archFromInput.value;
+        window.archivedTo = archToInput.value;
+        window.archDateMode = archDateModeSelect ? archDateModeSelect.value : 'archived';
+        archOffset = 0;
+        try { localStorage.setItem('arch_filters', JSON.stringify({ q: window.archivedSearch, from: window.archivedFrom, to: window.archivedTo })); } catch (_) {}
+        try { await renderArchived(); } catch (_) {}
+        try { await renderArchivedMetrics(); } catch (_) {}
+      });
+    }
+    if (archPageSizeSelect) {
+      archPageSizeSelect.addEventListener('change', async () => {
+        archLimit = parseInt(archPageSizeSelect.value, 10) || 50;
+        archOffset = 0;
+        try { await renderArchived(); } catch (_) {}
+        try { await renderArchivedMetrics(); } catch (_) {}
+      });
+    }
+    if (archPrevBtn) {
+      archPrevBtn.addEventListener('click', async () => {
+        archOffset = Math.max(0, archOffset - archLimit);
+        try { await renderArchived(); } catch (_) {}
+        try { await renderArchivedMetrics(); } catch (_) {}
+      });
+    }
+    if (archNextBtn) {
+      archNextBtn.addEventListener('click', async () => {
+        archOffset += archLimit;
+        try { await renderArchived(); } catch (_) {}
+        try { await renderArchivedMetrics(); } catch (_) {}
+      });
+    }
+    
+    try {
+      const raw = localStorage.getItem('arch_filters');
+      if (raw) {
+        const obj = JSON.parse(raw);
+        if (archSearchInput) archSearchInput.value = String(obj.q||'');
+        if (archFromInput) archFromInput.value = String(obj.from||archFromInput.value||'');
+        if (archToInput) archToInput.value = String(obj.to||archToInput.value||'');
+        if (archDateModeSelect) archDateModeSelect.value = String(obj.mode||'archived');
+        window.archivedSearch = archSearchInput ? archSearchInput.value.trim() : '';
+        window.archivedFrom = archFromInput ? archFromInput.value : '';
+        window.archivedTo = archToInput ? archToInput.value : '';
+        window.archDateMode = archDateModeSelect ? archDateModeSelect.value : 'archived';
+      }
+    } catch (_) {}
+    if (archExportBtn) {
+      archExportBtn.addEventListener('click', () => {
+        const slug = tenantInput.value.trim() || defaultSlug();
+        const url = new URL('/api/archive/export', API_BASE);
+        url.searchParams.set('tenant_slug', slug);
+        if (window.archivedSearch) url.searchParams.set('q', window.archivedSearch);
+        if (window.archivedFrom) url.searchParams.set('from', window.archivedFrom);
+        if (window.archivedTo) url.searchParams.set('to', window.archivedTo);
+        if (archDateModeSelect && archDateModeSelect.value) url.searchParams.set('date_field', archDateModeSelect.value);
+        window.open(url.toString(), '_blank');
+      });
+    }
+    if (delPageSizeSelect) {
+      delPageSizeSelect.addEventListener('change', async () => {
+        deliveredLimit = parseInt(delPageSizeSelect.value, 10) || 50;
+        deliveredOffset = 0;
+        try { await renderDelivered(window.deliveredCurrent || []); } catch (_) {}
+      });
+    }
+    if (delPrevBtn) {
+      delPrevBtn.addEventListener('click', async () => {
+        deliveredOffset = Math.max(0, deliveredOffset - deliveredLimit);
+        try { await renderDelivered(window.deliveredCurrent || []); } catch (_) {}
+      });
+    }
+    if (delNextBtn) {
+      delNextBtn.addEventListener('click', async () => {
+        deliveredOffset += deliveredLimit;
+        try { await renderDelivered(window.deliveredCurrent || []); } catch (_) {}
+      });
+    }
+    if (canPageSizeSelect) {
+      canPageSizeSelect.addEventListener('change', async () => {
+        canceledLimit = parseInt(canPageSizeSelect.value, 10) || 50;
+        canceledOffset = 0;
+        try { await renderCanceled(window.canceledCurrent || []); } catch (_) {}
+      });
+    }
+    if (canPrevBtn) {
+      canPrevBtn.addEventListener('click', async () => {
+        canceledOffset = Math.max(0, canceledOffset - canceledLimit);
+        try { await renderCanceled(window.canceledCurrent || []); } catch (_) {}
+      });
+    }
+    if (canNextBtn) {
+      canNextBtn.addEventListener('click', async () => {
+        canceledOffset += canceledLimit;
+        try { await renderCanceled(window.canceledCurrent || []); } catch (_) {}
+      });
+    }
+    async function fetchMetrics() {
+      const slug = tenantInput.value.trim() || defaultSlug();
+      const url = new URL('/api/metrics', API_BASE);
+      url.searchParams.set('tenant_slug', slug);
+      if (currentFrom) url.searchParams.set('from', currentFrom);
+      if (currentTo) url.searchParams.set('to', currentTo);
+      const resp = await fetch(url.toString());
+      if (!resp.ok) return null;
+      return resp.json();
+    }
+    async function renderMetricsBox() {
+      try {
+        const m = await fetchMetrics();
+        if (!m) return;
+        const el = document.getElementById('metrics');
+        el.textContent = `Activos: ${m.active_count} · Entregados: ${m.delivered_count} · Cancelados: ${m.canceled_count} · Total entregados: $${m.delivered_total} · Propina(10%): $${m.delivered_tip_10} · Total c/propina: $${m.delivered_total_with_tip}`;
+      } catch (_) {}
+    }
+
+    async function loadSlaThresholds() {
+      try {
+        const slug = tenantInput.value.trim() || defaultSlug();
+        const url = new URL('/api/tenant_sla', API_BASE);
+        url.searchParams.set('tenant_slug', slug);
+        const resp = await fetch(url.toString());
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const w = Number(data.warning_minutes || 15);
+        const c = Number(data.critical_minutes || 30);
+        currentSlaThresholds = { warning: Math.max(1,w), critical: Math.max(w+1,c) };
+      } catch (_) {}
+    }
+  </script>
+ </body>
+</html>

@@ -1,0 +1,8 @@
+/* Estilos específicos para comercio-base: scoped al atributo data-page */
+body[data-page="comercio-base"] .site-header .logo {
+  font-weight: 700;
+}
+
+body[data-page="comercio-base"] .shopping-cart {
+  max-width: 420px;
+}

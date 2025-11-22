@@ -1,0 +1,213 @@
+/* Estilos específicos para comercio: usan variables de tema (brand-*) */
+body[data-page="comercio"] .section-title {
+  color: var(--brand-title-color, var(--brand-primary, #4a6fa5));
+}
+
+/* Título específico: “Nuestros Productos” en blanco sobre fondo oscuro */
+body[data-page="comercio"] #products-index-title.section-title {
+  color: #ffffff;
+}
+
+/* Ajuste sutil de márgenes en comercio */
+body[data-page="comercio"] .section-header-inline .section-title {
+  margin: 0 12px 0 0;
+}
+
+/* Eliminar espacios verticales entre secciones en comercio */
+body[data-page="comercio"] .special-discounts {
+  margin: 0; /* sin margen arriba/abajo */
+}
+body[data-page="comercio"] .special-discounts h2 {
+  margin-bottom: 12px; /* reducir separación bajo el título */
+}
+/* Título "Explora y aprovecha": colapsar espacios alrededor */
+body[data-page="comercio"] #interest-section-title.section-title {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+/* Sección de intereses: eliminar separación inferior */
+body[data-page="comercio"] .interest-section {
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+/* Sección de productos y de interés: sin espacios adicionales */
+body[data-page="comercio"] #menu-electronica.products.searchable-section {
+  background: var(--brand-products-bg, transparent);
+  margin-top: 0;
+}
+body[data-page="comercio"] .products.interest-products.searchable-section {
+  margin-top: 0;
+}
+
+/* Botones de categoría del menú inline en comercio */
+body[data-page="comercio"] .category-filter-toggle {
+  border-color: var(--brand-category-border, var(--brand-border, #c9d4e7));
+  color: var(--brand-category-text, var(--brand-text, #111111));
+  background: var(--brand-category-bg-base, #ffffff);
+}
+body[data-page="comercio"] .category-filter-toggle:hover,
+body[data-page="comercio"] .category-filter-toggle:focus-visible {
+  background: var(--brand-category-hover-bg, #f2f2f2);
+}
+body[data-page="comercio"] .category-filter-toggle:focus-visible {
+  outline: 2px solid var(--brand-category-border, var(--brand-primary, #4a6fa5));
+  outline-offset: 2px;
+}
+
+/* Filtros del catálogo (comercio) */
+body[data-page="comercio"] .filter-btn {
+  background: var(--brand-category-bg-base, #ffffff);
+  color: var(--brand-category-text, var(--brand-text, #111111));
+  border-color: var(--brand-category-border, var(--brand-primary, #4a6fa5));
+  outline: none;
+}
+body[data-page="comercio"] .filter-btn:hover,
+body[data-page="comercio"] .filter-btn:focus-visible {
+  background: var(--brand-category-hover-bg, #f2f2f2);
+  color: var(--brand-category-text, var(--brand-text, #111111));
+  outline: 2px solid var(--brand-category-border, var(--brand-primary, #4a6fa5));
+  outline-offset: 2px;
+}
+body[data-page="comercio"] .filter-btn.active {
+  background: var(--brand-category-bg, var(--brand-primary, #4a6fa5));
+  color: var(--brand-category-active-text, var(--brand-button-text, #ffffff));
+  border-color: var(--brand-category-border, var(--brand-category-bg, var(--brand-primary, #4a6fa5)));
+}
+
+/* Botón de añadir al carrito en tarjetas (comercio) */
+body[data-page="comercio"] .add-to-cart-btn {
+  background: var(--brand-button-bg, #e67e22);
+  color: var(--brand-button-text, #ffffff);
+  border-color: var(--brand-button-bg, #e67e22);
+}
+body[data-page="comercio"] .add-to-cart-btn:hover,
+body[data-page="comercio"] .add-to-cart-btn:focus-visible {
+  background: var(--brand-button-hover-bg, var(--brand-button-bg, #e67e22));
+  color: var(--brand-button-text, #ffffff);
+}
+
+/* Asegurar que los títulos con IDs unificados usen el color de marca en comercio */
+body[data-page="comercio"] #store-info-index-title.section-title,
+body[data-page="comercio"] #interest-products-index-title.section-title {
+  color: var(--brand-title-color, var(--brand-primary, #4a6fa5));
+}
+
+/* Título de descuentos especiales en comercio: override del color base */
+body[data-page="comercio"] .special-discounts h2 {
+  color: var(--brand-title-color, var(--brand-primary, #4a6fa5));
+}
+
+/* Botones del carrito usan las reglas globales de style.css para mantener coherencia con index */
+
+/* Fondos por sección (opcionales) */
+body[data-page="comercio"] #menu-electronica.products.searchable-section {
+  background: var(--brand-products-bg, transparent);
+}
+
+body[data-page="comercio"] .interest-products {
+  background: var(--brand-interest-bg, transparent);
+  border-radius: 12px;
+}
+
+/* Sección de descuentos especiales (comercio): configurable por JSON */
+body[data-page="comercio"] .special-discounts {
+  /* Solo aplica si la variable existe; si no, se mantiene el fondo de style.css */
+  background: var(--brand-special-discounts-bg, linear-gradient(to bottom,
+        rgba(255, 165, 0, 0) 0%,
+        rgba(255, 165, 0, 0.1) 20%,
+        rgba(255, 165, 0, 0.3) 50%,
+        rgba(255, 165, 0, 0.1) 80%,
+        rgba(255, 165, 0, 0) 100%
+  ));
+}
+
+/* Modal de productos: fondo configurable */
+body[data-page="comercio"] .product-modal .modal-content {
+  background: var(--brand-modal-bg, #ffffff);
+}
+
+/* Modal (comercio): reemplazar acentos azules por negro/branding */
+body[data-page="comercio"] #product-modal .modal-features {
+  /* Borde lateral negro en lugar de azul */
+  border-left-color: var(--brand-button-bg, #000000);
+}
+body[data-page="comercio"] #product-modal .modal-price {
+  /* Precio en negro para coherencia con branding */
+  color: var(--brand-button-bg, #000000);
+}
+body[data-page="comercio"] #product-modal .modal-add-to-cart {
+  /* Botón del modal usa esquema negro configurado por branding */
+  background: var(--brand-button-bg, #000000);
+  color: var(--brand-button-text, #ffffff);
+  border: 1px solid var(--brand-button-bg, #000000);
+}
+body[data-page="comercio"] #product-modal .modal-add-to-cart:hover,
+body[data-page="comercio"] #product-modal .modal-add-to-cart:focus-visible {
+  background: var(--brand-button-hover-bg, var(--brand-button-bg, #000000));
+}
+
+/* Información de la Tienda: texto negro para mejor contraste sobre fondo verde */
+body[data-page="comercio"] #store-info-index-title.section-title + .content-items {
+  color: var(--brand-store-info-text, #000000);
+}
+body[data-page="comercio"] #store-info-index-title.section-title + .content-items h3,
+body[data-page="comercio"] #store-info-index-title.section-title + .content-items p,
+body[data-page="comercio"] #store-info-index-title.section-title + .content-items li {
+  color: var(--brand-store-info-text, #000000);
+}
+
+/* Carrito flotante (comercio): esquema negro parametrizado */
+body[data-page="comercio"] .floating-cart {
+  background: var(
+    --brand-floating-cart-bg,
+    var(--brand-button-bg, #000000)
+  );
+  color: var(--brand-button-text, #ffffff);
+}
+body[data-page="comercio"] .floating-cart:hover {
+  background: var(
+    --brand-floating-cart-hover-bg,
+    var(--brand-floating-cart-bg, var(--brand-button-bg, #000000))
+  );
+}
+
+/* Header del carrito (título "Carrito de compras!") en negro */
+body[data-page="comercio"] .shopping-cart .cart-header {
+  background-color: var(--brand-cart-header-bg, #000000);
+  color: var(--brand-button-text, #ffffff);
+}
+
+/* Botón de checkout / WhatsApp en negro */
+body[data-page="comercio"] .shopping-cart .checkout-btn {
+  background-color: var(
+    --brand-checkout-btn-bg,
+    var(--brand-button-bg, #000000)
+  );
+  color: var(--brand-button-text, #ffffff);
+}
+body[data-page="comercio"] .shopping-cart .checkout-btn:hover,
+body[data-page="comercio"] .shopping-cart .checkout-btn:focus-visible {
+  background-color: var(
+    --brand-checkout-btn-hover-bg,
+    var(--brand-checkout-btn-bg, var(--brand-button-bg, #000000))
+  );
+}
+
+/* Fondo de página y footer si se requiere */
+body[data-page="comercio"] {
+  background: var(--brand-page-bg, inherit);
+  color: var(--brand-text, inherit);
+}
+body[data-page="comercio"] footer {
+  background: var(--brand-footer-bg, inherit);
+}
+/* Texto del footer en negro para mejor contraste */
+body[data-page="comercio"] .footer-section h4 {
+  color: var(--brand-footer-text, #000000);
+}
+body[data-page="comercio"] .footer-section p {
+  color: var(--brand-footer-text, #000000);
+}
+body[data-page="comercio"] .footer-bottom p {
+  color: var(--brand-footer-text, #000000);
+}

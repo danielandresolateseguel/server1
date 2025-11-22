@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Plantilla base de comercio con búsqueda y carrito genérico.">
+  <link rel="canonical" href="http://localhost:8000/comercio-base.html">
+  <title>Comercio Base</title>
+  <meta name="robots" content="index,follow">
+  <meta name="theme-color" content="#1e88e5">
+  <meta property="og:title" content="Comercio Base">
+  <meta property="og:description" content="Plantilla base de comercio con búsqueda y carrito genérico.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="http://localhost:8000/comercio-base.html">
+  <meta property="og:image" content="Imagenes/xbox.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Comercio Base">
+  <meta name="twitter:description" content="Plantilla base de comercio con búsqueda y carrito genérico.">
+  <meta name="twitter:image" content="Imagenes/xbox.png">
+  <link rel="icon" href="Imagenes/Epalogo.png" type="image/png">
+  <!-- CSS global -->
+  <link rel="stylesheet" href="style.css" />
+  <!-- CSS específico de página -->
+  <link rel="stylesheet" href="comercio-base.css?v=1" />
+  <!-- Nota: SEO, canonical y CSS específicos se agregarán en tareas siguientes -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": "Comercio Base",
+    "url": "http://localhost:8000/comercio-base.html",
+    "inLanguage": "es-AR",
+    "image": [
+      "Imagenes/xbox.png",
+      "Imagenes/asus-proart-p16.png"
+    ]
+  }
+  </script>
+</head>
+<body data-category="comercio" data-vendor="base-template" data-slug="base-template" data-page="comercio-base">
+  <header class="site-header">
+    <div class="logo">Comercio Base</div>
+    <nav class="site-nav">
+      <a href="index.html">Inicio</a>
+      <a href="comercio.html">Comercio</a>
+      <a href="gastronomia.html">Gastronomía</a>
+    </nav>
+    <div class="cart-icon" aria-label="Abrir carrito">
+      🛒 <span id="cart-count">0</span>
+    </div>
+  </header>
+
+  <!-- Búsqueda básica -->
+  <section class="search-section">
+    <div class="search-container">
+      <form id="search-form" class="search-form" role="search">
+        <input id="search-input" type="search" placeholder="Buscar productos" aria-label="Buscar" />
+        <button type="button" id="clear-search-btn">Limpiar</button>
+      </form>
+      <!-- Dropdown de sugerencias y historial -->
+      <div id="search-suggestions-dropdown" class="suggestions-dropdown" aria-live="polite">
+        <div class="suggestions-header">
+          <span>Sugerencias</span>
+          <button id="clear-all-history" type="button" aria-label="Limpiar historial">Borrar historial</button>
+        </div>
+        <div id="suggestions-list" class="suggestions-list"></div>
+        <div class="history-header">Historial</div>
+        <div id="history-list" class="history-list"></div>
+      </div>
+      <div id="results-container" class="search-results" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- Carrito flotante -->
+  <div id="floating-cart" class="floating-cart" aria-live="polite">
+    🛍️ <span id="floating-cart-count">0</span>
+  </div>
+
+  <main id="main-content">
+    <!-- Filtro de categorías (opcional para comercio genérico) -->
+    <section id="index-category-filter" class="category-filter">
+      <button class="filter-btn active" data-filter="todos">Todos</button>
+      <button class="filter-btn" data-filter="ofertas">Ofertas</button>
+      <button class="filter-btn" data-filter="destacados">Destacados</button>
+    </section>
+
+    <!-- Grid de productos: usa clases y atributos esperados por scrip.js -->
+    <section id="menu-electronica" class="products-grid">
+      <article class="product-card searchable-item" data-product-category="destacados">
+        <img src="Imagenes/xbox.png" alt="Consola Xbox" width="300" height="300" loading="lazy" />
+        <h3>Xbox Series X</h3>
+        <p class="price">$599.990</p>
+        <button class="add-to-cart-btn">Agregar al carrito</button>
+      </article>
+
+      <article class="product-card searchable-item" data-product-category="ofertas">
+        <img src="Imagenes/asus-proart-p16.png" alt="Notebook ASUS ProArt P16" width="300" height="300" loading="lazy" />
+        <h3>ASUS ProArt P16</h3>
+        <p class="price">$1.299.990</p>
+        <button class="add-to-cart-btn">Agregar al carrito</button>
+      </article>
+    </section>
+  </main>
+
+  <!-- Modal Carrito -->
+  <aside id="shopping-cart" class="shopping-cart" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="cart-title" aria-describedby="cart-desc" tabindex="-1">
+    <button id="close-cart" aria-label="Cerrar carrito" title="Cerrar">✖</button>
+    <h2 id="cart-title">Tu carrito</h2>
+    <p id="cart-desc" class="sr-only">Carrito de compras. Revisa productos, total y acciones de compra.</p>
+    <ul id="cart-items"></ul>
+    <div class="cart-summary">
+      <span>Total:</span>
+      <strong id="cart-total-price" aria-live="polite" aria-atomic="true">$0</strong>
+    </div>
+    <div id="cart-announcements" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+    <div class="cart-actions">
+      <button id="checkout-btn">Finalizar</button>
+      <button id="clear-cart-btn">Vaciar</button>
+    </div>
+  </aside>
+
+  <footer class="site-footer">
+    <p>© 2025 Comercio Base. Contacto: contacto@comercio-base.test</p>
+  </footer>
+
+  <!-- Scripts -->
+    <script type="module" src="scrip.js"></script>
+<script src="media-loader.js" defer></script>
+</body>
+</html>

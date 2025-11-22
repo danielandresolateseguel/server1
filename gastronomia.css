@@ -1,0 +1,731 @@
+/* Gastronomía: filtros de categoría responsivos y paleta agradable */
+
+/* Paleta para sector gastronomía (scoped por página) */
+body[data-page="gastronomia"] {
+  --gastro-accent: #dc3545;          /* rojo agradable */
+  --gastro-accent-dark: #b02a37;     /* rojo más intenso */
+  --gastro-bg: #f6fbf9;              /* fondo suave */
+  --gastro-chip-bg: #fdecef;         /* chip claro en rojo */
+  --gastro-chip-hover-bg: #f9dfe3;   /* hover del chip en rojo */
+  --gastro-chip-text: #6a1218;       /* texto en chips en rojo oscuro */
+}
+
+/* Contenedor de filtros (scoped por página) */
+body[data-page="gastronomia"] .category-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  background: var(--gastro-bg, #f6fbf9);
+  padding: 12px 16px;
+  border-radius: 14px;
+  margin: 16px auto;
+  max-width: 980px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+}
+
+/* Layout específico para móviles: 3 filas organizadas (Grid) */
+@media (max-width: 768px) {
+  body[data-page="gastronomia"] .category-filter {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    align-items: center;
+    justify-items: center;
+    padding: 12px;
+  }
+
+  /* Fila 1: Solo "Todos" ocupando toda la fila */
+  body[data-page="gastronomia"] .filter-btn[data-filter="todos"] {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    width: 100%;
+  }
+
+  /* Ajustes de ancho uniforme y centrado de texto para chips en móviles */
+  body[data-page="gastronomia"] .filter-btn {
+    box-sizing: border-box;
+    text-align: center;
+    font-size: 0.9rem;
+    padding: 8px 10px;
+    min-height: 36px;
+    line-height: 1.2;
+  }
+
+  /* Mantener "Todos" sin forzar ancho completo; los demás ocupan el 100% de su celda */
+  body[data-page="gastronomia"] .filter-btn:not([data-filter="todos"]) {
+    width: 100%;
+  }
+
+  /* Fila 2: Pizzas, Sandwich, Al plato */
+  body[data-page="gastronomia"] .filter-btn[data-filter="pizzas"] {
+    grid-row: 2;
+    grid-column: 1;
+  }
+  body[data-page="gastronomia"] .filter-btn[data-filter="sandwich"] {
+    grid-row: 2;
+    grid-column: 2;
+  }
+  body[data-page="gastronomia"] .filter-btn[data-filter="al-plato"] {
+    grid-row: 2;
+    grid-column: 3;
+  }
+
+  /* Fila 3: Comen dos, Bebidas, Postres */
+  body[data-page="gastronomia"] .filter-btn[data-filter="comen-dos"] {
+    grid-row: 3;
+    grid-column: 1;
+  }
+  body[data-page="gastronomia"] .filter-btn[data-filter="bebidas-cocteles"] {
+    grid-row: 3;
+    grid-column: 2;
+  }
+  body[data-page="gastronomia"] .filter-btn[data-filter="postres"] {
+    grid-row: 3;
+    grid-column: 3;
+  }
+}
+
+/* Espaciado con el carrito debajo (scoped por página) */
+body[data-page="gastronomia"] .category-filter + .shopping-cart {
+  margin-top: 12px;
+}
+
+/* Botones de filtro (chips) (scoped por página) */
+body[data-page="gastronomia"] .filter-btn {
+  appearance: none;
+  border: none;
+  outline: none;
+  padding: 10px 14px;
+  border-radius: 9999px;
+  background: var(--gastro-chip-bg, #eef7f3);
+  color: var(--gastro-chip-text, #145a39);
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.1px;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), inset 0 0 0 1px rgba(220, 53, 69, 0.14);
+  transition: background-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+body[data-page="gastronomia"] .filter-btn:hover {
+  background: var(--gastro-chip-hover-bg, #e3f3ea);
+  transform: translateY(-1px);
+}
+
+body[data-page="gastronomia"] .filter-btn:active {
+  transform: translateY(0);
+}
+
+body[data-page="gastronomia"] .filter-btn.active {
+  background: var(--gastro-accent, #2bb673);
+  color: #fff;
+  box-shadow: 0 6px 14px rgba(220, 53, 69, 0.25), inset 0 0 0 1px rgba(220, 53, 69, 0.25);
+}
+
+body[data-page="gastronomia"] .filter-btn:focus-visible {
+  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.35);
+}
+
+/* Organización en móviles: dos por fila, luego uno */
+@media (max-width: 600px) {
+  body[data-page="gastronomia"] .category-filter {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    padding: 10px;
+    justify-items: center;
+  }
+  body[data-page="gastronomia"] .filter-btn {
+    width: 100%;
+    text-align: center;
+    padding: 8px 10px;
+    flex: initial;
+  }
+}
+
+@media (max-width: 380px) {
+  body[data-page="gastronomia"] .category-filter {
+    gap: 5px;
+  }
+  body[data-page="gastronomia"] .filter-btn {
+    font-size: 0.85rem;
+    min-height: 34px;
+    padding: 7px 9px;
+    flex: initial;
+  }
+}
+
+/* Ajuste sutil del bloque de productos tras los filtros (scoped por página) */
+body[data-page="gastronomia"] .products.searchable-section {
+  margin-top: 10px;
+}
+
+/* Menú Gastronomía acorde a filtros */
+.sector-gastronomia #menu-gastronomia.products.searchable-section {
+  background: linear-gradient(180deg, rgba(220, 53, 69, 0.06) 0%, rgba(220, 53, 69, 0.03) 50%, rgba(220, 53, 69, 0) 100%), var(--gastro-bg, #f6fbf9);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin: 16px auto;
+  max-width: 980px;
+  box-shadow: inset 0 1px 0 rgba(220, 53, 69, 0.12), inset 0 -1px 0 rgba(220, 53, 69, 0.08), 0 2px 10px rgba(0, 0, 0, 0.06);
+  transition: padding-top 750ms ease-out; /* animar reducción del padding superior */
+  will-change: padding-top;
+  position: relative; /* permitir badge posicionado dentro de la sección */
+}
+.sector-gastronomia #menu-gastronomia .section-title {
+  color: var(--gastro-chip-text, #155e3f);
+  text-align: center;
+  margin: 0 0 12px;
+  font-weight: 700;
+  overflow: hidden; /* permitir colapso suave de altura */
+  transition: opacity 750ms ease-out, transform 750ms ease-out, margin-bottom 750ms ease-out, max-height 750ms ease-out;
+  will-change: opacity, transform, margin-bottom, max-height;
+}
+.sector-gastronomia #menu-gastronomia .section-title::after {
+  content: "";
+  display: block;
+  width: 64px;
+  height: 3px;
+  background: var(--gastro-accent, #2bb673);
+  border-radius: 9999px;
+  margin: 8px auto 0;
+}
+.sector-gastronomia #menu-gastronomia .products-grid {
+  gap: 12px;
+}
+.sector-gastronomia #menu-gastronomia .product-card {
+  border: 1px solid rgba(220, 53, 69, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+  background: #fffafa;
+  overflow: hidden;
+  transition: transform 0.12s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.sector-gastronomia #menu-gastronomia .product-card .product-info {
+  padding: 12px 14px;
+}
+.sector-gastronomia #menu-gastronomia .product-card .product-price {
+  color: var(--gastro-chip-text, #155e3f);
+  font-weight: 700;
+}
+.sector-gastronomia #menu-gastronomia .product-card .add-to-cart-btn {
+  appearance: none;
+  border: none;
+  background: var(--gastro-accent, #2bb673);
+  color: #fff;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.1s ease;
+}
+.sector-gastronomia #menu-gastronomia .product-card .add-to-cart-btn:hover {
+  filter: brightness(1.04);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 600px) {
+  .sector-gastronomia #menu-gastronomia.products.searchable-section {
+    padding: 12px;
+  }
+  .sector-gastronomia #menu-gastronomia .product-card .product-info {
+    padding: 12px;
+  }
+}
+
+/* Verde combinado para el carrito, acorde a filtros */
+.sector-gastronomia .shopping-cart .cart-header {
+  background: linear-gradient(90deg, var(--gastro-accent-dark, #229a60) 0%, var(--gastro-accent, #2bb673) 100%);
+  color: #fff;
+}
+.sector-gastronomia .shopping-cart .checkout-btn {
+  background: var(--gastro-accent-dark, #229a60);
+  color: #fff;
+}
+.sector-gastronomia .shopping-cart .clear-cart-btn {
+  background: var(--gastro-chip-bg, #eaf8f2);
+  color: var(--gastro-chip-text, #155e3f);
+  border-color: rgba(43, 182, 115, 0.25);
+}
+.sector-gastronomia .shopping-cart .cart-total {
+  color: var(--gastro-chip-text, #155e3f);
+}
+.sector-gastronomia .shopping-cart .cart-item-price {
+  color: var(--gastro-chip-text, #155e3f);
+ }
+
+ /* Opciones de pedido dentro del carrito */
+ .sector-gastronomia .cart-order-options {
+   padding: 12px 14px;
+   border-top: 1px solid rgba(43, 182, 115, 0.14);
+   background: var(--gastro-chip-bg, #eaf8f2);
+ }
+ .sector-gastronomia .cart-order-options .order-type-label {
+   display: block;
+   margin-bottom: 8px;
+   color: var(--gastro-chip-text, #155e3f);
+   font-weight: 600;
+ }
+ .sector-gastronomia .cart-order-options .order-type-switch {
+   display: flex;
+   gap: 16px;
+   margin-bottom: 10px;
+ }
+ .sector-gastronomia .cart-order-options .order-extra {
+   display: block;
+ }
+ .sector-gastronomia .cart-order-options input[type="text"] {
+   width: 100%;
+   padding: 10px;
+   border: 1px solid rgba(43, 182, 115, 0.25);
+   border-radius: 8px;
+   outline: none;
+ }
+
+ /* Inputs adicionales con estilo más redondeado (teléfono y detalle del pedido) */
+ .sector-gastronomia .cart-order-options input[type="tel"],
+ .sector-gastronomia .cart-order-options textarea {
+   width: 100%;
+   padding: 10px 12px;
+   border: 1px solid rgba(43, 182, 115, 0.25);
+   border-radius: 12px;
+   background: #fff;
+   outline: none;
+   transition: box-shadow 0.2s ease, border-color 0.2s ease;
+ }
+ .sector-gastronomia .cart-order-options input[type="tel"]:focus,
+ .sector-gastronomia .cart-order-options textarea:focus {
+   border-color: rgba(43, 182, 115, 0.5);
+   box-shadow: 0 0 0 3px rgba(43, 182, 115, 0.15);
+ }
+ .sector-gastronomia .cart-order-options textarea {
+   resize: vertical;
+   min-height: 64px;
+ }
+ .sector-gastronomia .cart-order-options input[type="tel"]::placeholder,
+ .sector-gastronomia .cart-order-options textarea::placeholder {
+   color: #7a8a84;
+ }
+ .sector-gastronomia .cart-order-options input[type="text"]:focus {
+   border-color: rgba(43, 182, 115, 0.45);
+ }
+
+ /* Carrito flotante: acento oscuro en icono y contador */
+.sector-gastronomia .floating-cart .cart-icon-float {
+   color: var(--gastro-accent-dark, #229a60);
+ }
+ .sector-gastronomia .floating-cart .cart-count-float {
+   background: var(--gastro-accent-dark, #229a60);
+   color: #fff;
+ }
+ /* Ajuste de color del botón flotante */
+ .sector-gastronomia .floating-cart {
+   background: var(--gastro-chip-bg, #eaf8f2);
+   border-color: rgba(43, 182, 115, 0.25);
+ }
+ .sector-gastronomia .floating-cart .cart-text {
+   color: var(--gastro-chip-text, #155e3f);
+ }
+ .sector-gastronomia .floating-cart:hover {
+   /* Mantener contraste: no aclarar a casi blanco */
+   background: var(--gastro-chip-bg, #eaf8f2);
+   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+ }
+ 
+ /* Botonera sumar/restar: colores agradables */
+ .sector-gastronomia .quantity-btn {
+   background: var(--gastro-chip-bg, #eaf8f2);
+   color: var(--gastro-chip-text, #155e3f);
+   border: 1px solid rgba(43, 182, 115, 0.25);
+   border-radius: 8px;
+   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+   transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+ }
+ .sector-gastronomia .quantity-btn:hover {
+   background: var(--gastro-chip-hover-bg, #dff4ec);
+ }
+ .sector-gastronomia .cart-item-quantity {
+    color: var(--gastro-chip-text, #155e3f);
+    font-weight: 700;
+  }
+
+  /* Botón eliminar del carrito: mismo toque de paleta */
+  .sector-gastronomia .remove-item-btn {
+    background: var(--gastro-chip-bg, #eaf8f2);
+    color: var(--gastro-chip-text, #155e3f);
+    border: 1px solid rgba(43, 182, 115, 0.25);
+    transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+    cursor: pointer;
+  }
+  .sector-gastronomia .remove-item-btn:hover,
+  .sector-gastronomia .remove-item-btn:focus-visible {
+    background: var(--gastro-chip-hover-bg, #dff4ec);
+    outline: none;
+  }
+
+/* Modal de producto: overlay y contenido alineado a paleta gastronómica */
+.sector-gastronomia #product-modal {
+  position: fixed;
+  inset: 0;
+  display: none; /* JS cambia a flex al abrir */
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 1000;
+  padding: 16px;
+}
+
+.sector-gastronomia #product-modal.active {
+  /* Se puede añadir animación si se desea */
+}
+
+.sector-gastronomia #product-modal .modal-content {
+  position: relative;
+  background: var(--gastro-chip-bg, #eaf8f2);
+  color: var(--gastro-chip-text, #155e3f);
+  border: 1px solid rgba(43, 182, 115, 0.25);
+  border-radius: 16px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
+  max-width: 960px;
+  width: 100%;
+  overflow: hidden;
+}
+
+.sector-gastronomia #product-modal .modal-body {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 16px;
+  padding: 20px;
+}
+
+.sector-gastronomia #product-modal .modal-media img {
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.sector-gastronomia #product-modal .modal-info h3 {
+  margin: 0 0 8px;
+  color: var(--gastro-chip-text, #155e3f);
+}
+
+.sector-gastronomia #product-modal .modal-info p {
+  margin: 0 0 12px;
+  color: var(--gastro-chip-text, #155e3f);
+}
+
+.sector-gastronomia #product-modal .modal-price {
+  margin: 12px 0 16px;
+  font-weight: 700;
+  color: var(--gastro-accent-dark, #155e3f);
+}
+
+.sector-gastronomia #product-modal .add-to-cart-btn {
+  background: var(--gastro-accent-dark, #155e3f);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+.sector-gastronomia #product-modal .add-to-cart-btn:hover,
+.sector-gastronomia #product-modal .add-to-cart-btn:focus-visible {
+  filter: brightness(1.05);
+  outline: none;
+}
+
+/* Ajuste de centrado para el botón cerrar del modal */
+.sector-gastronomia #product-modal .close-modal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 0;
+}
+.sector-gastronomia #product-modal .close-modal i {
+  font-size: 18px;
+  line-height: 1;
+  display: inline-block;
+}
+
+.sector-gastronomia #product-modal .close-modal:hover,
+.sector-gastronomia #product-modal .close-modal:focus-visible {
+  background: var(--gastro-chip-hover-bg, #dff4ec);
+  outline: none;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .sector-gastronomia #product-modal .modal-body {
+    grid-template-columns: 1fr;
+  }
+  .sector-gastronomia #product-modal .modal-content {
+    border-radius: 14px;
+  }
+}
+
+/* Variante gastronómica para la tira de Platos destacados */
+.sector-gastronomia .special-discounts {
+  background: linear-gradient(90deg, rgba(220, 53, 69, 0.14) 0%, rgba(220, 53, 69, 0.08) 25%, rgba(255, 255, 255, 0.92) 65%, #ffffff 100%);
+  border-radius: 14px;
+  padding: 14px 16px;
+  border-top: 1px solid rgba(220, 53, 69, 0.14);
+  margin: 8px auto 16px;
+  max-width: 980px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+}
+
+.sector-gastronomia .special-discounts .section-title,
+.sector-gastronomia .special-discounts h2 {
+  color: var(--gastro-chip-text, #6a1218);
+}
+.sector-gastronomia .special-discounts .section-title::after,
+.sector-gastronomia .special-discounts h2::after {
+  content: "";
+  display: block;
+  width: 64px;
+  height: 3px;
+  background: var(--gastro-accent, #2bb673);
+  border-radius: 9999px;
+  margin: 8px auto 0;
+}
+
+/* Borde combinado: imagen con doble aro y tarjeta con borde sutil */
+/* Reversión: restaurar tarjetas y quitar borde/aros combinados */
+.sector-gastronomia .discount-card {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(43, 182, 115, 0.14);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.10);
+  transition: background-color 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.sector-gastronomia .discount-card:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(220, 53, 69, 0.16);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+.sector-gastronomia .discount-card img {
+  box-shadow: none;
+  border-radius: 12px; /* igualar al radio de la tarjeta como antes */
+}
+.sector-gastronomia .discount-card:hover img {
+  box-shadow: none;
+}
+.sector-gastronomia .discount-card .product-info h3 {
+  color: #000000;
+}
+.sector-gastronomia .discount-card .product-info .product-price {
+  color: var(--gastro-accent);
+  font-weight: 800;
+}
+.sector-gastronomia .discount-card .product-info .add-to-cart-btn {
+  background: var(--gastro-accent, #2bb673);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.1s ease;
+}
+.sector-gastronomia .discount-card .product-info .add-to-cart-btn:hover {
+  filter: brightness(1.04);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 600px) {
+  .sector-gastronomia .special-discounts {
+    padding: 12px;
+  }
+}
+@media (min-width: 768px) {
+  .sector-gastronomia .special-discounts {
+    max-width: none;
+    width: 100vw;
+    margin: 12px 0 16px 0; /* espacio mínimo entre carrusel y banda */
+    margin-left: calc(-50vw + 50%);
+    padding: 14px 24px;
+  }
+}
+@media (min-width: 768px) {
+  .sector-gastronomia #menu-gastronomia.products.searchable-section {
+    max-width: none;
+    width: 100vw;
+    margin: 16px 0;
+    margin-left: calc(-50vw + 50%);
+    padding: 14px 24px;
+  }
+}
+/* Ajuste de ancho completo y grilla para Platos destacados en escritorio */
+@media (min-width: 768px) {
+  /* Banda full-bleed ya aplicada arriba; aquí ajustamos el contenido interno */
+  .sector-gastronomia .discounts-container {
+    overflow-x: auto; /* permitir desplazamiento horizontal */
+    overflow-y: hidden;
+    padding: 0 60px 8px 60px; /* espacio para botones de navegación */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .sector-gastronomia .discounts-container::-webkit-scrollbar {
+    display: none;
+  }
+
+  .sector-gastronomia .discounts-grid {
+  display: flex;        /* una sola línea */
+  flex-wrap: nowrap;    /* no permitir salto de línea */
+  gap: 16px;
+  margin: 10px 0;
+  padding-bottom: 0;
+  min-width: max-content; /* asegurar ancho según contenido para scroll horizontal */
+  transition: margin-top 750ms ease-out;
+}
+
+/* Cuando el título colapsa, reduce el margen superior del grid para evitar hueco */
+.sector-gastronomia .special-discounts .section-title.fade-out + .discounts-wrapper .discounts-grid {
+  margin-top: 0;
+}
+}
+.sector-gastronomia #menu-gastronomia .product-card::before {
+  content: "";
+  display: block;
+  height: 4px;
+  background: linear-gradient(90deg, var(--gastro-accent-dark), var(--gastro-accent));
+}
+.sector-gastronomia #menu-gastronomia .product-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(220, 53, 69, 0.12);
+  border-color: rgba(220, 53, 69, 0.16);
+}
+
+.sector-gastronomia .special-discounts {
+  position: relative; /* para posicionamiento absoluto del badge dentro de la sección */
+  transition: padding-top 750ms ease-out; /* animar reducción de padding superior */
+  will-change: padding-top;
+}
+.sector-gastronomia .special-discounts .section-title {
+  transition: opacity 750ms ease-out, transform 750ms ease-out, margin-bottom 750ms ease-out, max-height 750ms ease-out;
+  will-change: opacity, transform, margin-bottom, max-height;
+  overflow: hidden; /* permite colapsar altura suavemente */
+}
+
+.sector-gastronomia #menu-gastronomia .products-grid {
+  gap: 12px;
+  transition: margin-top 750ms ease-out; /* suavizar ascenso del grid */
+}
+.sector-gastronomia #menu-gastronomia .section-title.fade-out {
+  opacity: 0;
+  transform: translateY(-6px) scale(0.98);
+  margin-bottom: 0;
+  max-height: 0;   /* colapsar altura */
+  margin-top: 0;   /* evitar margen residual */
+  padding: 0;      /* evitar altura por padding */
+  line-height: 0;  /* minimizar altura del contenido */
+}
+.sector-gastronomia #menu-gastronomia .section-title.fade-out + .products-grid {
+  margin-top: 14px; /* dejar espacio para el badge en móviles */
+}
+.sector-gastronomia #menu-gastronomia.title-collapsing {
+  padding-top: 6px;
+}
+.sector-gastronomia #menu-gastronomia.title-collapsed {
+  padding-top: 6px;
+}
+.sector-gastronomia .special-discounts .section-title.fade-out {
+  opacity: 0;
+  transform: translateY(-6px) scale(0.98);
+  margin-bottom: 0;
+  max-height: 0; /* colapsa la altura gradualmente */
+  margin-top: 0; /* asegurar sin margen superior residual */
+  padding: 0; /* evitar altura por padding */
+  line-height: 0; /* minimizar altura del contenido */
+}
+#featured-dishes-badge.featured-title-badge {
+  position: absolute;
+  left: 16px;
+  top: 8px; /* recalculado en JS; fallback */
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.1;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  box-shadow: none;
+  opacity: 0;
+  transform: none;
+  pointer-events: none;
+  transition: opacity 300ms ease-out;
+}
+
+#featured-dishes-badge.featured-title-badge.appear {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Badge para título minimizado del Menú Gastronomía */
+#menu-gastronomia-badge.menu-title-badge {
+  position: absolute;
+  left: 16px;
+  top: 8px; /* recalculado en JS; fallback */
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.1;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  box-shadow: none;
+  opacity: 0;
+  transform: none;
+  pointer-events: none;
+  transition: opacity 300ms ease-out;
+}
+#menu-gastronomia-badge.menu-title-badge.appear {
+  opacity: 1;
+  transform: scale(1);
+}
+}
+.sector-gastronomia .special-discounts.title-collapsing {
+  padding-top: 6px;
+}
+.sector-gastronomia .special-discounts.title-collapsed {
+  padding-top: 6px;
+}
+/* Estado de sección durante el colapso del título: eliminar padding superior para evitar hueco */
+.sector-gastronomia .special-discounts .section-title.fade-out {
+  opacity: 0;
+  transform: translateY(-6px) scale(0.98);
+  margin-bottom: 0;
+  max-height: 0; /* colapsa la altura gradualmente */
+  margin-top: 0; /* asegurar sin margen superior residual */
+  padding: 0; /* evitar altura por padding */
+  line-height: 0; /* minimizar altura del contenido */
+}
+#featured-dishes-badge.featured-title-badge {
+  position: absolute;
+  left: 16px;
+  top: 8px; /* fallback; JS fija top en 4px */
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.1;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  box-shadow: none;
+  opacity: 0;
+  transform: none;
+  pointer-events: none;
+  transition: opacity 300ms ease-out;
+}
+
+#featured-dishes-badge.featured-title-badge.appear {
+  opacity: 1;
+  transform: none;
+}
+/* Separación adicional en móviles: evitar que el badge se superponga al grid de descuentos */
+.sector-gastronomia .special-discounts .section-title.fade-out + .discounts-wrapper .discounts-grid {
+  margin-top: 14px;
+}
+}
