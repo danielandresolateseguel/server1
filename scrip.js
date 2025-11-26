@@ -1251,7 +1251,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Función para enlazar eventos a todos los botones de carrito existentes/no enlazados
     function bindAddToCartEvents(context) {
         const scope = context || document;
-        const buttons = scope.querySelectorAll('.add-to-cart-btn');
+        const buttons = scope.querySelectorAll('.add-to-cart-btn:not(#modal-add-to-cart-btn)');
         buttons.forEach(btn => {
             if (btn.dataset.bound === 'true') return;
             btn.addEventListener('click', onAddToCartClick);
@@ -1369,12 +1369,21 @@ document.addEventListener('DOMContentLoaded', function() {
             // Determinar slug dinámico: data-tenant en <body> o nombre de archivo .html
             function getTenantSlug() {
                 const dataSlug = (document.body && document.body.dataset && document.body.dataset.tenant) ? document.body.dataset.tenant.trim() : '';
-                if (dataSlug) return dataSlug;
-                try {
-                    const name = (window.location.pathname.split('/').pop() || '').replace(/\.html$/,'');
-                    if (name) return name;
-                } catch (_) {}
-                return 'gastronomia-local1';
+                let slug = dataSlug;
+                if (!slug) {
+                    try {
+                        const name = (window.location.pathname.split('/').pop() || '').replace(/\.html$/,'');
+                        if (name) slug = name;
+                    } catch (_) {}
+                }
+                // Normalizar alias comunes
+                const alias = {
+                    'gatrolocal1': 'gastronomia-local1',
+                    'gastro-local1': 'gastronomia-local1',
+                    'gastro1': 'gastronomia-local1'
+                };
+                slug = alias[slug] || slug || 'gastronomia-local1';
+                return slug;
             }
 
             const payload = {

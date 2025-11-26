@@ -26,8 +26,16 @@
       "postres"
     ],
     "synonyms": {
-      "limonada": ["limon", "limón", "refresco"],
-      "empanadas": ["empanada", "docena", "salteñas"]
+      "limonada": [
+        "limon",
+        "limón",
+        "refresco"
+      ],
+      "empanadas": [
+        "empanada",
+        "docena",
+        "salteñas"
+      ]
     }
   },
   "catalog": [
@@ -35,8 +43,11 @@
       "id": "plato1",
       "name": "Pizza Margarita",
       "price": 6500,
-    "image": "Imagenes/PIZZAMARGARITA.webp",
-      "categories": ["pizzas", "comen-dos"],
+      "image": "Imagenes/PIZZAMARGARITA.webp",
+      "categories": [
+        "pizzas",
+        "comen-dos"
+      ],
       "description": "Mozzarella, tomate y albahaca fresca."
     },
     {
@@ -44,22 +55,29 @@
       "name": "Empanadas (docena)",
       "price": 8000,
       "image": "Imagenes/enpanadas.webp",
-      "categories": ["sandwich", "comen-dos"],
+      "categories": [
+        "sandwich",
+        "comen-dos"
+      ],
       "description": "Carne suave, cebolla y especias."
     },
     {
       "id": "plato3",
       "name": "Ensalada César",
       "price": 5200,
-    "image": "Imagenes/ensaladacesar.webp",
-      "categories": ["ensaladas"]
+      "image": "Imagenes/ensaladacesar.webp",
+      "categories": [
+        "ensaladas"
+      ]
     },
     {
       "id": "plato4",
       "name": "Limonada Casera",
       "price": 2500,
-    "image": "Imagenes/Limonadacasera.jpg",
-      "categories": ["bebidas"],
+      "image": "Imagenes/Limonadacasera.jpg",
+      "categories": [
+        "bebidas"
+      ],
       "description": "Refrescante, con limón, azúcar y menta."
     }
   ],
@@ -85,5 +103,9 @@
         "floatingCart": "linear-gradient(90deg, rgba(22,22,22,0.96) 0%, rgba(44,44,44,0.9) 100%)"
       }
     }
+  },
+  "sla": {
+    "warning_minutes": 15,
+    "critical_minutes": 29
   }
 }

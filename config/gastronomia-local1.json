@@ -26,8 +26,16 @@
       "postres"
     ],
     "synonyms": {
-      "limonada": ["limon", "limón", "refresco"],
-      "empanadas": ["empanada", "docena", "salteñas"]
+      "limonada": [
+        "limon",
+        "limón",
+        "refresco"
+      ],
+      "empanadas": [
+        "empanada",
+        "docena",
+        "salteñas"
+      ]
     }
   },
   "catalog": [
@@ -35,8 +43,11 @@
       "id": "plato1",
       "name": "Pizza Margarita",
       "price": 6500,
-    "image": "Imagenes/PIZZAMARGARITA.webp",
-      "categories": ["pizzas", "comen-dos"],
+      "image": "Imagenes/PIZZAMARGARITA.webp",
+      "categories": [
+        "pizzas",
+        "comen-dos"
+      ],
       "description": "Mozzarella, tomate y albahaca fresca."
     },
     {
@@ -44,23 +55,103 @@
       "name": "Empanadas (docena)",
       "price": 8000,
       "image": "Imagenes/enpanadas.webp",
-      "categories": ["sandwich", "comen-dos"],
+      "categories": [
+        "sandwich",
+        "comen-dos"
+      ],
       "description": "Carne suave, cebolla y especias."
     },
     {
       "id": "plato3",
       "name": "Ensalada César",
       "price": 5200,
-    "image": "Imagenes/ensaladacesar.webp",
-      "categories": ["ensaladas"]
+      "image": "Imagenes/ensaladacesar.webp",
+      "categories": [
+        "ensaladas"
+      ]
     },
     {
       "id": "plato4",
       "name": "Limonada Casera",
       "price": 2500,
-    "image": "Imagenes/Limonadacasera.jpg",
-      "categories": ["bebidas"],
+      "image": "Imagenes/Limonadacasera.jpg",
+      "categories": [
+        "bebidas"
+      ],
       "description": "Refrescante, con limón, azúcar y menta."
+    },
+    {
+      "id": "dest1",
+      "name": "Pizza Napolitana",
+      "price": 6800,
+      "image": "Imagenes/napolitana.webp",
+      "categories": [
+        "pizzas"
+      ],
+      "description": "Tomate, mozzarella y orégano seleccionados."
+    },
+    {
+      "id": "dest2",
+      "name": "Milanesa con puré",
+      "price": 5400,
+      "image": "Imagenes/milacpure.webp",
+      "categories": [
+        "al-plato"
+      ],
+      "description": "Clásico casero con papas cremosas."
+    },
+    {
+      "id": "dest3",
+      "name": "Ensalada César",
+      "price": 4930,
+      "image": "Imagenes/ensaladacesar.webp",
+      "categories": [
+        "ensaladas"
+      ],
+      "description": "Lechuga fresca, pollo, crutones y aderezo."
+    },
+    {
+      "id": "dest4",
+      "name": "Ravioles de ricota",
+      "price": 6396,
+      "image": "Imagenes/raviolioles de ricota.jpg",
+      "categories": [
+        "pastas"
+      ],
+      "description": "Caseros, con salsa pomodoro y albahaca."
+    },
+    {
+      "id": "i1",
+      "name": "Pizza Margarita 2x1",
+      "price": 4500,
+      "image": "Imagenes/PIZZAMARGARITA.webp",
+      "categories": [
+        "promos",
+        "pizzas"
+      ],
+      "description": "Promo 2x1 en Margarita."
+    },
+    {
+      "id": "i2",
+      "name": "Empanadas de Carne (Promo)",
+      "price": 6200,
+      "image": "Imagenes/enpanadas.webp",
+      "categories": [
+        "promos",
+        "sandwich"
+      ],
+      "description": "Docena con precio promocional."
+    },
+    {
+      "id": "i3",
+      "name": "Lomo a lo Pobre (Especialidad)",
+      "price": 7800,
+      "image": "Imagenes/lomo a lo pobre.webp",
+      "categories": [
+        "especiales",
+        "al-plato"
+      ],
+      "description": "Clásico de la casa."
     }
   ],
   "themes": {
@@ -85,5 +176,9 @@
         "floatingCart": "linear-gradient(90deg, rgba(22,22,22,0.96) 0%, rgba(44,44,44,0.9) 100%)"
       }
     }
+  },
+  "sla": {
+    "warning_minutes": 1,
+    "critical_minutes": 2
   }
 }

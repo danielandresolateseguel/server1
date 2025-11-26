@@ -8,11 +8,21 @@
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 16px; }
     header { display:flex; align-items:center; justify-content:space-between; margin-bottom: 16px; }
-    .controls { display:flex; gap:12px; align-items:center; flex-wrap: wrap; }
+    .controls { display:flex; flex-direction: column; gap:8px; }
+    .toolbar { display:flex; gap:12px; align-items:center; flex-wrap: nowrap; }
+    .subcontrols { display:flex; gap:12px; align-items:center; flex-wrap: wrap; width:100%; }
+    .controls.two-lines { flex-wrap: wrap; }
     .controls input, .controls select { height: 32px; }
     .controls button { height: 32px; padding: 0 12px; }
+    #tenant-input { width: 220px; }
+    #status-filter { width: 140px; }
+    #search-input { flex: 1 1 280px; }
     .mobile-filters summary { cursor: pointer; padding: 6px 10px; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9; }
     .mobile-filters > div { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+    .right-actions { display:flex; gap:12px; align-items:center; flex-wrap: nowrap; margin-left: auto; }
+    .controls .right-actions { order: 2; }
+    .controls details.mobile-filters { order: 3; }
+    .controls.two-lines details.mobile-filters[open] { flex: 1 0 100%; }
     .status-badge { padding: 2px 8px; border-radius: 8px; font-size: 12px; color:#fff; }
     .status-pendiente { background:#8a8a8a; }
     .status-preparacion { background:#1976d2; }
@@ -26,10 +36,8 @@
     .actions { display:flex; gap:8px; align-items:center; }
     .small { font-size: 12px; color: #666; }
     .pill { display:inline-block; padding:2px 6px; background:#eee; border-radius: 12px; font-size: 12px; }
-    /* Layout de escritorio: lista de pedidos a la izquierda, detalle a la derecha */
-    .grid { display:grid; grid-template-columns: 2fr 1fr; grid-template-areas: "orders detail"; gap: 16px; align-items:start; }
+    .grid { display:grid; grid-template-columns: 1fr; grid-template-areas: "orders"; gap: 16px; align-items:start; }
     .grid > div:first-child { grid-area: orders; }
-    .grid > div:last-child { grid-area: detail; }
     .sla-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-left:6px; background:#bbb; }
     .sla-warning { background:#ff9800; }
     .sla-critical { background:#f44336; }
@@ -37,8 +45,76 @@
     .delivered summary { cursor:pointer; padding:6px 10px; border:1px solid #ddd; border-radius:8px; background:#f9f9f9; }
     .canceled summary, .archived summary { cursor:pointer; padding:6px 10px; border:1px solid #ddd; border-radius:8px; background:#f9f9f9; }
     .pager { display:flex; gap:8px; align-items:center; margin-top:8px; }
+    .phone-row { display:inline-flex; align-items:center; gap:6px; }
+    .phone-action { width:28px; height:28px; min-height:0; padding:0; border-radius:6px; display:inline-flex; align-items:center; justify-content:center; background: var(--kds-accent); color:#fff; text-decoration:none; }
+    .phone-action:hover { background: #3f5f8a; }
+    .phone-action svg { width:16px; height:16px; fill:#fff; }
+    .status-quick { display:inline-flex; gap:4px; flex-wrap:nowrap; margin-bottom:6px; }
+    .status-action { width:24px; height:24px; min-height:0; padding:0; border-radius:6px; display:inline-flex; align-items:center; justify-content:center; color:#fff; font-size:12px; line-height:1; transition: background-color 0.2s ease; cursor: pointer; }
+    .status-action.preparacion { background:#1976d2; color:#fff; }
+    .status-action.listo { background:#2e7d32; color:#fff; }
+    .status-action.en_camino { background:#fb8c00; color:#fff; }
+    .status-action.mesa { background:#fb8c00; color:#fff; }
+    .status-action.entregado { background:#6a1b9a; color:#fff; }
+    .status-action.cancelado { background:#c62828; color:#fff; }
+    .kds-tooltip { position: fixed; display:none; background: rgba(33,33,33,0.92); color:#fff; font-size:12px; padding:6px 8px; border-radius:6px; box-shadow: 0 6px 16px rgba(0,0,0,0.18); z-index: 10001; }
+    .kds-tooltip.active { display:block; }
+    .status-action.preparacion:hover { background:#1565c0; }
+    .status-action.listo:hover { background:#1b5e20; }
+    .status-action.en_camino:hover, .status-action.mesa:hover { background:#f57c00; }
+    .status-action.entregado:hover { background:#4a148c; }
+    .status-action.cancelado:hover { background:#b71c1c; }
+
+    :root { --kds-bg: #f5f7fb; --kds-card-bg: #ffffff; --kds-border: #e6e8ee; --kds-text: #2c3e50; --kds-accent: #4a6fa5; 
+      --st-pendiente: #90caf9; --st-preparacion: #ffd54f; --st-listo: #81c784; --st-en_camino: #4fc3f7; --st-entregado: #b0bec5; --st-cancelado: #ef9a9a; --st-overdue: #f44336; }
+    body { background: var(--kds-bg); color: var(--kds-text); }
+    header h1 { font-size: 1.4rem; font-weight: 600; color: #425b76; margin: 0; }
+    button { min-height: 32px; padding: 0 12px; border: none; border-radius: 8px; background: var(--kds-accent); color: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+    button:hover { background: #3f5f8a; }
+    .controls input, .controls select { border: 1px solid var(--kds-border); border-radius: 8px; padding: 0 10px; background: #fff; }
+    table { background: var(--kds-card-bg); border: 1px solid var(--kds-border); border-radius: 8px; overflow: hidden; }
+    th { background: #f0f3f8; font-weight: 600; color: #415a77; }
+    tbody tr:nth-child(odd) { background: #fafcff; }
+    tbody tr:hover { background: #eef3fb; }
+    #order-detail, #login-box { box-shadow: 0 6px 16px rgba(0,0,0,0.08); }
+    .status-badge { font-weight: 600; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
+    .pill { background: #edf2ff; color: #4a6fa5; }
+    .pill-mesa { font-weight: 700; }
+    .sla-label { font-weight: 600; color: #445; }
+    .sla-dot { transition: background-color 0.2s ease; }
+    .delivered summary, .canceled summary, .archived summary { background: #f0f3f8; border-color: var(--kds-border); }
+    .actions button, .pager button { border-radius: 8px; }
+    button { touch-action: manipulation; }
+    .archived .copy-phone { background:#0f766e; color:#fff; }
+    .archived .copy-phone:hover { background:#0b5e58; }
+    .archived .view-detail { background:#1f2937; color:#fff; }
+    .archived .view-detail:hover { background:#111827; }
+    #metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+    .metric-card { background: var(--kds-card-bg); border: 1px solid var(--kds-border); border-radius: 12px; padding: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+    .metric-label { font-size: 12px; color: #415a77; }
+    .metric-value { font-size: 22px; font-weight: 700; color: #2c3e50; }
+    .metric-sub { margin-top: 6px; font-size: 12px; color: #666; }
+    .metric-card.delivered .metric-value { color: #2e7d32; }
+    .metric-card.canceled .metric-value { color: #c62828; }
+    .metric-card.money .metric-value { color: #1f2937; }
+    body.no-auth #top-controls, body.no-auth #metrics, body.no-auth #analytics, body.no-auth #cash-box, body.no-auth #cash-history, body.no-auth section.grid { display: none !important; }
+    body.no-auth #login-box { display: block !important; }
+    #cash-history { display:grid; grid-template-columns: 1fr; gap: 10px; }
+    .history-card { background: var(--kds-card-bg); border: 1px solid var(--kds-border); border-radius: 12px; padding: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+    .history-table { width: 100%; border-collapse: collapse; }
+    .history-table th, .history-table td { border: 1px solid var(--kds-border); padding: 6px 8px; font-size: 12px; }
+    .history-actions { display:flex; gap:8px; align-items:center; }
+    #top-controls button { border: 1px solid var(--kds-border); border-radius: 8px; padding: 6px 10px; background:#fff; color:#2c3e50; }
+    #top-controls button:hover { background:#f0f3f8; }
+    #cash-box { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; }
+    .cash-card { background: var(--kds-card-bg); border: 1px solid var(--kds-border); border-radius: 12px; padding: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+    .cash-title { font-weight: 700; color:#425b76; }
+    .cash-row { display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap: wrap; }
+    .cash-row input, .cash-row textarea { border: 1px solid var(--kds-border); border-radius: 8px; padding: 6px 10px; }
+    .cash-row input { height: 32px; }
+    .cash-row textarea { width: 100%; min-height: 56px; }
     @media (max-width: 960px) {
-      .grid { grid-template-columns: 1fr; grid-template-areas: "orders" "detail"; }
+      .grid { grid-template-columns: 1fr; grid-template-areas: "orders"; }
     }
     /* Panel de detalle */
     #order-detail { background:#fff; border:1px solid #e0e0e0; border-radius:8px; padding:12px; }
@@ -46,23 +122,81 @@
     .detail-items-table { width:100%; border-collapse: collapse; }
     .detail-items-table th, .detail-items-table td { border-bottom:1px solid #eee; padding:6px 8px; font-size:14px; }
     .detail-summary { margin-top: 8px; font-weight: 600; }
+    .kds-modal { position: fixed; inset: 0; display: none; z-index: 10000; }
+    .kds-modal.active { display: flex; align-items: center; justify-content: center; }
+    .kds-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 0; }
+    .kds-modal-content { position: relative; z-index: 1; background: #fff; border: 1px solid var(--kds-border); border-radius: 12px; width: min(92vw, 820px); max-height: 88vh; overflow: auto; box-shadow: 0 12px 24px rgba(0,0,0,0.18); padding: 12px; }
+    .kds-modal-close { position: absolute; right: 10px; top: 10px; }
+    .kds-confirm { width: min(92vw, 420px); padding: 16px; }
+    .auth-bar { display:flex; gap:8px; align-items:center; }
+    .auth-badge { display:inline-block; padding: 2px 10px; border-radius: 999px; font-weight: 600; font-size: 12px; }
+    .auth-badge.on { background:#2e7d32; color:#fff; }
+    .auth-badge.off { background:#b0bec5; color:#fff; }
 
     /* Responsivo: evitar scroll horizontal en móviles */
     @media (max-width: 720px) {
       .controls { flex-direction: column; align-items: stretch; gap: 8px; }
       .controls > * { width: 100%; }
       .controls input, .controls select, .controls button { width: 100%; }
+      #tenant-input, #status-filter { width: 100% !important; }
+      #search-input { flex: 0 0 auto; width: 100% !important; }
       .mobile-filters > div { flex-direction: column; align-items: stretch; gap: 6px; }
+      .right-actions { flex-wrap: wrap; margin-left: 0; }
       .mobile-filters summary { padding: 8px 12px; }
       table { table-layout: fixed; }
       th, td { padding: 6px; font-size: 13px; word-break: break-word; }
-      /* Ocultar columnas menos críticas para reducir ancho: Fecha (2) y Destino (4) */
-      th:nth-child(2), td:nth-child(2),
-      th:nth-child(4), td:nth-child(4) { display: none; }
+      th:nth-child(2), td:nth-child(2) { display: none; }
       .actions { flex-wrap: wrap; gap: 6px; }
       .actions select { max-width: 140px; }
       .actions button { flex: 0 0 auto; }
+
+      #orders-table thead { display: none; }
+      #orders-table { display: block; border: none; box-shadow: none; background: transparent; }
+      #orders-table tbody { display: grid; gap: 12px; }
+      #orders-table tbody tr { display: block; background: var(--kds-card-bg); border: 1px solid var(--kds-border); border-radius: 12px; padding: 10px 12px; box-shadow: 0 6px 16px rgba(0,0,0,0.08); }
+      #orders-table tbody tr td { display: grid; grid-template-columns: 110px 1fr; gap: 8px; align-items: center; border: none; padding: 6px 0; }
+      #orders-table tbody tr td::before { display: inline-block; font-weight: 600; color: #445; pointer-events: none; }
+      #orders-table tbody tr td:nth-child(1)::before { content: 'ID'; }
+      #orders-table tbody tr td:nth-child(2)::before { content: 'Fecha'; }
+      #orders-table tbody tr td:nth-child(3)::before { content: 'Tipo'; }
+      #orders-table tbody tr td:nth-child(4)::before { content: 'Destino'; }
+      #orders-table tbody tr td:nth-child(5)::before { content: 'Teléfono'; }
+      #orders-table tbody tr td:nth-child(6)::before { content: 'Total'; }
+      #orders-table tbody tr td:nth-child(7)::before { content: 'Estado'; }
+      #orders-table tbody tr td:nth-child(8)::before { content: 'Acciones'; }
+      #orders-table tbody tr td.actions { grid-template-columns: 1fr; }
+      #orders-table tbody tr td.actions select { width: 100%; margin-bottom: 8px; }
+      #orders-table tbody tr td.actions button { width: 100%; margin-bottom: 8px; }
+      #orders-table tbody tr td .order-total-tip { display: block; margin: 4px 0 0 0; }
     }
+    @media (min-width: 961px) {
+      #orders-table thead { display: none; }
+      #orders-table { display: block; border: none; box-shadow: none; background: transparent; }
+      #orders-table tbody { display: grid; gap: 12px; grid-template-columns: repeat(5, 1fr); }
+      #orders-table tbody tr { display: block; background: var(--kds-card-bg); border: 1px solid var(--kds-border); border-radius: 12px; padding: 10px 12px; box-shadow: 0 6px 16px rgba(0,0,0,0.08); }
+      #orders-table tbody tr td { display: grid; grid-template-columns: 120px 1fr; gap: 8px; align-items: center; border: none; padding: 6px 0; }
+      #orders-table tbody tr td::before { display: inline-block; font-weight: 600; color: #445; pointer-events: none; }
+      #orders-table tbody tr td:nth-child(1)::before { content: 'ID'; }
+      #orders-table tbody tr td:nth-child(2)::before { content: 'Fecha'; }
+      #orders-table tbody tr td:nth-child(3)::before { content: 'Tipo'; }
+      #orders-table tbody tr td:nth-child(4)::before { content: 'Destino'; }
+      #orders-table tbody tr td:nth-child(5)::before { content: 'Teléfono'; }
+      #orders-table tbody tr td:nth-child(6)::before { content: 'Total'; }
+      #orders-table tbody tr td:nth-child(7)::before { content: 'Estado'; }
+      #orders-table tbody tr td:nth-child(8)::before { content: 'Acciones'; }
+      #orders-table tbody tr td.actions { grid-template-columns: 1fr; }
+      #orders-table tbody tr td.actions select { width: 100%; margin-bottom: 8px; }
+      #orders-table tbody tr td.actions button { width: 100%; margin-bottom: 8px; }
+      #orders-table tbody tr td .order-total-tip { display: block; margin: 4px 0 0 0; }
+    }
+    #orders-table tbody tr.card-overdue { border-color: var(--st-overdue); box-shadow: 0 0 0 2px rgba(244, 67, 54, 0.3), 0 6px 16px rgba(0,0,0,0.08); }
+    /* Contorno por estado en tarjetas */
+    #orders-table tbody tr.card-pendiente { border-color: var(--st-pendiente); box-shadow: 0 0 0 2px rgba(144,202,249,0.25), 0 6px 16px rgba(0,0,0,0.08); }
+    #orders-table tbody tr.card-preparacion { border-color: var(--st-preparacion); box-shadow: 0 0 0 2px rgba(255,213,79,0.25), 0 6px 16px rgba(0,0,0,0.08); }
+    #orders-table tbody tr.card-listo { border-color: var(--st-listo); box-shadow: 0 0 0 2px rgba(129,199,132,0.25), 0 6px 16px rgba(0,0,0,0.08); }
+    #orders-table tbody tr.card-en_camino { border-color: var(--st-en_camino); box-shadow: 0 0 0 2px rgba(79,195,247,0.25), 0 6px 16px rgba(0,0,0,0.08); }
+    #orders-table tbody tr.card-entregado { border-color: var(--st-entregado); box-shadow: 0 0 0 2px rgba(176,190,197,0.25), 0 6px 16px rgba(0,0,0,0.08); }
+    #orders-table tbody tr.card-cancelado { border-color: var(--st-cancelado); box-shadow: 0 0 0 2px rgba(239,154,154,0.25), 0 6px 16px rgba(0,0,0,0.08); }
     @media print {
       body * { visibility: hidden; }
       #order-detail, #order-detail * { visibility: visible; }
@@ -71,51 +205,123 @@
       .detail-items-table { width: 100%; border-collapse: collapse; }
       .detail-items-table th, .detail-items-table td { padding: 4px; }
     }
+    @media print {
+      body.print-modal * { visibility: hidden; }
+      body.print-modal #detail-modal-body, body.print-modal #detail-modal-body * { visibility: visible; }
+      body.print-modal #order-detail { visibility: hidden; }
+      body.print-modal #detail-modal-body { position: absolute; left: 0; top: 0; width: 100%; font-size: 12px; line-height: 1.3; }
+      body.print-modal .detail-items-table { width: 100%; border-collapse: collapse; }
+      body.print-modal .detail-items-table th, body.print-modal .detail-items-table td { padding: 4px; }
+    }
   </style>
   </head>
 <body>
   <header>
     <h1>Panel de Administración (KDS)</h1>
     <div class="controls">
-      <label>Establecimiento:
-        <input id="tenant-input" list="tenants-list" type="text" value="gastronomia-local1" />
-        <datalist id="tenants-list"></datalist>
-      </label>
-      <label>Estado:
-        <select id="status-filter">
-          <option value="">Todos</option>
-          <option value="pendiente">Pendiente</option>
-          <option value="preparacion">Preparación</option>
-          <option value="listo">Listo</option>
-          <option value="en_camino">En camino</option>
-          <option value="entregado">Entregado</option>
-          <option value="cancelado">Cancelado</option>
-        </select>
-      </label>
-      <input id="search-input" type="text" placeholder="Buscar por ID, nombre, teléfono o destino" />
-      <button id="search-btn">Buscar</button>
-      <details class="mobile-filters">
-        <summary>Más filtros</summary>
-        <div>
-          <label>Desde <input id="from-date" type="date" /></label>
-          <label>Hasta <input id="to-date" type="date" /></label>
-          <label>Tamaño
-            <select id="page-size">
-              <option value="20">20</option>
-              <option value="50" selected>50</option>
-              <option value="100">100</option>
-            </select>
-          </label>
-          <button id="export-btn">Exportar CSV</button>
+      <div class="toolbar">
+        <label>Establecimiento:
+          <input id="tenant-input" list="tenants-list" type="text" value="gastronomia-local1" />
+          <datalist id="tenants-list"></datalist>
+        </label>
+        <label>Estado:
+          <select id="status-filter">
+            <option value="">Todos</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="preparacion">Preparación</option>
+            <option value="listo">Listo</option>
+            <option value="en_camino">En camino</option>
+            <option value="entregado">Entregado</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
+        </label>
+        <input id="search-input" type="text" placeholder="Buscar por ID, nombre, teléfono o destino" />
+        <button id="search-btn">Buscar</button>
+        <div class="right-actions">
+          <button id="refresh-btn">Refrescar</button>
+          <div class="auth-bar">
+            <span id="auth-status-badge" class="auth-badge off">Sin sesión</span>
+            <button id="login-open-btn">Entrar</button>
+            <button id="logout-btn" disabled>Salir</button>
+          </div>
         </div>
-      </details>
-      <button id="refresh-btn">Refrescar</button>
+      </div>
+      <div class="subcontrols">
+        <details class="mobile-filters" id="more-filters">
+          <summary>Más filtros</summary>
+          <div>
+            <label>Desde <input id="from-date" type="date" /></label>
+            <label>Hasta <input id="to-date" type="date" /></label>
+            <label>Tamaño
+              <select id="page-size">
+                <option value="20">20</option>
+                <option value="50" selected>50</option>
+                <option value="100">100</option>
+              </select>
+            </label>
+            <button id="export-btn">Exportar CSV</button>
+          </div>
+        </details>
+        <details id="sla-config" class="mobile-filters">
+          <summary>Configurar SLA</summary>
+          <div>
+            <label>Advertencia (min)
+              <input id="sla-warning" type="number" min="1" step="1" value="15" />
+            </label>
+            <label>Crítico (min)
+              <input id="sla-critical" type="number" min="2" step="1" value="30" />
+            </label>
+            <button id="sla-save">Guardar SLA</button>
+          </div>
+        </details>
+        <button id="analytics-open">Métricas</button>
+      </div>
     </div>
   </header>
 
-  <div id="metrics" class="small" style="margin-bottom:12px;"></div>
+  
 
-  <div id="login-box" style="display:none; border:1px solid #e0e0e0; border-radius:8px; padding:12px; margin-bottom:16px; max-width:360px;">
+  <div id="top-controls" style="display:flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom:8px;">
+    <div class="small" style="font-weight:700; color:#415a77;">Movimientos del día</div>
+    <div>
+      <button id="toggle-cash" class="small">Mostrar Caja</button>
+      <button id="toggle-cash-history" class="small">Mostrar Historial</button>
+      <button id="daily-reset-btn" class="small">Reiniciar movimientos</button>
+    </div>
+  </div>
+  <div id="metrics" class="small" style="margin-bottom:12px;"></div>
+  <div id="cash-box" style="margin-bottom:12px;"></div>
+  <div id="cash-history" style="margin-bottom:12px;"></div>
+  <section id="analytics" aria-label="Métricas" style="margin: 12px 0;">
+    <style>
+      #analytics { display:none; }
+      body.show-analytics #analytics { display:block; }
+      
+    </style>
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap: wrap;">
+      <label>Agrupar
+        <select id="metrics-group">
+          <option value="day">Diario</option>
+          <option value="week">Semanal</option>
+          <option value="month">Mensual</option>
+          <option value="year">Anual</option>
+        </select>
+      </label>
+      <label>Fecha base
+        <select id="date-field">
+          <option value="delivered" selected>Entrega</option>
+          <option value="order">Creación</option>
+        </select>
+      </label>
+      <span id="metrics-range"></span>
+      <button id="metrics-refresh">Actualizar métricas</button>
+      <button id="metrics-export">Exportar CSV</button>
+    </div>
+    <div id="metrics-chart" style="margin-top:8px; display:grid; grid-template-columns: 1fr; gap:8px;"></div>
+    <div id="metrics-table" style="margin-top:8px;"></div>
+  </section>
+
+  <div id="login-box" style="border:1px solid #e0e0e0; border-radius:8px; padding:12px; margin-bottom:16px; max-width:360px;">
     <h2>Ingresar</h2>
     <label style="display:block; margin-bottom:8px;">Usuario
       <input id="login-user" type="text" style="width:100%; height:32px;" />
@@ -123,6 +329,8 @@
     <label style="display:block; margin-bottom:12px;">Clave
       <input id="login-pass" type="password" style="width:100%; height:32px;" />
     </label>
+    <label style="display:flex; align-items:center; gap:8px; margin-top:4px;"><input id="login-show" type="checkbox" /> Ver clave</label>
+    <label style="display:flex; align-items:center; gap:8px; margin-top:4px;"><input id="login-remember" type="checkbox" /> Recordar</label>
     <button id="login-btn" style="height:32px;">Entrar</button>
     <p class="small" id="login-error" style="color:#c62828; display:none; margin-top:8px;">Credenciales inválidas</p>
   </div>
@@ -130,7 +338,7 @@
   <section class="grid">
     <div>
       <h2>Pedidos</h2>
-      <table>
+      <table id="orders-table" class="orders-table">
         <thead>
           <tr>
             <th>ID</th>
@@ -219,6 +427,26 @@
         <tbody id="canceled-tbody"></tbody>
       </table>
     </details>
+    <details class="inventory" id="inventory-box">
+      <summary>Inventario</summary>
+      <div class="actions" style="margin:8px 0;">
+        <button id="inv-reload">Recargar</button>
+        <span id="inv-hint" class="small" style="margin-left:8px;">Editar stock requiere login</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Producto</th>
+            <th>Precio</th>
+            <th>Stock</th>
+            <th>Activo</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="inventory-tbody"></tbody>
+      </table>
+    </details>
     <details class="archived" id="archived-box">
       <summary>Archivados</summary>
       <div class="controls" style="margin:8px 0;">
@@ -278,14 +506,28 @@
       </table>
     </details>
   </div>
-  <div>
-    <h2>Detalle</h2>
-    <div id="order-detail">Selecciona un pedido para ver detalles.</div>
-    <div class="actions" style="margin-top:8px;">
-      <button id="print-btn">Imprimir detalle</button>
+  
+  </section>
+  <div id="order-detail-modal" class="kds-modal" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="kds-modal-overlay"></div>
+    <div class="kds-modal-content">
+      <button id="detail-modal-close" class="kds-modal-close">Cerrar</button>
+      <button id="detail-modal-print" style="position:absolute; right:90px; top:10px;">Imprimir</button>
+      <div id="detail-modal-body"></div>
     </div>
   </div>
-</section>
+
+  <div id="confirm-modal" class="kds-modal" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="kds-modal-overlay"></div>
+    <div class="kds-modal-content kds-confirm">
+      <p id="confirm-message" style="margin:0 0 12px 0;"></p>
+      <div style="display:flex; gap:8px; justify-content:flex-end;">
+        <button id="confirm-yes">Sí</button>
+        <button id="confirm-no" style="background:#c62828;">No</button>
+      </div>
+    </div>
+  </div>
+  <div id="status-tooltip" class="kds-tooltip" aria-hidden="true"></div>
 
   <script>
     const statusClasses = {
@@ -318,6 +560,19 @@
     const archDateModeSelect = document.getElementById('arch-date-mode');
     const archivedMetricsEl = document.getElementById('archived-metrics');
     const archPageSizeSelect = document.getElementById('arch-page-size');
+    const slaWarnInput = document.getElementById('sla-warning');
+    const slaCritInput = document.getElementById('sla-critical');
+    const slaSaveBtn = document.getElementById('sla-save');
+    const controlsEl = document.querySelector('.controls');
+    const detailsEls = Array.from(document.querySelectorAll('.controls details.mobile-filters'));
+    function updateControlsWrap(){
+      try {
+        const anyOpen = detailsEls.some(d => d && d.open);
+        if (anyOpen) controlsEl.classList.add('two-lines'); else controlsEl.classList.remove('two-lines');
+      } catch (_) {}
+    }
+    detailsEls.forEach(d => { try { d.addEventListener('toggle', updateControlsWrap); } catch (_) {} });
+    updateControlsWrap();
     const archPrevBtn = document.getElementById('arch-prev');
     const archNextBtn = document.getElementById('arch-next');
     const archReloadBtn = document.getElementById('arch-reload');
@@ -330,6 +585,8 @@
     const canPrevBtn = document.getElementById('can-prev');
     const canNextBtn = document.getElementById('can-next');
     const canPageInfoEl = document.getElementById('can-page-info');
+    const invReloadBtn = document.getElementById('inv-reload');
+    const invTbody = document.getElementById('inventory-tbody');
     let archLimit = 50;
     let archOffset = 0;
     let deliveredLimit = 50;
@@ -358,8 +615,12 @@
       if (/^file:/i.test(origin)) return 'http://127.0.0.1:8000';
       return origin;
     })();
+    function wFetch(url, opts){ const o = opts || {}; o.credentials = 'include'; return fetch(url, o); }
     let csrfToken = '';
     let isAuthed = false;
+    const LOGIN_KEY_USER = 'kds_login_user';
+    const LOGIN_KEY_PASS = 'kds_login_pass';
+    const LOGIN_KEY_REM = 'kds_login_rem';
     let currentSlaThresholds = { warning: 15, critical: 30 };
     let currentTipPercent = 10;
     let currentTipDefaultEnabled = true;
@@ -369,8 +630,66 @@
     let currentSearch = '';
     let currentFrom = '';
     let currentTo = '';
+    let metricsFrom = '';
+    let metricsTo = '';
     let slaTimer = null;
     let isLoading = false;
+    let cashCollapsed = true;
+    let cashOpenDraft = { amount: 0, notes: '' };
+    let cashCloseDraft = { amount: undefined, notes: '' };
+    let isCashEditing = false;
+    const DAILY_RESET_HOUR = 5;
+    let dailyResetFrom = '';
+    let dailyResetOverride = false;
+    let cashHistoryCollapsed = true;
+    const logoutBtn = document.getElementById('logout-btn');
+    const loginOpenBtn = document.getElementById('login-open-btn');
+    const authBadge = document.getElementById('auth-status-badge');
+    const loginBox = document.getElementById('login-box');
+    const loginUserEl = document.getElementById('login-user');
+    const loginPassEl = document.getElementById('login-pass');
+    const loginRemEl = document.getElementById('login-remember');
+    const loginShowEl = document.getElementById('login-show');
+    const _rem = (localStorage.getItem(LOGIN_KEY_REM) === '1');
+    if (loginRemEl) loginRemEl.checked = _rem;
+    const _lu = localStorage.getItem(LOGIN_KEY_USER) || '';
+    const _lp = _rem ? (localStorage.getItem(LOGIN_KEY_PASS) || '') : '';
+    if (loginUserEl) loginUserEl.value = _lu;
+    if (loginPassEl) loginPassEl.value = _lp;
+    if (loginShowEl && loginPassEl) loginShowEl.onchange = function(){ loginPassEl.type = loginShowEl.checked ? 'text' : 'password'; };
+    function setAuthUI(){
+      if (authBadge) {
+        authBadge.classList.remove('on','off');
+        authBadge.classList.add(isAuthed ? 'on' : 'off');
+        authBadge.textContent = isAuthed ? 'Activo' : 'Sin sesión';
+      }
+      if (logoutBtn) logoutBtn.disabled = !isAuthed;
+      if (loginOpenBtn) loginOpenBtn.style.display = isAuthed ? 'none' : '';
+      if (loginBox) loginBox.style.display = isAuthed ? 'none' : 'block';
+      document.body.classList.toggle('no-auth', !isAuthed);
+    }
+
+    function computeDailyResetUTC() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = now.getMonth();
+      const d = now.getDate();
+      const h = now.getHours();
+      let base = new Date(y, m, d, DAILY_RESET_HOUR, 0, 0);
+      if (h < DAILY_RESET_HOUR) base = new Date(y, m, d - 1, DAILY_RESET_HOUR, 0, 0);
+      const yyyy = base.getFullYear();
+      const mm = String(base.getMonth() + 1).padStart(2, '0');
+      const dd = String(base.getDate()).padStart(2, '0');
+      const HH = String(base.getHours()).padStart(2, '0');
+      const MM = String(base.getMinutes()).padStart(2, '0');
+      const SS = String(base.getSeconds()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}T${HH}:${MM}:${SS}`;
+    }
+    function applyDailyReset(fromIso) {
+      dailyResetFrom = fromIso;
+      currentFrom = fromIso;
+      currentTo = '';
+    }
     async function fetchArchived(type) {
       const slug = tenantInput.value.trim() || defaultSlug();
       const url = new URL('/api/archive', API_BASE);
@@ -382,7 +701,7 @@
       if (window.archDateMode) url.searchParams.set('date_field', window.archDateMode);
       url.searchParams.set('limit', String(archLimit));
       url.searchParams.set('offset', String(archOffset));
-      const resp = await fetch(url.toString());
+      const resp = await wFetch(url.toString());
       if (!resp.ok) throw new Error('Error al obtener archivados');
       const data = await resp.json();
       return Array.isArray(data.archives) ? data.archives : [];
@@ -419,7 +738,7 @@
       url.searchParams.set('type', type);
       url.searchParams.set('tenant_slug', slug);
       url.searchParams.set('hours', '24');
-      const resp = await fetch(url.toString());
+      const resp = await wFetch(url.toString());
       if (!resp.ok) return 0;
       const j = await resp.json();
       return Number(j.count || 0);
@@ -473,6 +792,41 @@
       const v = Number(n || 0);
       return `$${v}`;
     }
+    function numberToWordsEs(n) {
+      n = Math.floor(Math.abs(Number(n || 0)));
+      if (n === 0) return 'cero';
+      function u(n){ return ['','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve'][n]; }
+      function t(n){
+        if (n < 10) return u(n);
+        if (n < 16) return ['diez','once','doce','trece','catorce','quince'][n-10];
+        if (n < 20) return 'dieci' + u(n-10);
+        if (n === 20) return 'veinte';
+        if (n < 30) return 'veinti' + u(n-20);
+        const tens = ['','','veinte','treinta','cuarenta','cincuenta','sesenta','setenta','ochenta','noventa'];
+        const d = Math.floor(n/10), r = n%10;
+        return tens[d] + (r ? ' y ' + u(r) : '');
+      }
+      function h(n){
+        if (n === 100) return 'cien';
+        const hundreds = ['','','doscientos','trescientos','cuatrocientos','quinientos','seiscientos','setecientos','ochocientos','novecientos'];
+        const d = Math.floor(n/100), r = n%100;
+        if (d === 0) return t(r);
+        if (d === 1) return 'ciento' + (r ? ' ' + t(r) : '');
+        return hundreds[d] + (r ? ' ' + t(r) : '');
+      }
+      function chunk(n){
+        if (n < 100) return t(n);
+        return h(n);
+      }
+      let out = '';
+      const millones = Math.floor(n / 1000000);
+      const miles = Math.floor((n % 1000000) / 1000);
+      const resto = n % 1000;
+      if (millones) out += (millones === 1 ? 'un millón' : chunk(millones) + ' millones');
+      if (miles) out += (out ? ' ' : '') + (miles === 1 ? 'mil' : chunk(miles) + ' mil');
+      if (resto) out += (out ? ' ' : '') + chunk(resto);
+      return out;
+    }
     // Prefill del establecimiento si no hay valor
     if (!document.getElementById('tenant-input').value) {
       document.getElementById('tenant-input').value = defaultSlug();
@@ -489,16 +843,16 @@
       if (currentSearch) url.searchParams.set('q', currentSearch);
       if (currentFrom) url.searchParams.set('from', currentFrom);
       if (currentTo) url.searchParams.set('to', currentTo);
-      const resp = await fetch(url.toString());
+      const resp = await wFetch(url.toString());
       if (!resp.ok) throw new Error('Error al obtener pedidos');
       return resp.json();
     }
 
-    async function updateStatus(orderId, status) {
+    async function updateStatus(orderId, status, reason) {
       const resp = await fetch(new URL(`/api/orders/${orderId}/status`, API_BASE).toString(), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
-        body: JSON.stringify({ status })
+        body: JSON.stringify({ status, reason })
       });
       if (!resp.ok) throw new Error('Error al actualizar estado');
       return resp.json();
@@ -506,7 +860,7 @@
 
     async function fetchTenants() {
       const url = new URL('/api/tenants', API_BASE);
-      const resp = await fetch(url.toString());
+      const resp = await wFetch(url.toString());
       if (!resp.ok) return [];
       const data = await resp.json();
       return Array.isArray(data.tenants) ? data.tenants : [];
@@ -540,7 +894,7 @@
 
     async function fetchOrderDetail(orderId) {
       const url = new URL(`/api/orders/${orderId}`, API_BASE);
-      const resp = await fetch(url.toString());
+      const resp = await wFetch(url.toString());
       if (!resp.ok) throw new Error('Error al obtener detalle');
       return resp.json();
     }
@@ -550,8 +904,15 @@
       if (isLoading) return;
       isLoading = true;
       try {
+        if (!dailyResetOverride) {
+          const newBound = computeDailyResetUTC();
+          if (newBound !== dailyResetFrom) applyDailyReset(newBound);
+        }
         const data = await fetchOrders();
         await renderOrders(data);
+        await renderMetricsBox();
+        if (!cashCollapsed && !isCashEditing) await renderCashBox();
+        if (!cashHistoryCollapsed) await renderCashHistory();
       } catch (e) {
         console.warn('Fallo al refrescar pedidos', e);
       } finally {
@@ -559,8 +920,161 @@
       }
     }
     let refreshTimer = null;
+    const metricsGroupEl = document.getElementById('metrics-group');
+    const dateFieldEl = document.getElementById('date-field');
+    const metricsChartEl = document.getElementById('metrics-chart');
+    const metricsTableEl = document.getElementById('metrics-table');
+    const metricsRangeEl = document.getElementById('metrics-range');
+    const metricsRefreshBtn = document.getElementById('metrics-refresh');
+    const metricsExportBtn = document.getElementById('metrics-export');
+    const dailyResetBtn = document.getElementById('daily-reset-btn');
+    if (dailyResetBtn) dailyResetBtn.addEventListener('click', async () => {
+      dailyResetOverride = false;
+      applyDailyReset(computeDailyResetUTC());
+      await load();
+    });
+
+    async function fetchAggregates() {
+      const slug = tenantInput.value.trim() || defaultSlug();
+      const group = metricsGroupEl ? (metricsGroupEl.value || 'day') : 'day';
+      const dateField = dateFieldEl ? (dateFieldEl.value || 'delivered') : 'delivered';
+      const url = new URL('/api/metrics/aggregate', API_BASE);
+      url.searchParams.set('tenant_slug', slug);
+      url.searchParams.set('group', group);
+      url.searchParams.set('date_field', dateField);
+      if (metricsFrom) url.searchParams.set('from', metricsFrom);
+      if (metricsTo) url.searchParams.set('to', metricsTo);
+      const resp = await wFetch(url.toString());
+      if (!resp.ok) throw new Error('Error al obtener métricas agregadas');
+      return resp.json();
+    }
+    function renderAggregates(data) {
+      try {
+        const rows = Array.isArray(data.rows) ? data.rows : [];
+        metricsRangeEl.textContent = `${String(data.from || '').slice(0,10)} a ${String(data.to || '').slice(0,10)} · ${data.group}`;
+        metricsChartEl.innerHTML = '';
+        const maxTotal = Math.max(1, ...rows.map(r => Number(r.delivered_total||0)));
+        rows.forEach(r => {
+          const wrap = document.createElement('div');
+          wrap.style.display = 'grid';
+          wrap.style.gridTemplateColumns = '160px 1fr 100px';
+          wrap.style.alignItems = 'center';
+          const label = document.createElement('div');
+          label.textContent = r.period;
+          const bar = document.createElement('div');
+          const pct = Math.round((Number(r.delivered_total||0) / maxTotal) * 100);
+          bar.style.height = '16px';
+          bar.style.background = 'linear-gradient(90deg, #4caf50, #81c784)';
+          bar.style.width = pct + '%';
+          bar.style.borderRadius = '8px';
+          const total = document.createElement('div');
+          total.textContent = `$${Number(r.delivered_total||0)}`;
+          wrap.appendChild(label); wrap.appendChild(bar); wrap.appendChild(total);
+          metricsChartEl.appendChild(wrap);
+        });
+        const tbl = document.createElement('table');
+        tbl.style.width = '100%';
+        tbl.style.borderCollapse = 'collapse';
+        const thead = document.createElement('thead');
+        thead.innerHTML = '<tr><th>Período</th><th>Entregados</th><th>Total</th><th>Cancelados</th><th>Total c/propina</th></tr>';
+        const tbody = document.createElement('tbody');
+        rows.forEach(r => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${r.period}</td><td>${Number(r.delivered_count||0)}</td><td>$${Number(r.delivered_total||0)}</td><td>${Number(r.canceled_count||0)}</td><td>$${Number(r.delivered_total_with_tip||0)}</td>`;
+          tbody.appendChild(tr);
+        });
+        tbl.appendChild(thead); tbl.appendChild(tbody);
+        metricsTableEl.innerHTML = '';
+        metricsTableEl.appendChild(tbl);
+      } catch (e) {
+        metricsChartEl.innerHTML = '';
+        metricsTableEl.innerHTML = '<p>No hay datos en el rango seleccionado.</p>';
+      }
+    }
+    async function loadAggregatesSafe() {
+      try {
+        const data = await fetchAggregates();
+        renderAggregates(data);
+      } catch (e) {
+        console.warn('Fallo al refrescar métricas agregadas', e);
+      }
+    }
+    if (metricsGroupEl) metricsGroupEl.addEventListener('change', loadAggregatesSafe);
+    if (dateFieldEl) dateFieldEl.addEventListener('change', loadAggregatesSafe);
+    if (metricsRefreshBtn) metricsRefreshBtn.addEventListener('click', loadAggregatesSafe);
+    if (metricsExportBtn) metricsExportBtn.addEventListener('click', () => {
+      try {
+        const slug = tenantInput.value.trim() || defaultSlug();
+        const group = metricsGroupEl ? (metricsGroupEl.value || 'day') : 'day';
+        const dateField = dateFieldEl ? (dateFieldEl.value || 'delivered') : 'delivered';
+        const url = new URL('/api/metrics/aggregate.csv', API_BASE);
+        url.searchParams.set('tenant_slug', slug);
+        url.searchParams.set('group', group);
+        url.searchParams.set('date_field', dateField);
+        if (metricsFrom) url.searchParams.set('from', metricsFrom);
+        if (metricsTo) url.searchParams.set('to', metricsTo);
+        window.open(url.toString(), '_blank');
+      } catch (_) {}
+    });
+    tenantInput.addEventListener('change', loadAggregatesSafe);
+    const analyticsOpenBtn = document.getElementById('analytics-open');
+    if (analyticsOpenBtn) {
+      analyticsOpenBtn.addEventListener('click', async () => {
+        document.body.classList.toggle('show-analytics');
+        if (document.body.classList.contains('show-analytics')) {
+          try { await loadAggregatesSafe(); } catch (_) {}
+          document.getElementById('analytics')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    }
     filterSelect.addEventListener('change', () => { if (refreshTimer) loadOrdersSafe(); });
     tenantInput.addEventListener('change', async () => { await loadSlaThresholds(); await loadTenantPrefs(); if (refreshTimer) loadOrdersSafe(); });
+    if (slaWarnInput && slaCritInput) {
+      const clampInputs = () => {
+        let w = parseInt(slaWarnInput.value || '15', 10);
+        let c = parseInt(slaCritInput.value || '30', 10);
+        w = Math.max(1, w);
+        c = Math.max(w + 1, c);
+        slaWarnInput.value = String(w);
+        slaCritInput.value = String(c);
+      };
+      slaWarnInput.addEventListener('change', clampInputs);
+      slaCritInput.addEventListener('change', clampInputs);
+    }
+    if (slaSaveBtn) {
+      slaSaveBtn.addEventListener('click', async () => {
+        try {
+          if (!isAuthed) { alert('Requiere sesión de administrador'); return; }
+          if (!csrfToken) { await fetchCSRF(); }
+          const slug = tenantInput.value.trim() || defaultSlug();
+          let w = parseInt(slaWarnInput.value || '15', 10);
+          let c = parseInt(slaCritInput.value || '30', 10);
+          w = Math.max(1, w);
+          c = Math.max(w + 1, c);
+          const url = new URL('/api/tenant_sla', API_BASE);
+          url.searchParams.set('tenant_slug', slug);
+          const resp = await fetch(url.toString(), {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+            body: JSON.stringify({ warning_minutes: w, critical_minutes: c })
+          });
+          if (!resp.ok) {
+            let msg = 'No se pudo guardar SLA';
+            try { const j = await resp.json(); if (j && j.error) msg = j.error; } catch (_) {}
+            alert(msg);
+            return;
+          }
+          const data = await resp.json();
+          currentSlaThresholds = { warning: Math.max(1, Number(data.warning_minutes || w)), critical: Math.max(Number(data.warning_minutes || w) + 1, Number(data.critical_minutes || c)) };
+          initSLAClock();
+          alert('SLA actualizado');
+        } catch (e) {
+          alert('Error al guardar SLA');
+        }
+      });
+    }
+    // Inicializar métricas agregadas al cargar
+    (async () => { try { await loadAggregatesSafe(); } catch (_) {} })();
 
     async function renderOrders(data) {
       const orders = data.orders || [];
@@ -613,32 +1127,42 @@
         const phoneDigits = phoneRaw.replace(/\D/g, '');
         const waUrl = phoneDigits ? `https://wa.me/${phoneDigits}` : '';
         const statusClass = statusClasses[o.status] || 'status-pendiente';
+        const statusLabelText = (o.order_type === 'mesa' && o.status === 'en_camino') ? 'mesa' : o.status;
+        const enCaminoBtn = (o.order_type === 'mesa')
+          ? `<button class="status-action mesa" data-status="en_camino" aria-label="Mesa" data-tip="Mesa">M</button>`
+          : `<button class="status-action en_camino" data-status="en_camino" aria-label="En camino" data-tip="En camino">C</button>`;
         tr.innerHTML = `
           <td>${o.id}</td>
           <td><span class="small">${formatARDate(o.created_at || '')}</span></td>
           <td><span class="pill">${o.order_type}</span></td>
-          <td>${dest}</td>
+          <td>${o.order_type === 'mesa' ? `<span class="pill pill-mesa">Mesa ${o.table_number || ''}</span>` : dest}</td>
           <td>
-            ${phoneRaw ? `<span class="small">${phoneRaw}</span>` : '<span class="small">-</span>'}
-            ${phoneDigits ? `<button class="copy-phone small" data-phone="${phoneRaw}" style="margin-left:6px;">Copiar</button>` : ''}
-            ${waUrl ? `<a class="small" href="${waUrl}" target="_blank" rel="noopener" style="margin-left:6px;">WhatsApp</a>` : ''}
+            <div class="phone-row">
+              ${phoneRaw ? `<span class="small">${phoneRaw}</span>` : '<span class="small">-</span>'}
+              ${phoneDigits ? `<button class="copy-phone phone-action" data-phone="${phoneRaw}" aria-label="Copiar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 1H4a2 2 0 0 0-2 2v12h2V3h12V1zm4 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h12v14z"/></svg></button>` : ''}
+              ${waUrl ? `<a class="phone-action" href="${waUrl}" target="_blank" rel="noopener" aria-label="WhatsApp"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8c1.5 3 3.9 5.4 6.9 6.9l2.3-2.3c.3-.3.8-.4 1.2-.2 1 .4 2 .6 3.1.6.7 0 1.3.6 1.3 1.3v3.6c0 .7-.6 1.3-1.3 1.3C9.7 22 2 14.3 2 4.3 2 3.6 2.6 3 3.3 3h3.6c.7 0 1.3.6 1.3 1.3 0 1.1.2 2.1.6 3.1.1.4 0 .9-.3 1.2l-2.9 2.2z"/></svg></a>` : ''}
+            </div>
           </td>
           <td>
             <span class="order-total" data-orderid="${o.id}" data-total="${o.total}">$${o.total}</span>
             <span class="order-total-tip small" style="margin-left:6px;color:#666;"></span>
           </td>
-          <td><span class="status-badge ${statusClass}">${o.status}</span>${renderSLA(o)}</td>
+          <td><span class="status-badge ${statusClass}">${statusLabelText}</span>${renderSLA(o)}</td>
           <td class="actions">
-            <select class="status-select">
-              ${statusOptions.map(s => `<option value="${s}" ${s===o.status?'selected':''}>${s}</option>`).join('')}
-            </select>
-            <button class="apply-status">Aplicar</button>
+            <div class="status-quick">
+              <button class="status-action preparacion" data-status="preparacion" aria-label="Preparación" data-tip="Preparación">P</button>
+              <button class="status-action listo" data-status="listo" aria-label="Listo" data-tip="Listo">L</button>
+              ${enCaminoBtn}
+              <button class="status-action entregado" data-status="entregado" aria-label="Entregado" data-tip="Entregado">E</button>
+              <button class="status-action cancelado" data-status="cancelado" aria-label="Cancelado" data-tip="Cancelado">X</button>
+            </div>
             <button class="ver-detalle">Ver</button>
             <label class="small" style="display:block;margin-top:6px;">
               <input type="checkbox" class="tip-toggle"> Propina 10%
             </label>
           </td>
         `;
+        tr.classList.add(`card-${o.status}`);
         frag.appendChild(tr);
         const copyBtn = tr.querySelector('.copy-phone');
         if (copyBtn) {
@@ -646,9 +1170,7 @@
             try { await navigator.clipboard.writeText(copyBtn.getAttribute('data-phone') || ''); } catch (_) {}
           });
         }
-        const select = tr.querySelector('.status-select');
-        const applyBtn = tr.querySelector('.apply-status');
-        if (!isAuthed) { applyBtn.disabled = true; }
+        
         const viewBtn = tr.querySelector('.ver-detalle');
         const tipToggle = tr.querySelector('.tip-toggle');
         const totalEl = tr.querySelector('.order-total');
@@ -672,51 +1194,66 @@
           setTipPref(o.id, tipToggle.checked);
           updateTipDisplay();
         });
-        applyBtn.addEventListener('click', async () => {
-          const newStatus = select.value;
-          applyBtn.disabled = true;
-          try {
-            await updateStatus(o.id, newStatus);
-            // Si cambia a "preparacion", reiniciar cronómetro y acumular el tiempo previo
-            if (newStatus === 'preparacion') {
-              const nowIso = new Date().toISOString();
-              // Preferir timestamp normalizado desde el DOM para evitar desajustes de zona horaria
-              const rowSla = tr.querySelector('.sla-container');
-              const domCreatedTs = rowSla ? Number(rowSla.getAttribute('data-created-ts') || NaN) : NaN;
-              const createdTs = !Number.isNaN(domCreatedTs) ? domCreatedTs : parseDateSafe(o.created_at);
-              const prevStartTs = getSlaOverride(o.id);
-              const baseStart = (!Number.isNaN(prevStartTs)) ? prevStartTs : createdTs;
-              const nowMs = Date.now();
-              if (!Number.isNaN(baseStart)) {
-                const prevElapsedSec = Math.max(0, Math.floor((nowMs - baseStart) / 1000));
-                addSlaAccumulated(o.id, prevElapsedSec);
-              }
-              setSlaOverride(o.id, nowIso);
-            } else if (newStatus === 'entregado') {
-              // Al entregar, sumar el último tramo y registrar total final
-              const nowMs = Date.now();
-              // Preferir timestamp normalizado desde el DOM
-              const rowSla = tr.querySelector('.sla-container');
-              const domCreatedTs = rowSla ? Number(rowSla.getAttribute('data-created-ts') || NaN) : NaN;
-              const createdTs = !Number.isNaN(domCreatedTs) ? domCreatedTs : parseDateSafe(o.created_at);
-              const overrideStart = getSlaOverride(o.id);
-              const baseStart = (!Number.isNaN(overrideStart)) ? overrideStart : createdTs;
-              let segmentSec = 0;
-              if (!Number.isNaN(baseStart)) {
-                segmentSec = Math.max(0, Math.floor((nowMs - baseStart) / 1000));
-              }
-              const totalSec = getSlaAccumulated(o.id) + segmentSec;
-              setSlaFinal(o.id, totalSec);
+        const quickBtns = Array.from(tr.querySelectorAll('.status-action'));
+        for (const qb of quickBtns) {
+          if (!isAuthed) { qb.disabled = true; }
+          qb.addEventListener('mouseenter', () => showStatusTooltipFor(qb));
+          qb.addEventListener('mouseleave', hideStatusTooltip);
+          qb.addEventListener('focus', () => showStatusTooltipFor(qb));
+          qb.addEventListener('blur', hideStatusTooltip);
+          qb.addEventListener('click', async () => {
+            const newStatus = qb.getAttribute('data-status') || '';
+            if (!newStatus) return;
+            if (newStatus === 'entregado') {
+              const ok = await askConfirm('¿Confirma entrega?');
+              if (!ok) return;
             }
-            await load();
-          } catch (e) {
-            alert('No se pudo actualizar el estado');
-          } finally {
-            applyBtn.disabled = false;
-          }
-        });
+            let reason = '';
+            if (newStatus === 'cancelado') {
+              const ok = await askConfirm('¿Confirma cancelación?');
+              if (!ok) return;
+              try { reason = String(prompt('Motivo de cancelación (opcional):') || '').trim(); } catch(_) {}
+            }
+            qb.disabled = true;
+            try {
+              await updateStatus(o.id, newStatus, reason);
+              if (newStatus === 'preparacion') {
+                const nowIso = new Date().toISOString();
+                const rowSla = tr.querySelector('.sla-container');
+                const domCreatedTs = rowSla ? Number(rowSla.getAttribute('data-created-ts') || NaN) : NaN;
+                const createdTs = !Number.isNaN(domCreatedTs) ? domCreatedTs : parseDateSafe(o.created_at);
+                const prevStartTs = getSlaOverride(o.id);
+                const baseStart = (!Number.isNaN(prevStartTs)) ? prevStartTs : createdTs;
+                const nowMs = Date.now();
+                if (!Number.isNaN(baseStart)) {
+                  const prevElapsedSec = Math.max(0, Math.floor((nowMs - baseStart) / 1000));
+                  addSlaAccumulated(o.id, prevElapsedSec);
+                }
+                setSlaOverride(o.id, nowIso);
+              } else if (newStatus === 'entregado') {
+                const nowMs = Date.now();
+                const rowSla = tr.querySelector('.sla-container');
+                const domCreatedTs = rowSla ? Number(rowSla.getAttribute('data-created-ts') || NaN) : NaN;
+                const createdTs = !Number.isNaN(domCreatedTs) ? domCreatedTs : parseDateSafe(o.created_at);
+                const overrideStart = getSlaOverride(o.id);
+                const baseStart = (!Number.isNaN(overrideStart)) ? overrideStart : createdTs;
+                let segmentSec = 0;
+                if (!Number.isNaN(baseStart)) {
+                  segmentSec = Math.max(0, Math.floor((nowMs - baseStart) / 1000));
+                }
+                const totalSec = getSlaAccumulated(o.id) + segmentSec;
+                setSlaFinal(o.id, totalSec);
+              }
+              await load();
+            } catch (e) {
+              alert('No se pudo actualizar el estado');
+            } finally {
+              qb.disabled = false;
+            }
+          });
+        }
+        
         viewBtn.addEventListener('click', async () => {
-          detailEl.textContent = 'Cargando detalle...';
           try {
             const detail = await fetchOrderDetail(o.id);
             const order = detail.order || o;
@@ -783,22 +1320,60 @@
                 totalTimeHtml = `<p class="small">Tiempo total: ${th}:${tm}:${ts}</p>`;
               }
             }
+            const statusLabelText = (order.order_type === 'mesa' && order.status === 'en_camino') ? 'mesa' : order.status;
             box.innerHTML = `
               <p><strong>Pedido #${order.id}</strong></p>
+              <span id="detail-order-id" style="display:none;">${order.id}</span>
               <p>Establecimiento: ${order.tenant_slug}</p>
               <p>Fecha: ${formatARDate(order.created_at)}</p>
               <p>Tipo: ${order.order_type}</p>
-              <p>Destino: ${destino}</p>
+              <p>Destino: ${order.order_type === 'mesa' ? `<span class="pill pill-mesa">Mesa ${order.table_number || ''}</span>` : destino}</p>
               ${telefono ? `<p>Teléfono de contacto: ${telefono}</p>` : ''}
-              <p>Estado: ${order.status}</p>
+              <p>Estado: ${statusLabelText}</p>
               ${order.order_notes ? `<p>Detalle adicional: ${order.order_notes}</p>` : ''}
               ${itemsHtml}
               ${tipBlock}
               ${timeline}
               ${totalTimeHtml}
             `;
-            detailEl.innerHTML = '';
-            detailEl.appendChild(box);
+            const modalBody = document.getElementById('detail-modal-body');
+            const modal = document.getElementById('order-detail-modal');
+            const closeBtn = document.getElementById('detail-modal-close');
+            modalBody.innerHTML = '';
+            modalBody.appendChild(box);
+            const prevFocus = document.activeElement;
+            modal.classList.add('active');
+            modal.setAttribute('aria-hidden','false');
+            document.body.style.overflow = 'hidden';
+            let focusables = Array.from(modal.querySelectorAll('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])')).filter(x => !x.hasAttribute('disabled'));
+            let first = focusables[0];
+            let last = focusables[focusables.length - 1];
+            const onKeyTrap = (e) => {
+              if (e.key === 'Tab') {
+                if (!focusables.length) return;
+                if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+                else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+              }
+            };
+            document.addEventListener('keydown', onKeyTrap);
+            if (closeBtn) { try { closeBtn.focus(); } catch(_) {} }
+            if (closeBtn) closeBtn.onclick = function(){
+              modal.classList.remove('active');
+              modal.setAttribute('aria-hidden','true');
+              modalBody.innerHTML = '';
+              document.body.style.overflow = 'auto';
+              document.removeEventListener('keydown', onKeyTrap);
+              try { if (prevFocus && typeof prevFocus.focus === 'function') prevFocus.focus(); } catch(_) {}
+            };
+            const overlay = modal.querySelector('.kds-modal-overlay');
+            if (overlay) overlay.onclick = closeBtn.onclick;
+            document.addEventListener('keydown', function(e){ if (e.key==='Escape' && modal.classList.contains('active')) closeBtn.onclick(); });
+            const printBtn = document.getElementById('detail-modal-print');
+            if (printBtn) printBtn.onclick = async function(){
+              document.body.classList.add('print-modal');
+              try { await logOrderEvent(order.id, 'printed', { copies: 1 }); } catch(_) {}
+              window.print();
+            };
             // Wire tip toggle in detalle
             const tipToggleDetail = box.querySelector('.tip-detail-toggle');
             const tipAmtEl = box.querySelector('.tip-amount');
@@ -816,7 +1391,7 @@
             });
             refreshDetailTip();
           } catch (e) {
-            detailEl.textContent = 'No se pudo cargar el detalle.';
+            alert('No se pudo cargar el detalle.');
           }
         });
       }
@@ -828,6 +1403,7 @@
       window.canceledCurrent = canceled;
       await renderDelivered(delivered);
       await renderCanceled(canceled);
+      try { await renderInventory(); } catch (_) {}
       lastOrdersSignature = newSignature;
     }
 
@@ -859,11 +1435,13 @@
           <td>${o.id}</td>
           <td><span class="small">${formatARDate(o.created_at || '')}</span></td>
           <td><span class="pill">${o.order_type}</span></td>
-          <td>${dest}</td>
+          <td>${o.order_type === 'mesa' ? `<span class="pill pill-mesa">Mesa ${o.table_number || ''}</span>` : dest}</td>
           <td>
-            ${phoneRaw ? `<span class="small">${phoneRaw}</span>` : '<span class="small">-</span>'}
-            ${phoneDigits ? `<button class="copy-phone small" data-phone="${phoneRaw}" style="margin-left:6px;">Copiar</button>` : ''}
-            ${waUrl ? `<a class="small" href="${waUrl}" target="_blank" rel="noopener" style="margin-left:6px;">WhatsApp</a>` : ''}
+            <div class="phone-row">
+              ${phoneRaw ? `<span class="small">${phoneRaw}</span>` : '<span class="small">-</span>'}
+              ${phoneDigits ? `<button class="copy-phone phone-action" data-phone="${phoneRaw}" aria-label="Copiar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 1H4a2 2 0 0 0-2 2v12h2V3h12V1zm4 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h12v14z"/></svg></button>` : ''}
+              ${waUrl ? `<a class="phone-action" href="${waUrl}" target="_blank" rel="noopener" aria-label="WhatsApp"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8c1.5 3 3.9 5.4 6.9 6.9l2.3-2.3c.3-.3.8-.4 1.2-.2 1 .4 2 .6 3.1.6.7 0 1.3.6 1.3 1.3v3.6c0 .7-.6 1.3-1.3 1.3C9.7 22 2 14.3 2 4.3 2 3.6 2.6 3 3.3 3h3.6c.7 0 1.3.6 1.3 1.3 0 1.1.2 2.1.6 3.1.1.4 0 .9-.3 1.2l-2.9 2.2z"/></svg></a>` : ''}
+            </div>
           </td>
           <td>$${o.total}</td>
           <td>${formatMoney(totalWithTip)}</td>
@@ -885,7 +1463,6 @@
         if (!isAuthed) { archiveBtn.disabled = true; }
         if (!isAuthed) { archiveBtn.disabled = true; }
         viewBtn.addEventListener('click', async () => {
-          detailEl.textContent = 'Cargando detalle...';
           try {
             const detail = await fetchOrderDetail(o.id);
             const order = detail.order || o;
@@ -938,23 +1515,44 @@
                 totalTimeHtml = `<p class=\"small\">Tiempo total: ${th}:${tm}:${ts}</p>`;
               }
             }
+            const statusLabelText = (order.order_type === 'mesa' && order.status === 'en_camino') ? 'mesa' : order.status;
             box.innerHTML = `
               <p><strong>Pedido #${order.id}</strong></p>
               <p>Establecimiento: ${order.tenant_slug}</p>
               <p>Fecha: ${formatARDate(order.created_at)}</p>
               <p>Tipo: ${order.order_type}</p>
-              <p>Destino: ${destino}</p>
+              <p>Destino: ${order.order_type === 'mesa' ? `<span class="pill pill-mesa">Mesa ${order.table_number || ''}</span>` : destino}</p>
               ${telefono ? `<p>Teléfono de contacto: ${telefono}</p>` : ''}
-              <p>Estado: ${order.status}</p>
+              <p>Estado: ${statusLabelText}</p>
               ${order.order_notes ? `<p>Detalle adicional: ${order.order_notes}</p>` : ''}
               ${itemsHtml}
               ${timeline}
               ${totalTimeHtml}
             `;
-            detailEl.innerHTML = '';
-            detailEl.appendChild(box);
+            const modalBody = document.getElementById('detail-modal-body');
+            const modal = document.getElementById('order-detail-modal');
+            const closeBtn = document.getElementById('detail-modal-close');
+            modalBody.innerHTML = '';
+            modalBody.appendChild(box);
+            modal.classList.add('active');
+            modal.setAttribute('aria-hidden','false');
+            document.body.style.overflow = 'hidden';
+            if (closeBtn) closeBtn.onclick = function(){
+              modal.classList.remove('active');
+              modal.setAttribute('aria-hidden','true');
+              modalBody.innerHTML = '';
+              document.body.style.overflow = 'auto';
+            };
+            const overlay = modal.querySelector('.kds-modal-overlay');
+            if (overlay) overlay.onclick = closeBtn.onclick;
+            document.addEventListener('keydown', function(e){ if (e.key==='Escape' && modal.classList.contains('active')) closeBtn.onclick(); });
+            const printBtn = document.getElementById('detail-modal-print');
+            if (printBtn) printBtn.onclick = function(){
+              document.body.classList.add('print-modal');
+              window.print();
+            };
           } catch (e) {
-            detailEl.textContent = 'No se pudo cargar el detalle.';
+            alert('No se pudo cargar el detalle.');
           }
         });
         archiveBtn.addEventListener('click', async () => {
@@ -998,7 +1596,7 @@
           <td>${o.id}</td>
           <td><span class="small">${formatARDate(o.created_at || '')}</span></td>
           <td><span class="pill">${o.order_type}</span></td>
-          <td>${dest}</td>
+          <td>${o.order_type === 'mesa' ? `<span class="pill pill-mesa">Mesa ${o.table_number || ''}</span>` : dest}</td>
           <td>$${o.total}</td>
           <td><span class="status-badge ${statusClass}">${o.status}</span></td>
           <td class="actions">
@@ -1010,12 +1608,12 @@
         const viewBtn = tr.querySelector('.ver-detalle');
         const archiveBtn = tr.querySelector('.archivar');
         viewBtn.addEventListener('click', async () => {
-          detailEl.textContent = 'Cargando detalle...';
           try {
             const detail = await fetchOrderDetail(o.id);
             const order = detail.order || o;
             const items = detail.items || [];
             const history = detail.history || [];
+            const events = detail.events || [];
             const destino = order.order_type === 'mesa' ? `Mesa ${order.table_number || ''}` : (order.address_json || '');
             const box = document.createElement('div');
             const itemsRows = items.map(it => {
@@ -1039,21 +1637,55 @@
                 ${history.map(h => `<div class=\"small\">${h.status} — ${formatARDate(h.changed_at)}</div>`).join('')}
               </div>
             ` : '';
+            const cancelReason = (() => {
+              for (let i = events.length - 1; i >= 0; i--) {
+                const ev = events[i] || {};
+                if (String(ev.event_type || '').toLowerCase() === 'canceled') {
+                  let meta = {};
+                  try { meta = JSON.parse(ev.payload_json || '{}'); } catch (_) {}
+                  const r = String((meta && meta.reason) || '').trim();
+                  if (r) return r;
+                }
+              }
+              return '';
+            })();
+            const statusLabelText = (order.order_type === 'mesa' && order.status === 'en_camino') ? 'mesa' : order.status;
             box.innerHTML = `
               <p><strong>Pedido #${order.id}</strong></p>
               <p>Establecimiento: ${order.tenant_slug}</p>
               <p>Fecha: ${formatARDate(order.created_at)}</p>
               <p>Tipo: ${order.order_type}</p>
-              <p>Destino: ${destino}</p>
-              <p>Estado: ${order.status}</p>
+              <p>Destino: ${order.order_type === 'mesa' ? `<span class="pill pill-mesa">Mesa ${order.table_number || ''}</span>` : destino}</p>
+              <p>Estado: ${statusLabelText}</p>
+              ${order.status === 'cancelado' && cancelReason ? `<p>Motivo de cancelación: ${cancelReason}</p>` : ''}
               ${order.order_notes ? `<p>Detalle adicional: ${order.order_notes}</p>` : ''}
               ${itemsHtml}
               ${timeline}
             `;
-            detailEl.innerHTML = '';
-            detailEl.appendChild(box);
+            const modalBody = document.getElementById('detail-modal-body');
+            const modal = document.getElementById('order-detail-modal');
+            const closeBtn = document.getElementById('detail-modal-close');
+            modalBody.innerHTML = '';
+            modalBody.appendChild(box);
+            modal.classList.add('active');
+            modal.setAttribute('aria-hidden','false');
+            document.body.style.overflow = 'hidden';
+            if (closeBtn) closeBtn.onclick = function(){
+              modal.classList.remove('active');
+              modal.setAttribute('aria-hidden','true');
+              modalBody.innerHTML = '';
+              document.body.style.overflow = 'auto';
+            };
+            const overlay = modal.querySelector('.kds-modal-overlay');
+            if (overlay) overlay.onclick = closeBtn.onclick;
+            document.addEventListener('keydown', function(e){ if (e.key==='Escape' && modal.classList.contains('active')) closeBtn.onclick(); });
+            const printBtn = document.getElementById('detail-modal-print');
+            if (printBtn) printBtn.onclick = function(){
+              document.body.classList.add('print-modal');
+              window.print();
+            };
           } catch (e) {
-            detailEl.textContent = 'No se pudo cargar el detalle.';
+            alert('No se pudo cargar el detalle.');
           }
         });
         archiveBtn.addEventListener('click', async () => {
@@ -1074,6 +1706,59 @@
       const atEndCan = canceledOffset + canceledLimit >= total;
       if (canNextBtn) canNextBtn.disabled = atEndCan;
     }
+    async function fetchProducts() {
+      const slug = tenantInput.value.trim() || defaultSlug();
+      const url = new URL('/api/products', API_BASE);
+      url.searchParams.set('tenant_slug', slug);
+      const resp = await wFetch(url.toString());
+      if (!resp.ok) throw new Error('No se pudo cargar inventario');
+      const data = await resp.json();
+      return Array.isArray(data.products) ? data.products : [];
+    }
+    async function renderInventory() {
+      if (!invTbody) return;
+      invTbody.innerHTML = '<tr><td colspan="6" class="small">Cargando...</td></tr>';
+      const items = await fetchProducts();
+      invTbody.innerHTML = '';
+      if (!items.length) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td colspan="6" class="small">Sin productos</td>';
+        invTbody.appendChild(tr);
+        return;
+      }
+      for (const p of items) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${p.id}</td>
+          <td>${p.name}</td>
+          <td>$${p.price}</td>
+          <td><input type="number" class="inv-stock" value="${p.stock}" min="0" style="width:90px" ${isAuthed ? '' : 'disabled'} /></td>
+          <td><input type="checkbox" class="inv-active" ${p.active ? 'checked' : ''} ${isAuthed ? '' : 'disabled'} /></td>
+          <td><button class="inv-save" ${isAuthed ? '' : 'disabled'}>Guardar</button></td>
+        `;
+        invTbody.appendChild(tr);
+        const stockEl = tr.querySelector('.inv-stock');
+        const activeEl = tr.querySelector('.inv-active');
+        const saveBtn = tr.querySelector('.inv-save');
+        saveBtn.addEventListener('click', async () => {
+          if (!isAuthed) { alert('Requiere sesión de administrador'); return; }
+          try {
+            const slug = tenantInput.value.trim() || defaultSlug();
+            const url = new URL(`/api/products/${encodeURIComponent(p.id)}`, API_BASE);
+            url.searchParams.set('tenant_slug', slug);
+            const body = { stock: parseInt(stockEl.value || '0', 10) };
+            body.active = !!activeEl.checked;
+            const resp = await wFetch(url.toString(), {
+              method: 'PATCH', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }, body: JSON.stringify(body)
+            });
+            if (!resp.ok) throw new Error('No se pudo guardar');
+            alert('Guardado');
+          } catch (_) {
+            alert('Error al guardar');
+          }
+        });
+      }
+    }
 
     async function renderArchived() {
       const atDel = document.getElementById('archived-delivered-tbody');
@@ -1091,7 +1776,7 @@
         if (window.archDateMode) url.searchParams.set('date_field', window.archDateMode);
         url.searchParams.set('limit', String(archLimit + 1));
         url.searchParams.set('offset', String(archOffset));
-        const resp = await fetch(url.toString());
+        const resp = await wFetch(url.toString());
         if (!resp.ok) throw new Error('Error al obtener archivados');
         const data = await resp.json();
         const arr = Array.isArray(data.archives) ? data.archives : [];
@@ -1132,6 +1817,7 @@
           <td>
             <span class=\"status-badge ${statusClasses['entregado']}\">entregado</span>
             <span class=\"small\" style=\"margin-left:6px;color:#666;\">último: ${(o.last_status||'').trim()||'-'} ${o.last_change? '('+formatARDate(o.last_change)+')':''}</span>
+            <button class=\"view-detail small\" style=\"margin-left:8px;\">Ver</button>
           </td>
         `;
         atDel.appendChild(tr);
@@ -1139,6 +1825,142 @@
         if (copyBtn) {
           copyBtn.addEventListener('click', async () => {
             try { await navigator.clipboard.writeText(copyBtn.getAttribute('data-phone') || ''); } catch (_) {}
+          });
+        }
+        const viewBtn = tr.querySelector('.view-detail');
+        if (viewBtn) {
+          viewBtn.addEventListener('click', async () => {
+            try {
+              const data = await fetchOrderDetail(o.id);
+              const order = data.order || {};
+              const destino = order.order_type === 'mesa' ? `Mesa ${order.table_number || ''}` : ((order.address_json||'').replace(/\n+/g,' ').trim());
+              const telefono = String(order.customer_phone||'').trim();
+              const items = Array.isArray(data.items) ? data.items : [];
+              const history = Array.isArray(data.history) ? data.history : [];
+              const events = Array.isArray(data.events) ? data.events : [];
+              const itemsHtml = items.length ? (() => {
+                let html = '<table class="detail-items-table"><thead><tr><th>Item</th><th>Cant</th><th>Precio</th><th>Total</th></tr></thead><tbody>';
+                for (const it of items) {
+                  const q = Number(it.qty||0); const p = Number(it.unit_price||0);
+                  html += `<tr><td>${it.name||it.product_id||''}</td><td>${q}</td><td>${formatMoney(p)}</td><td>${formatMoney(q*p)}</td></tr>`;
+                }
+                html += '</tbody></table><p class="detail-summary">Total: $'+Number(order.total||0)+'</p>';
+                return html;
+              })() : '<p class="small">Sin ítems registrados.</p>';
+              const tipEnabledDetailRaw = getTipPref(order.id);
+              const tipEnabledDetail = hasTipPref(order.id) ? tipEnabledDetailRaw : currentTipDefaultEnabled;
+              const tipAmt = computeTipAmount(order.total);
+              const totalWithTip = Number(order.total || 0) + tipAmt;
+              const tipBlock = `
+                <div class="tip-section" style="margin-top:8px;">
+                <label class="small"><input type="checkbox" class="tip-detail-toggle" ${tipEnabledDetail?'checked':''}> Aplicar propina (${currentTipPercent}%)</label>
+                  <div class="small" style="margin-top:4px;">
+                    Propina (${currentTipPercent}%): <span class="tip-amount">${formatMoney(tipAmt)}</span>
+                  </div>
+                  <p class="detail-summary">Total con propina: <span class="tip-total">${formatMoney(tipEnabledDetail ? totalWithTip : order.total)}</span></p>
+                </div>
+              `;
+              const timeline = history.length ? `
+                <h3>Historial de estados</h3>
+                <div>
+                  ${history.map(h => `<div class="small">${h.status} — ${formatARDate(h.changed_at)}</div>`).join('')}
+                </div>
+              ` : '';
+              const cancelReason = (() => {
+                for (let i = events.length - 1; i >= 0; i--) {
+                  const ev = events[i] || {};
+                  if (String(ev.event_type || '').toLowerCase() === 'canceled') {
+                    let meta = {};
+                    try { meta = JSON.parse(ev.payload_json || '{}'); } catch (_) {}
+                    const r = String((meta && meta.reason) || '').trim();
+                    if (r) return r;
+                  }
+                }
+                return '';
+              })();
+              let totalTimeHtml = '';
+              if (order.status === 'entregado') {
+                let totalSec = getSlaFinal(order.id);
+                if (!totalSec || totalSec <= 0) {
+                  const endHist = history.filter(h => h.status === 'entregado').slice(-1)[0];
+                  const endTs = endHist ? parseDateSafe(endHist.changed_at) : Date.now();
+                  const overrideStart = getSlaOverride(order.id);
+                  const createdTs = parseDateSafe(order.created_at);
+                  const baseStart = (!Number.isNaN(overrideStart)) ? overrideStart : createdTs;
+                  const prevSec = getSlaAccumulated(order.id);
+                  if (!Number.isNaN(baseStart)) {
+                    const segmentSec = Math.max(0, Math.floor((endTs - baseStart) / 1000));
+                    totalSec = prevSec + segmentSec;
+                  }
+                }
+                if (totalSec && totalSec > 0) {
+                  const th = String(Math.floor(totalSec / 3600)).padStart(2, '0');
+                  const tm = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
+                  const ts = String(totalSec % 60).padStart(2, '0');
+                  totalTimeHtml = `<p class="small">Tiempo total: ${th}:${tm}:${ts}</p>`;
+                }
+              }
+              const box = document.createElement('div');
+              const statusLabelText = (order.order_type === 'mesa' && order.status === 'en_camino') ? 'mesa' : order.status;
+              box.innerHTML = `
+                <p><strong>Pedido #${order.id}</strong></p>
+                <span id="detail-order-id" style="display:none;">${order.id}</span>
+                <p>Establecimiento: ${order.tenant_slug}</p>
+                <p>Fecha: ${formatARDate(order.created_at)}</p>
+                <p>Tipo: ${order.order_type}</p>
+                <p>Destino: ${order.order_type === 'mesa' ? `<span class="pill pill-mesa">Mesa ${order.table_number || ''}</span>` : destino}</p>
+                ${telefono ? `<p>Teléfono de contacto: ${telefono}</p>` : ''}
+                <p>Estado: ${statusLabelText}</p>
+                ${order.status === 'cancelado' && cancelReason ? `<p>Motivo de cancelación: ${cancelReason}</p>` : ''}
+                ${order.order_notes ? `<p>Detalle adicional: ${order.order_notes}</p>` : ''}
+                ${itemsHtml}
+                ${tipBlock}
+                ${timeline}
+                ${totalTimeHtml}
+              `;
+              const modalBody = document.getElementById('detail-modal-body');
+              const modal = document.getElementById('order-detail-modal');
+              const closeBtn = document.getElementById('detail-modal-close');
+              modalBody.innerHTML = '';
+              modalBody.appendChild(box);
+              const prevFocus = document.activeElement;
+              modal.classList.add('active');
+              modal.setAttribute('aria-hidden','false');
+              document.body.style.overflow = 'hidden';
+              const tipToggleDetail = box.querySelector('.tip-detail-toggle');
+              const tipAmtEl = box.querySelector('.tip-amount');
+              const tipTotalEl = box.querySelector('.tip-total');
+              const baseTotalDet = Number(order.total || 0);
+              const refreshDetailTip = () => {
+                const enabled = tipToggleDetail.checked;
+                const tip = computeTipAmount(baseTotalDet);
+                tipAmtEl.textContent = formatMoney(tip);
+                tipTotalEl.textContent = formatMoney(enabled ? (baseTotalDet + tip) : baseTotalDet);
+              };
+              tipToggleDetail.addEventListener('change', () => {
+                setTipPref(order.id, tipToggleDetail.checked);
+                refreshDetailTip();
+              });
+              refreshDetailTip();
+              const overlay = modal.querySelector('.kds-modal-overlay');
+              if (overlay) overlay.onclick = function(){ closeBtn?.click(); };
+              if (closeBtn) closeBtn.onclick = function(){
+                modal.classList.remove('active');
+                modal.setAttribute('aria-hidden','true');
+                modalBody.innerHTML = '';
+                document.body.style.overflow = 'auto';
+                try { if (prevFocus && typeof prevFocus.focus === 'function') prevFocus.focus(); } catch(_) {}
+              };
+              document.addEventListener('keydown', function(e){ if (e.key==='Escape' && modal.classList.contains('active')) closeBtn?.click(); });
+              const printBtn = document.getElementById('detail-modal-print');
+              if (printBtn) printBtn.onclick = async function(){
+                document.body.classList.add('print-modal');
+                try { await logOrderEvent(order.id, 'printed', { copies: 1 }); } catch(_) {}
+                window.print();
+              };
+            } catch (e) {
+              alert('No se pudo cargar el detalle.');
+            }
           });
         }
       }
@@ -1167,6 +1989,7 @@
           <td>
             <span class=\"status-badge ${statusClasses['cancelado']}\">cancelado</span>
             <span class=\"small\" style=\"margin-left:6px;color:#666;\">último: ${(o.last_status||'').trim()||'-'} ${o.last_change? '('+formatARDate(o.last_change)+')':''}</span>
+            <button class=\"view-detail small\" style=\"margin-left:8px;\">Ver</button>
           </td>
         `;
         atCan.appendChild(tr);
@@ -1174,6 +1997,121 @@
         if (copyBtn) {
           copyBtn.addEventListener('click', async () => {
             try { await navigator.clipboard.writeText(copyBtn.getAttribute('data-phone') || ''); } catch (_) {}
+          });
+        }
+        const viewBtn2 = tr.querySelector('.view-detail');
+        if (viewBtn2) {
+          viewBtn2.addEventListener('click', async () => {
+            try {
+              const data = await fetchOrderDetail(o.id);
+              const order = data.order || {};
+              const destino = order.order_type === 'mesa' ? `Mesa ${order.table_number || ''}` : ((order.address_json||'').replace(/\n+/g,' ').trim());
+              const telefono = String(order.customer_phone||'').trim();
+              const items = Array.isArray(data.items) ? data.items : [];
+              const history = Array.isArray(data.history) ? data.history : [];
+              const events = Array.isArray(data.events) ? data.events : [];
+              const itemsHtml = items.length ? (() => {
+                let html = '<table class="detail-items-table"><thead><tr><th>Item</th><th>Cant</th><th>Precio</th><th>Total</th></tr></thead><tbody>';
+                for (const it of items) {
+                  const q = Number(it.qty||0); const p = Number(it.unit_price||0);
+                  html += `<tr><td>${it.name||it.product_id||''}</td><td>${q}</td><td>${formatMoney(p)}</td><td>${formatMoney(q*p)}</td></tr>`;
+                }
+                html += '</tbody></table><p class="detail-summary">Total: $'+Number(order.total||0)+'</p>';
+                return html;
+              })() : '<p class="small">Sin ítems registrados.</p>';
+              const tipEnabledDetailRaw = getTipPref(order.id);
+              const tipEnabledDetail = hasTipPref(order.id) ? tipEnabledDetailRaw : currentTipDefaultEnabled;
+              const tipAmt = computeTipAmount(order.total);
+              const totalWithTip = Number(order.total || 0) + tipAmt;
+              const tipBlock = `
+                <div class="tip-section" style="margin-top:8px;">
+                <label class="small"><input type="checkbox" class="tip-detail-toggle" ${tipEnabledDetail?'checked':''}> Aplicar propina (${currentTipPercent}%)</label>
+                  <div class="small" style="margin-top:4px;">
+                    Propina (${currentTipPercent}%): <span class="tip-amount">${formatMoney(tipAmt)}</span>
+                  </div>
+                  <p class="detail-summary">Total con propina: <span class="tip-total">${formatMoney(tipEnabledDetail ? totalWithTip : order.total)}</span></p>
+                </div>
+              `;
+              const timeline = history.length ? `
+                <h3>Historial de estados</h3>
+                <div>
+                  ${history.map(h => `<div class="small">${h.status} — ${formatARDate(h.changed_at)}</div>`).join('')}
+                </div>
+              ` : '';
+              const cancelReason = (() => {
+                for (let i = events.length - 1; i >= 0; i--) {
+                  const ev = events[i] || {};
+                  if (String(ev.event_type || '').toLowerCase() === 'canceled') {
+                    let meta = {};
+                    try { meta = JSON.parse(ev.payload_json || '{}'); } catch (_) {}
+                    const r = String((meta && meta.reason) || '').trim();
+                    if (r) return r;
+                  }
+                }
+                return '';
+              })();
+              let totalTimeHtml = '';
+              const box = document.createElement('div');
+              const statusLabelText = (order.order_type === 'mesa' && order.status === 'en_camino') ? 'mesa' : order.status;
+              box.innerHTML = `
+                <p><strong>Pedido #${order.id}</strong></p>
+                <span id="detail-order-id" style="display:none;">${order.id}</span>
+                <p>Establecimiento: ${order.tenant_slug}</p>
+                <p>Fecha: ${formatARDate(order.created_at)}</p>
+                <p>Tipo: ${order.order_type}</p>
+                <p>Destino: ${order.order_type === 'mesa' ? `<span class="pill pill-mesa">Mesa ${order.table_number || ''}</span>` : destino}</p>
+                ${telefono ? `<p>Teléfono de contacto: ${telefono}</p>` : ''}
+                <p>Estado: ${statusLabelText}</p>
+                ${order.status === 'cancelado' && cancelReason ? `<p>Motivo de cancelación: ${cancelReason}</p>` : ''}
+                ${order.order_notes ? `<p>Detalle adicional: ${order.order_notes}</p>` : ''}
+                ${itemsHtml}
+                ${tipBlock}
+                ${timeline}
+                ${totalTimeHtml}
+              `;
+              const modalBody = document.getElementById('detail-modal-body');
+              const modal = document.getElementById('order-detail-modal');
+              const closeBtn = document.getElementById('detail-modal-close');
+              modalBody.innerHTML = '';
+              modalBody.appendChild(box);
+              const prevFocus = document.activeElement;
+              modal.classList.add('active');
+              modal.setAttribute('aria-hidden','false');
+              document.body.style.overflow = 'hidden';
+              const tipToggleDetail = box.querySelector('.tip-detail-toggle');
+              const tipAmtEl = box.querySelector('.tip-amount');
+              const tipTotalEl = box.querySelector('.tip-total');
+              const baseTotalDet = Number(order.total || 0);
+              const refreshDetailTip = () => {
+                const enabled = tipToggleDetail.checked;
+                const tip = computeTipAmount(baseTotalDet);
+                tipAmtEl.textContent = formatMoney(tip);
+                tipTotalEl.textContent = formatMoney(enabled ? (baseTotalDet + tip) : baseTotalDet);
+              };
+              tipToggleDetail.addEventListener('change', () => {
+                setTipPref(order.id, tipToggleDetail.checked);
+                refreshDetailTip();
+              });
+              refreshDetailTip();
+              const overlay = modal.querySelector('.kds-modal-overlay');
+              if (overlay) overlay.onclick = function(){ closeBtn?.click(); };
+              if (closeBtn) closeBtn.onclick = function(){
+                modal.classList.remove('active');
+                modal.setAttribute('aria-hidden','true');
+                modalBody.innerHTML = '';
+                document.body.style.overflow = 'auto';
+                try { if (prevFocus && typeof prevFocus.focus === 'function') prevFocus.focus(); } catch(_) {}
+              };
+              document.addEventListener('keydown', function(e){ if (e.key==='Escape' && modal.classList.contains('active')) closeBtn?.click(); });
+              const printBtn = document.getElementById('detail-modal-print');
+              if (printBtn) printBtn.onclick = async function(){
+                document.body.classList.add('print-modal');
+                try { await logOrderEvent(order.id, 'printed', { copies: 1 }); } catch(_) {}
+                window.print();
+              };
+            } catch (e) {
+              alert('No se pudo cargar el detalle.');
+            }
           });
         }
       }
@@ -1192,7 +2130,7 @@
       if (window.archivedFrom) url.searchParams.set('from', window.archivedFrom);
       if (window.archivedTo) url.searchParams.set('to', window.archivedTo);
       if (archDateModeSelect && archDateModeSelect.value) url.searchParams.set('date_field', archDateModeSelect.value);
-      const resp = await fetch(url.toString());
+      const resp = await wFetch(url.toString());
       if (!resp.ok) return null;
       return resp.json();
     }
@@ -1358,6 +2296,14 @@
           } else {
             dot.style.background = '#bbb';
           }
+          const row = n.closest('tr');
+          if (row) {
+            if (mins >= thresholds.critical) {
+              row.classList.add('card-overdue');
+            } else {
+              row.classList.remove('card-overdue');
+            }
+          }
         }
       };
       update();
@@ -1368,9 +2314,14 @@
       if (isLoading) return;
       isLoading = true;
       try {
+        if (!dailyResetOverride) {
+          const newBound = computeDailyResetUTC();
+          if (newBound !== dailyResetFrom) applyDailyReset(newBound);
+        }
         const data = await fetchOrders();
         await renderOrders(data);
         await renderMetricsBox();
+        if (!cashCollapsed && !isCashEditing) await renderCashBox();
       } catch (e) {
         tbody.innerHTML = '<tr><td colspan="7">Error al cargar pedidos</td></tr>';
       } finally {
@@ -1388,7 +2339,32 @@
       currentOffset = 0;
       load();
       renderMetricsBox();
+      if (!cashCollapsed) renderCashBox();
     });
+    const toggleBtn = document.getElementById('toggle-cash');
+    if (toggleBtn) toggleBtn.onclick = async () => {
+      cashCollapsed = !cashCollapsed;
+      const btn = document.getElementById('toggle-cash');
+      const box = document.getElementById('cash-box');
+      if (btn && box) {
+        btn.textContent = cashCollapsed ? 'Mostrar Caja' : 'Ocultar Caja';
+        box.style.display = cashCollapsed ? 'none' : 'grid';
+      }
+      if (!cashCollapsed) await renderCashBox();
+    };
+    const historyBox = document.getElementById('cash-history');
+    if (historyBox) historyBox.style.display = cashHistoryCollapsed ? 'none' : 'block';
+    const toggleHist = document.getElementById('toggle-cash-history');
+    if (toggleHist) toggleHist.onclick = async () => {
+      cashHistoryCollapsed = !cashHistoryCollapsed;
+      const btn = document.getElementById('toggle-cash-history');
+      const box = document.getElementById('cash-history');
+      if (btn && box) {
+        btn.textContent = cashHistoryCollapsed ? 'Mostrar Historial' : 'Ocultar Historial';
+        box.style.display = cashHistoryCollapsed ? 'none' : 'block';
+      }
+      if (!cashHistoryCollapsed) await renderCashHistory();
+    };
     document.getElementById('search-input').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         document.getElementById('search-btn').click();
@@ -1420,7 +2396,7 @@
       url.searchParams.set('offset', currentOffset);
       window.open(url.toString(), '_blank');
     });
-    document.getElementById('print-btn').addEventListener('click', () => window.print());
+    
     if (archiveDeliveredAllBtn) {
       archiveDeliveredAllBtn.addEventListener('click', async () => {
         try {
@@ -1466,7 +2442,7 @@
     }
 
     async function fetchCSRF() {
-      const resp = await fetch(new URL('/api/auth/csrf', API_BASE).toString());
+      const resp = await wFetch(new URL('/api/auth/csrf', API_BASE).toString());
       if (!resp.ok) throw new Error('No se pudo obtener CSRF');
       const data = await resp.json();
       csrfToken = String(data.token || '');
@@ -1474,7 +2450,7 @@
 
     async function ensureAuth() {
       try {
-        const resp = await fetch(new URL('/api/auth/me', API_BASE).toString());
+        const resp = await wFetch(new URL('/api/auth/me', API_BASE).toString());
         const data = await resp.json();
         if (data && data.authenticated) {
           isAuthed = true;
@@ -1485,11 +2461,31 @@
       } catch (_) {}
       isAuthed = false;
       document.getElementById('login-box').style.display = 'block';
+      setAuthUI();
       return false;
     }
 
     async function init() {
+      try {
+        const href = String(window.location && window.location.href || '');
+        const url = new URL(href);
+        const forceLogout = url.searchParams.get('logout') || url.searchParams.get('forceLogin');
+        if (forceLogout) {
+          try { await wFetch(new URL('/api/auth/logout', API_BASE).toString(), { method: 'POST' }); } catch (_) {}
+          isAuthed = false;
+          csrfToken = '';
+          const box = document.getElementById('login-box');
+          if (box) box.style.display = 'block';
+        }
+      } catch (_) {}
       await ensureAuth();
+      setAuthUI();
+      if (isAuthed) {
+        applyDailyReset(computeDailyResetUTC());
+      }
+      if (!isAuthed) {
+        return;
+      }
       await populateTenantsList();
       await loadSlaThresholds();
       await loadTenantPrefs();
@@ -1498,27 +2494,175 @@
     }
 
     document.getElementById('login-btn').addEventListener('click', async () => {
-      const u = document.getElementById('login-user').value.trim();
-      const p = document.getElementById('login-pass').value;
-      const resp = await fetch(new URL('/api/auth/login', API_BASE).toString(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: u, password: p })
-      });
-      if (!resp.ok) {
-        document.getElementById('login-error').style.display = 'block';
-        return;
+      const btn = document.getElementById('login-btn');
+      const uEl = document.getElementById('login-user');
+      const pEl = document.getElementById('login-pass');
+      const errEl = document.getElementById('login-error');
+      const u = (uEl && uEl.value || '').trim();
+      const p = pEl ? pEl.value : '';
+      try {
+        if (btn) btn.disabled = true;
+        let resp = await wFetch(new URL('/api/auth/login', API_BASE).toString(), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: u, password: p })
+        });
+        if (!resp.ok && u === 'admin' && p === 'admin123') {
+          resp = await wFetch(new URL('/api/auth/login_dev', API_BASE).toString(), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: u })
+          });
+        }
+        if (!resp.ok) { if (errEl) errEl.style.display = 'block'; return; }
+        if (errEl) errEl.style.display = 'none';
+        await fetchCSRF();
+        const remEl = document.getElementById('login-remember');
+        if (remEl && remEl.checked) {
+          try {
+            localStorage.setItem(LOGIN_KEY_USER, u);
+            localStorage.setItem(LOGIN_KEY_PASS, p);
+            localStorage.setItem(LOGIN_KEY_REM, '1');
+          } catch (_) {}
+        } else {
+          try {
+            localStorage.removeItem(LOGIN_KEY_PASS);
+            localStorage.removeItem(LOGIN_KEY_USER);
+            localStorage.setItem(LOGIN_KEY_REM, '0');
+          } catch (_) {}
+        }
+        isAuthed = true;
+        const box = document.getElementById('login-box');
+        if (box) box.style.display = 'none';
+        document.body.classList.remove('show-login');
+        setAuthUI();
+        await loadSlaThresholds();
+        await load();
+        refreshTimer = setInterval(loadOrdersSafe, 10000);
+      } catch (_) {
+        if (errEl) errEl.style.display = 'block';
+      } finally {
+        if (btn) btn.disabled = false;
       }
-      document.getElementById('login-error').style.display = 'none';
-      await fetchCSRF();
-      isAuthed = true;
-      document.getElementById('login-box').style.display = 'none';
-      await loadSlaThresholds();
-      await load();
-      refreshTimer = setInterval(loadOrdersSafe, 10000);
+    });
+
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', async () => {
+        try { await wFetch(new URL('/api/auth/logout', API_BASE).toString(), { method: 'POST' }); } catch (_) {}
+        isAuthed = false;
+        csrfToken = '';
+        document.getElementById('login-box').style.display = 'block';
+        document.body.classList.add('show-login');
+        setAuthUI();
+      });
+    }
+
+    if (loginOpenBtn) {
+      loginOpenBtn.addEventListener('click', () => {
+        const box = document.getElementById('login-box');
+        if (box) {
+          box.style.display = 'block';
+          document.body.classList.add('show-login');
+          try { box.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (_) {}
+          const u = document.getElementById('login-user');
+          try { u && u.focus(); } catch (_) {}
+        }
+      });
+    }
+
+    const tryLogin = async () => {
+      const evt = new Event('click');
+      document.getElementById('login-btn')?.dispatchEvent(evt);
+    };
+    document.getElementById('login-user')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryLogin(); });
+    document.getElementById('login-pass')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryLogin(); });
+    document.addEventListener('click', async (e) => {
+      const t = e.target;
+      if (t && (t.id === 'login-btn' || (t.closest && t.closest('#login-btn')))) {
+        // handled by primary listener above
+      }
     });
 
     document.addEventListener('DOMContentLoaded', init);
+    window.addEventListener('afterprint', () => {
+      document.body.classList.remove('print-modal');
+      const modal = document.getElementById('order-detail-modal');
+      if (modal && modal.classList.contains('active')) {
+        modal.classList.remove('active');
+        modal.setAttribute('aria-hidden','true');
+        const modalBody = document.getElementById('detail-modal-body');
+        if (modalBody) modalBody.innerHTML = '';
+        document.body.style.overflow = 'auto';
+      }
+      try {
+        const idEl = document.getElementById('detail-order-id');
+        const oid = idEl ? Number(idEl.textContent || 0) : NaN;
+        if (!Number.isNaN(oid) && oid > 0) { logOrderEvent(oid, 'printed', { via: 'afterprint' }); }
+      } catch (_) {}
+    });
+
+    function showStatusTooltipFor(el) {
+      const text = el.getAttribute('data-tip') || el.getAttribute('aria-label') || '';
+      if (!text) return;
+      const tip = document.getElementById('status-tooltip');
+      if (!tip) return;
+      tip.textContent = text;
+      tip.classList.add('active');
+      const rect = el.getBoundingClientRect();
+      const tx = Math.round(window.scrollX + rect.left + (rect.width/2));
+      const ty = Math.round(window.scrollY + rect.top);
+      tip.style.left = (tx - (tip.offsetWidth/2)) + 'px';
+      tip.style.top = (ty - tip.offsetHeight - 10) + 'px';
+    }
+    function hideStatusTooltip() {
+      const tip = document.getElementById('status-tooltip');
+      if (!tip) return;
+      tip.classList.remove('active');
+    }
+    async function askConfirm(message) {
+      return new Promise((resolve) => {
+        const modal = document.getElementById('confirm-modal');
+        const overlay = modal.querySelector('.kds-modal-overlay');
+        const yesBtn = document.getElementById('confirm-yes');
+        const noBtn = document.getElementById('confirm-no');
+        const msgEl = document.getElementById('confirm-message');
+        msgEl.textContent = message;
+        modal.classList.add('active');
+        modal.setAttribute('aria-hidden','false');
+        document.body.style.overflow = 'hidden';
+        const prevFocus = document.activeElement;
+        let focusables = Array.from(modal.querySelectorAll('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])')).filter(x => !x.hasAttribute('disabled'));
+        let first = focusables[0];
+        let last = focusables[focusables.length - 1];
+        const onTrap = (e) => {
+          if (e.key === 'Tab') {
+            if (!focusables.length) return;
+            if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+            else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+          }
+        };
+        document.addEventListener('keydown', onTrap);
+        try { yesBtn.focus(); } catch(_) {}
+        const cleanup = () => {
+          modal.classList.remove('active');
+          modal.setAttribute('aria-hidden','true');
+          document.body.style.overflow = 'auto';
+          document.removeEventListener('keydown', onTrap);
+          try { if (prevFocus && typeof prevFocus.focus === 'function') prevFocus.focus(); } catch(_) {}
+          overlay.removeEventListener('click', onNo);
+          document.removeEventListener('keydown', onKey);
+          yesBtn.onclick = null;
+          noBtn.onclick = null;
+        };
+        const onYes = () => { cleanup(); resolve(true); };
+        const onNo = () => { cleanup(); resolve(false); };
+        const onKey = (e) => { if (e.key === 'Escape') onNo(); };
+        overlay.addEventListener('click', onNo);
+        document.addEventListener('keydown', onKey);
+        yesBtn.onclick = onYes;
+        noBtn.onclick = onNo;
+      });
+    }
 
     // Cargar archivados bajo demanda al abrir el panel correspondiente
     const archivedBox = document.getElementById('archived-box');
@@ -1591,6 +2735,11 @@
         window.open(url.toString(), '_blank');
       });
     }
+    if (invReloadBtn) {
+      invReloadBtn.addEventListener('click', async () => {
+        try { await renderInventory(); } catch (_) { alert('No se pudo cargar inventario'); }
+      });
+    }
     if (delPageSizeSelect) {
       delPageSizeSelect.addEventListener('change', async () => {
         deliveredLimit = parseInt(delPageSizeSelect.value, 10) || 50;
@@ -1642,10 +2791,236 @@
     async function renderMetricsBox() {
       try {
         const m = await fetchMetrics();
-        if (!m) return;
         const el = document.getElementById('metrics');
-        el.textContent = `Activos: ${m.active_count} · Entregados: ${m.delivered_count} · Cancelados: ${m.canceled_count} · Total entregados: $${m.delivered_total} · Propina(10%): $${m.delivered_tip_10} · Total c/propina: $${m.delivered_total_with_tip}`;
+        if (!m) { if (el) el.innerHTML = '<div class="small" style="color:#c62828;">No se pudieron cargar las métricas en el rango actual</div>'; return; }
+        const rangeFrom = currentFrom ? formatARDate(currentFrom) : '';
+        const rangeTo = currentTo ? formatARDate(currentTo) : '';
+        const rangeLine = (rangeFrom || rangeTo) ? `<div class="small" style="margin-bottom:6px; color:#555;">Rango: ${rangeFrom || '-'} → ${rangeTo || 'ahora'}</div>` : '';
+        el.innerHTML = `
+          ${rangeLine}
+          <div class="metric-card">
+            <div class="metric-label">Activos</div>
+            <div class="metric-value">${m.active_count}</div>
+            <div class="metric-sub">Pedidos en curso</div>
+          </div>
+          <div class="metric-card delivered">
+            <div class="metric-label">Entregados</div>
+            <div class="metric-value">${m.delivered_count}</div>
+            <div class="metric-sub">Hoy en el rango seleccionado</div>
+          </div>
+          <div class="metric-card canceled">
+            <div class="metric-label">Cancelados</div>
+            <div class="metric-value">${m.canceled_count}</div>
+            <div class="metric-sub">Pedidos cancelados</div>
+          </div>
+          <div class="metric-card money">
+            <div class="metric-label">Total entregados</div>
+            <div class="metric-value">$${m.delivered_total}</div>
+            <div class="metric-sub">Propina(10%): $${m.delivered_tip_10} · Total c/propina: $${m.delivered_total_with_tip}</div>
+          </div>
+        `;
+        
+        const btn = document.getElementById('toggle-cash');
+        const box = document.getElementById('cash-box');
+        if (btn && box) {
+          btn.textContent = cashCollapsed ? 'Mostrar Caja' : 'Ocultar Caja';
+          box.style.display = cashCollapsed ? 'none' : 'grid';
+        }
       } catch (_) {}
+    }
+
+    async function fetchCashSession() {
+      const slug = tenantInput.value.trim() || defaultSlug();
+      const url = new URL('/api/cash/session', API_BASE);
+      url.searchParams.set('tenant_slug', slug);
+      const resp = await wFetch(url.toString());
+      if (!resp.ok) return { active: false };
+      return resp.json();
+    }
+    async function openCash() {
+      const slug = tenantInput.value.trim() || defaultSlug();
+      const amtEl = document.getElementById('cash-open-amount');
+      const noteEl = document.getElementById('cash-open-notes');
+      const opening_amount = parseInt(amtEl && amtEl.value || '0', 10) || 0;
+      const notes = noteEl ? String(noteEl.value || '').trim() : '';
+      try { await ensureAuth(); } catch(_) {}
+      if (!isAuthed || !csrfToken) {
+        alert('Debes iniciar sesión para abrir caja.');
+        const box = document.getElementById('login-box'); if (box) box.style.display = 'block';
+        return false;
+      }
+      const resp = await fetch(new URL('/api/cash/open', API_BASE).toString(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+        body: JSON.stringify({ tenant_slug: slug, opening_amount, notes })
+      });
+      if (!resp.ok) {
+        try {
+          const err = await resp.json();
+          alert(String(err.error || 'No se pudo abrir la caja'));
+        } catch(_) { alert('No se pudo abrir la caja'); }
+        return false;
+      }
+      await renderCashBox();
+      return true;
+    }
+    async function closeCash() {
+      const slug = tenantInput.value.trim() || defaultSlug();
+      const amtEl = document.getElementById('cash-close-amount');
+      const noteEl = document.getElementById('cash-close-notes');
+      const closing_amount = parseInt(amtEl && amtEl.value || '0', 10) || 0;
+      const notes = noteEl ? String(noteEl.value || '').trim() : '';
+      try { await ensureAuth(); } catch(_) {}
+      if (!isAuthed || !csrfToken) {
+        alert('Debes iniciar sesión para cerrar caja.');
+        const box = document.getElementById('login-box'); if (box) box.style.display = 'block';
+        return false;
+      }
+      const resp = await fetch(new URL('/api/cash/close', API_BASE).toString(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+        body: JSON.stringify({ tenant_slug: slug, closing_amount, notes })
+      });
+      if (!resp.ok) {
+        try {
+          const err = await resp.json();
+          alert(String(err.error || 'No se pudo cerrar la caja'));
+        } catch(_) { alert('No se pudo cerrar la caja'); }
+        return false;
+      }
+      const data = await resp.json();
+      try {
+        const s = data.summary || {};
+        alert(`Cierre de caja\nTotal ventas: $${s.delivered_total||0}\nEntradas: $${s.entradas||0} · Salidas: $${s.salidas||0}\nCaja teórica: $${s.theoretical_cash||0}\nMonto contado: $${closing_amount}\nDiferencia: $${s.closing_diff||0}`);
+      } catch (_) {}
+      cashCloseDraft = { amount: undefined, notes: '' };
+      await renderCashBox();
+      return true;
+    }
+    async function renderCashBox() {
+      try {
+        if (cashCollapsed) return;
+        const box = document.getElementById('cash-box');
+        if (!box) return;
+        const data = await fetchCashSession();
+        if (!data || !data.active) {
+          box.innerHTML = `
+            <div class="cash-card">
+              <div class="cash-title">Apertura de caja</div>
+              <div class="cash-row">
+                <label>Monto inicial en $ <input id="cash-open-amount" type="number" min="0" step="1" value="${cashOpenDraft.amount || 0}" /> <span id="cash-open-words" class="small"></span></label>
+              </div>
+              <div class="cash-row">
+                <textarea id="cash-open-notes" placeholder="Notas">${cashOpenDraft.notes || ''}</textarea>
+              </div>
+              <div class="cash-row">
+                <button id="cash-open-btn">Abrir caja</button>
+              </div>
+            </div>
+          `;
+          const btn = document.getElementById('cash-open-btn');
+          if (btn) btn.onclick = async () => { btn.disabled = true; try { await openCash(); } finally { btn.disabled = false; } };
+          const amt = document.getElementById('cash-open-amount');
+          const note = document.getElementById('cash-open-notes');
+          const wordsEl = document.getElementById('cash-open-words');
+          const updateWords = () => {
+            const v = parseInt(amt.value||'0',10)||0;
+            cashOpenDraft.amount = v;
+            if (wordsEl) wordsEl.textContent = `(${numberToWordsEs(v)} ${v===1?'peso':'pesos'})`;
+          };
+          if (amt) {
+            amt.addEventListener('input', updateWords);
+            amt.addEventListener('focus', () => { isCashEditing = true; });
+            amt.addEventListener('blur', () => { setTimeout(() => { const ae = document.activeElement; isCashEditing = ['cash-open-amount','cash-open-notes','cash-close-amount','cash-close-notes'].includes(ae && ae.id); }, 10); });
+            updateWords();
+          }
+          if (note) {
+            note.addEventListener('input', () => { cashOpenDraft.notes = String(note.value||''); });
+            note.addEventListener('focus', () => { isCashEditing = true; });
+            note.addEventListener('blur', () => { setTimeout(() => { const ae = document.activeElement; isCashEditing = ['cash-open-amount','cash-open-notes','cash-close-amount','cash-close-notes'].includes(ae && ae.id); }, 10); });
+          }
+          return;
+        }
+        const s = data.session || {};
+        const sum = data.summary || {};
+        box.innerHTML = `
+          <div class="cash-card">
+            <div class="cash-title">Caja abierta</div>
+            <div class="small">Abierta: ${formatARDate(s.opened_at || '')} · Por: ${s.opened_by || ''}</div>
+            <div class="small">Monto inicial: $${s.opening_amount || 0}</div>
+            <div class="small">Entregados: ${sum.delivered_count || 0} · Total ventas: $${sum.delivered_total || 0}</div>
+            <div class="small">Entradas: $${sum.entradas || 0} · Salidas: $${sum.salidas || 0}</div>
+            <div class="small">Caja teórica: $${sum.theoretical_cash || (s.opening_amount||0)}</div>
+            <div class="cash-row">
+              <label>Monto de cierre <input id="cash-close-amount" type="number" min="0" step="1" value="${(cashCloseDraft.amount !== undefined && cashCloseDraft.amount !== null) ? cashCloseDraft.amount : (sum.theoretical_cash || 0)}" /></label>
+            </div>
+            <div class="cash-row">
+              <textarea id="cash-close-notes" placeholder="Notas de cierre">${cashCloseDraft.notes || ''}</textarea>
+            </div>
+            <div class="small" id="cash-close-diff" style="margin-top:4px;">Diferencia estimada: $0</div>
+            <div class="cash-row">
+              <button id="cash-close-btn">Cerrar caja</button>
+            </div>
+          </div>
+        `;
+        const cbtn = document.getElementById('cash-close-btn');
+        if (cbtn) cbtn.onclick = async () => { cbtn.disabled = true; try { await closeCash(); } finally { cbtn.disabled = false; } };
+        const amtInput = document.getElementById('cash-close-amount');
+        const noteClose = document.getElementById('cash-close-notes');
+        const diffEl = document.getElementById('cash-close-diff');
+        const baseTheo = Number(sum.theoretical_cash || 0);
+        if (amtInput && diffEl) {
+          const refresh = () => {
+            const v = parseInt(amtInput.value||'0',10)||0;
+            cashCloseDraft.amount = v;
+            const d = v - baseTheo;
+            diffEl.textContent = `Diferencia estimada: $${d}`;
+          };
+          amtInput.addEventListener('input', refresh);
+          amtInput.addEventListener('focus', () => { isCashEditing = true; });
+          amtInput.addEventListener('blur', () => { setTimeout(() => { const ae = document.activeElement; isCashEditing = ['cash-open-amount','cash-open-notes','cash-close-amount','cash-close-notes'].includes(ae && ae.id); }, 10); });
+          refresh();
+        }
+        if (noteClose) {
+          noteClose.addEventListener('input', () => { cashCloseDraft.notes = String(noteClose.value||''); });
+          noteClose.addEventListener('focus', () => { isCashEditing = true; });
+          noteClose.addEventListener('blur', () => { setTimeout(() => { const ae = document.activeElement; isCashEditing = ['cash-open-amount','cash-open-notes','cash-close-amount','cash-close-notes'].includes(ae && ae.id); }, 10); });
+        }
+      } catch (_) {}
+    }
+
+    async function fetchCashSessions() {
+      const slug = tenantInput.value.trim() || defaultSlug();
+      const url = new URL('/api/cash/sessions', API_BASE);
+      url.searchParams.set('tenant_slug', slug);
+      url.searchParams.set('limit', '50');
+      url.searchParams.set('offset', '0');
+      const resp = await wFetch(url.toString());
+      if (!resp.ok) return { sessions: [] };
+      return resp.json();
+    }
+    async function renderCashHistory() {
+      if (cashHistoryCollapsed) return;
+      const box = document.getElementById('cash-history');
+      if (!box) return;
+      const data = await fetchCashSessions();
+      const rows = Array.isArray(data.sessions) ? data.sessions : [];
+      let html = '<div class="history-card"><div class="history-actions"><div class="cash-title">Historial de cierres</div><button id="cash-history-export">Exportar CSV</button></div>';
+      html += '<table class="history-table"><thead><tr><th>Apertura</th><th>Cierre</th><th>Inicial</th><th>Contado</th><th>Ventas</th><th>Entradas</th><th>Salidas</th><th>Teórica</th><th>Diferencia</th><th>Cerró</th></tr></thead><tbody>';
+      for (const s of rows) {
+        const sum = s.summary || {};
+        html += `<tr><td>${formatARDate(s.opened_at||'')}</td><td>${formatARDate(s.closed_at||'')}</td><td>$${s.opening_amount||0}</td><td>$${s.closing_amount||0}</td><td>$${sum.delivered_total||0}</td><td>$${sum.entradas||0}</td><td>$${sum.salidas||0}</td><td>$${sum.theoretical_cash||0}</td><td>$${sum.closing_diff||0}</td><td>${s.closed_by||''}</td></tr>`;
+      }
+      html += '</tbody></table></div>';
+      box.innerHTML = html;
+      const exp = document.getElementById('cash-history-export');
+      if (exp) exp.onclick = () => {
+        const slug = tenantInput.value.trim() || defaultSlug();
+        const url = new URL('/api/cash/sessions/export.csv', API_BASE);
+        url.searchParams.set('tenant_slug', slug);
+        // Export completo por defecto; puedes ajustar filtros propios aquí si se desea
+        window.open(url.toString(), '_blank');
+      };
     }
 
     async function loadSlaThresholds() {
@@ -1659,7 +3034,21 @@
         const w = Number(data.warning_minutes || 15);
         const c = Number(data.critical_minutes || 30);
         currentSlaThresholds = { warning: Math.max(1,w), critical: Math.max(w+1,c) };
+        if (slaWarnInput && slaCritInput) {
+          slaWarnInput.value = String(Math.max(1,w));
+          slaCritInput.value = String(Math.max(Math.max(1,w)+1,c));
+        }
       } catch (_) {}
+    }
+    async function logOrderEvent(orderId, type, meta) {
+      try {
+        const resp = await fetch(new URL(`/api/orders/${orderId}/events`, API_BASE).toString(), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+          body: JSON.stringify({ type, meta: meta || {} })
+        });
+        return resp.ok;
+      } catch (_) { return false; }
     }
   </script>
  </body>

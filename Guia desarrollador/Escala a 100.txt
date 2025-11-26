@@ -1,0 +1,5 @@
+Cómo escalar a 100 establecimientos
+
+- Cada establecimiento puede tener su tema en config/gastronomia.json dentro de themes , por ejemplo themes.<slug o nombre> .
+- En el HTML correspondiente, define data-theme="<clave-del-tema>" ; el loader aplicará la paleta.
+- Si necesitas que otra página de gastronomía use la misma arquitectura, sólo agrega data-theme y el script theme-loader.js .

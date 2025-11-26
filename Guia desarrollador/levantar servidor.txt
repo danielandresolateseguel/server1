@@ -1,0 +1,50 @@
+Builder with MCP
+
+Thought process
+
+Voy a revisar si main.py expone un servidor propio y, si no, iniciaré un servidor estático con Python.
+
+main.py 1 - 250
+
+Comienzo de desarrollo
+Auto-run Terminal
+
+python main.py -p 8000
+
+Thought
+
+Comienzo de desarrollo
+Auto-run Terminal
+
+python -m http.server 8000
+
+Preview Web Page
+ http://localhost:8000/index.html
+
+He levantado el servidor local y te explico cómo hacerlo manualmente paso a paso.
+
+Cómo lo inicié ahora
+
+- Usé Python para servir la carpeta del proyecto:
+  - Comando: python -m http.server 8000
+  - Carpeta: c:\Daniel Olate\Backup de proyecto\Comienzo de desarrollo
+  - Vista: http://localhost:8000/index.html (y puedes navegar a comercio1.html , gastronomia.html , etc.)
+Cómo hacerlo manualmente en tu equipo
+
+- Prerrequisitos:
+  - Tener Python 3 instalado. En Windows, puedes usar python o py -3 según tu configuración.
+- Pasos:
+  - Abrir PowerShell.
+  - Ir a la carpeta del proyecto: cd "c:\Daniel Olate\Backup de proyecto\Comienzo de desarrollo"
+  - Iniciar servidor estático:
+    - Opción A (rápida): python -m http.server 8000
+    - Opción B (usa tu script): python main.py -p 8000
+  - Abrir el navegador en http://localhost:8000/index.html
+  - Para detener el servidor: Ctrl + C en la terminal.
+Notas útiles
+
+- Puerto: Puedes cambiar 8000 por otro libre, p. ej. 8080 .
+- Cache busting: si no ves cambios de CSS, agrega ?v=3 al final, p. ej. http://localhost:8000/comercio1.html?v=3 .
+- Raíz del servidor:
+  - El comando python -m http.server sirve todo el contenido de la carpeta actual.
+  - El script main.py ya está configurado para servir desde la carpeta donde está el script y acepta -p para elegir puerto.

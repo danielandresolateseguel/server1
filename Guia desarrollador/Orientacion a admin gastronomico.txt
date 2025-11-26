@@ -1,0 +1,81 @@
+
+
+
+          
+Excelente. Propongo un plan de trabajo enfocado en gastronomía que cubra tanto la experiencia del cliente como la operativa del local, con entregables claros y una arquitectura simple y escalable en `Python + Flask` dentro de `main.py`.
+
+**Objetivo**
+- Facilitar pedidos de clientes (mesa y delivery) con un flujo rápido y claro.
+- Ordenar la operativa del local: recepción de pedidos, preparación (cocina), despacho/entrega y control de inventario.
+- Dejar base para pagos, notificaciones y reportes sin bloquear el MVP.
+
+**Usuarios y Alcance**
+- Cliente: ve menú, agrega al carrito, elige mesa/dirección, confirma pedido.
+- Caja/Administrador: recibe pedido, cambia estados, registra pago, controla inventario.
+- Cocina (KDS): ve órdenes por estado, marca “en preparación”, “listo”.
+- Reparto: ve pedidos “listos”, confirma “en camino”, “entregado”.
+
+**Fases de Implementación**
+- Fase 1 – MVP de Pedidos y KDS
+  - Frontend: mejorar `gastronomia.html` (categorías, modificadores, notas al pedido), mantener WhatsApp y sumar envío al backend.
+  - Backend: `main.py` con Flask (`/api/orders` alta, `/api/orders?status` listado, `/api/orders/{id}/status` cambio de estado).
+  - Persistencia: `SQLite` (simple, en archivo), con tablas `products`, `orders`, `order_items`.
+  - KDS: vista sencilla “Cocina” (listado de pedidos por estado).
+- Fase 2 – Inventario y Panel Admin
+  - Inventario: decremento de stock al confirmar; bloqueo cuando no hay stock.
+  - Panel admin: CRUD de menú (productos/categorías), gestión de estados, búsqueda/filtrado.
+  - Roles: login básico (admin/cocina) y permisos.
+- Fase 3 – Pagos y Envíos
+  - Pagos: integrar `MercadoPago` o `Stripe` (preferencia tuya), reflejar estado en la orden.
+  - Envíos: zonas/costos, método de entrega, guía simple; cálculo al checkout.
+- Fase 4 – Notificaciones y Reportes
+  - Notificaciones: email/WhatsApp en hitos (pedido recibido, listo, en camino, entregado).
+  - Reportes: ventas, productos más vendidos, tiempos de preparación, cancelaciones.
+
+**Arquitectura Técnica**
+- Frontend actual: `gastronomia.html` + `gastronomia.css` + `scrip.js`.
+- Backend: `main.py` con Flask (API REST); `SQLite` con `SQLAlchemy` o `sqlite3`.
+- Configuración: `config/gastronomia*.json` para branding y textos; extender para zonas de envío, etc.
+- Integración: `scrip.js` manda `POST` a `main.py` y opcionalmente abre WhatsApp con mensaje.
+
+**Modelo de Datos (inicial)**
+- `Product`: `id`, `name`, `price`, `category`, `stock`, `modifiers` (JSON), `active`.
+- `Order`: `id`, `customer_name`, `customer_phone`, `order_type` (`mesa`/`direccion`), `table_number` o `address`, `status` (`pendiente`, `preparacion`, `listo`, `en_camino`, `entregado`, `cancelado`), `total`, `payment_method`, `payment_status`, `created_at`.
+- `OrderItem`: `id`, `order_id`, `product_id`, `name`, `qty`, `unit_price`, `modifiers` (JSON), `notes`.
+- Futuro: `User` para roles; `DeliveryZone` si gestionamos costos variables.
+
+**Endpoints API (MVP)**
+- `POST /api/orders`: crea pedido. Payload con `order_type`, `mesa/direccion`, `items`, `total`, `contacto`.
+- `GET /api/orders?status=pending`: lista por estado.
+- `PATCH /api/orders/{id}/status`: cambia estado.
+- `GET /api/products`: lista menú para el panel.
+- `PATCH /api/products/{id}`: actualiza stock y precio (fase 2).
+- `POST /api/reports/daily`: exporta resumen diario (fase 4).
+
+**Flujo Operativo**
+- Cliente confirma: Frontend envía a `/api/orders`, backend guarda y responde con `order_code`.
+- KDS: muestra pedidos nuevos en “pendiente”; cocina marca “preparación” y “listo”.
+- Caja/Entrega: cambia a “en camino” y “entregado”.
+- Inventario: descuenta stock en “pendiente” o “preparación” según preferencia (lo definimos).
+- Notificaciones: opcionalmente dispara WhatsApp/email con plantillas configurables.
+
+**Cronograma Sugerido**
+- Semana 1: API base en `main.py`, alta/listado de pedidos, vista KDS básica, integración con `scrip.js`.
+- Semana 2: inventario y panel admin (listado, filtros, ediciones), roles simples.
+- Semana 3: pagos (proveedor elegido), envío/zona y cálculo de costos.
+- Semana 4: notificaciones y reportes; pulido UX y accesibilidad.
+
+**Requisitos y Preparación**
+- Entorno: `Python 3.10+`, instalar `Flask` y `SQLAlchemy` (`pip install flask sqlalchemy`).
+- Definir: numeración de mesas, formato de dirección, preferencia de proveedor de pago, política de stock (cuándo descuenta), zonas de envío.
+
+**Próximos Pasos**
+- Confirmar proveedor de pagos (`MercadoPago` vs `Stripe`) y decisión de cuándo descontar stock.
+- Si te parece, inicio implementando:
+  - Estructura básica de `main.py` con Flask y base `SQLite`.
+  - Endpoint `POST /api/orders` y listado `GET /api/orders`.
+  - Integración en `scrip.js` para enviar el pedido al backend y mostrar el código de orden.
+  - Vista KDS simple en una página nueva para cocina.
+
+Dime si estás de acuerdo con el enfoque y con los detalles de inventario y pagos; arranco con el backend mínimo en `main.py` y el enganche en `scrip.js`.
+        

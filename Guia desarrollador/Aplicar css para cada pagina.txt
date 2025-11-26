@@ -1,0 +1,92 @@
+Sí, el enfoque que aplicamos es sólido y escalable: sobreescribir variables de color con una clase de tema sólo en gastronomia-independiente.html y cargar un CSS exclusivo. Así mantienes aislamiento visual sin tocar el resto del proyecto.
+
+Por qué funciona bien
+
+- Usa variables ( --gastro-accent , --gastro-bg , etc.) ya presentes en gastronomia.css ; las overrides en body.sector-gastronomia.independiente-theme .
+- El CSS nuevo ( gastronomia-independiente.css ) se carga sólo en la página independiente.
+- El orden de carga garantiza la cascada: primero gastronomia.css , luego el override.
+¿Está bien tener varios CSS?
+
+- Sí, es una práctica común si se hace con criterio:
+  - Separación de responsabilidades: estilos base compartidos vs. overrides por página/tema.
+  - Cascada controlada: cargar overrides después del base, con selectores scopeados (ej. body.independiente-theme ).
+  - Performance: en desarrollo múltiples archivos están bien; en producción conviene agrupar/minificar para reducir solicitudes, o usar HTTP/2 que gestiona mejor múltiples recursos.
+- Cuidados:
+  - Mantener orden de import consistente para evitar “luchas” de especificidad.
+  - Evitar duplicar reglas; centraliza tokens en variables y limita overrides a variables y pocos ajustes.
+  - Cache: si el CSS independiente cambia más seguido, separarlo ayuda a invalidar cache sin tocar el CSS base.
+Alternativas según escala
+
+- Un solo CSS con temas por clase:
+  - Pro: menos solicitudes; alternas tema con una clase ( .theme-restoA , .theme-restoB ).
+  - Contras: el archivo crece y contiene temas que no se usan en cada página.
+- Theming dinámico vía configuración:
+  - Pro: no necesitas múltiples archivos; puedes leer config/gastronomia.json y aplicar colores con document.body.style.setProperty('--gastro-accent', '#...') .
+  - Contras: requiere JS temprano para evitar “flash” de colores por defecto; conviene inyectar las variables antes del primer render.
+Recomendación práctica
+
+- Para tu caso actual, mantener gastronomia-independiente.css es perfecto: claro, aislado y fácil de mantener.
+- Si piensas tener muchos locales con paletas distintas, te sugiero:
+  - Centralizar los tokens (nombres de variables) y aplicar paletas por JSON.
+  - Cargar una pequeña utilidad ( theme-loader.js ) que, al detectar la página, lea config/gastronomia.json y setee las variables en body.independiente-theme antes del paint.
+Si ya tienes una paleta definida (colores corporativos del local), pásame los hex para:
+
+- --gastro-accent
+- --gastro-accent-dark
+- --gastro-bg
+- --gastro-chip-bg
+- --gastro-chip-hover-bg
+- --gastro-chip-text
+Y lo dejo aplicado de forma independiente sin afectar el resto del sitio. ¿Quieres que lo conecte además a config/gastronomia.json para que se pueda cambiar sin tocar código?
+\n+Kit para comercios (independencia y sin parpadeo)
+\n+- Variables críticas inline en cada comercio (en <head>):
+\n+  <style>
+    :root {
+      /* Botones críticos: definen color desde el primer render */
+      --brand-button-bg: #000000;        /* color del comercio */
+      --brand-button-text: #ffffff;      /* contraste accesible */
+      --brand-button-hover-bg: #222222;  /* hover específico */
+      /* Opcional: fondos críticos para evitar flash (usar si se ve cambio) */
+      /* --brand-special-discounts-bg: linear-gradient(...); */
+      /* --brand-products-bg: linear-gradient(...); */
+      /* --brand-page-bg: linear-gradient(...); */
+    }
+  </style>
+\n+- JSON por comercio (config/<slug>.json):
+  - meta.branding.primaryColor, secondaryColor, buttonColor, buttonTextColor, borderColor, textColor
+  - meta.branding.backgrounds: page, productsSection, interestSection, specialDiscounts, modal, footer
+\n+- CSS con fallbacks (comercio.css):
+  - Usar var(--brand-..., fallback). Si el JSON no define, aplica el fallback (ej. el gradiente de Index).
+  - Sección productos: #menu-electronica.products.searchable-section { background: var(--brand-products-bg, transparent); }
+\n+- Loader (theme-loader.js):
+  - Mapea meta.branding y meta.branding.backgrounds a variables CSS.
+  - Limpia variables no definidas en JSON para que el fallback de CSS funcione.
+\n+- Flujo para nuevo comercio:
+  1) Copiar comercio-base.html y comercio-base.json a comercioN.html y config/comercioN.json.
+  2) Ajustar data-slug en <body> y valores en JSON.
+  3) Pegar el bloque <style> con las 3 variables críticas (botón) en el <head>.
+  4) Previsualizar para validar sin parpadeo de color.
+Actualización del kit (títulos)
+
+- Variable crítica de títulos:
+  - Añadir `--brand-title-color` al bloque `<style>` inline en el `<head>` para evitar FOUC en headings.
+- Configuración JSON:
+  - Incluir `meta.branding.titleColor` en `config/<slug>.json`.
+- CSS con fallback:
+  - Usar `var(--brand-title-color, var(--brand-primary))` en las reglas de títulos (ej. `.section-title`, `.special-discounts h2`).
+- theme-loader:
+  - Mapear `meta.branding.titleColor` a `--brand-title-color` y aplicar fallback al color primario si no está definido.
+
+Actualización del kit (categorías)
+
+- Variables críticas de categorías:
+  - `--brand-category-bg`, `--brand-category-text`, `--brand-category-border` para chips/filtros.
+  - `--brand-category-active-text` (color de texto cuando está activo)
+  - `--brand-category-bg-base` (fondo base del chip)
+  - `--brand-category-hover-bg` (fondo en hover)
+- Configuración JSON:
+  - Incluir `meta.branding.categoryColor`, `categoryTextColor`, `categoryActiveTextColor`, `categoryBorderColor`, `categoryBaseBg`, `categoryHoverBg`.
+- CSS con fallback:
+  - `.filter-btn` y `.filter-btn.active` usan `var(--brand-category-*, fallback)` y caen en el primario si no se define.
+- theme-loader:
+  - Mapear los campos de branding a las variables anteriores y limpiar si no existen para respetar fallbacks.

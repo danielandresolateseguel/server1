@@ -1,0 +1,5 @@
+- Fase 1: Accesibilidad rápida y UX (Escape, roles, aria-modal, prefers-reduced-motion).
+- Fase 2: Imágenes responsivas ( srcset / sizes ) y validación JSON Schema.
+- Fase 3: Modularización de scrip.js y adopción de ES Modules.
+- Fase 4: SEO y metadata; structured data.
+- Fase 5: Pipeline de calidad (tests, linter, pre-commit) y optimización de bundle.
