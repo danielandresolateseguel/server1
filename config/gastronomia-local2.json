@@ -2,6 +2,9 @@
   "meta": {
     "slug": "gastronomia-local2",
     "category": "gastronomia",
+    "admins": [
+      { "username": "admin2", "password": "local2" }
+    ],
     "branding": {
       "name": "Gastronomía Local 2",
       "contact": {

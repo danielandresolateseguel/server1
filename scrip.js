@@ -2989,7 +2989,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return map[cat] || (cat.charAt(0).toUpperCase() + cat.slice(1));
         }
 
-        function renderCatalogFromBusinessConfig() {
+        async function renderCatalogFromBusinessConfig() {
             const cfg = window.BusinessConfig;
             const grid = document.querySelector('#menu-gastronomia .products-grid');
             if (!cfg || !Array.isArray(cfg.catalog) || !grid) return;
@@ -3008,10 +3008,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
+            // Overrides desde API de productos
+            let overrides = {};
+            try {
+                const origin = window.location.origin || '';
+                const base = /^file:/i.test(origin) ? 'http://127.0.0.1:8000' : origin;
+                const slug = (document.body && document.body.dataset && (document.body.dataset.tenant || document.body.dataset.slug)) || getBusinessSlug() || '';
+                if (slug) {
+                    const u = new URL('/api/products', base);
+                    u.searchParams.set('tenant_slug', slug);
+                    const resp = await fetch(u.toString(), { credentials: 'include' });
+                    if (resp.ok) {
+                        const json = await resp.json();
+                        const arr = Array.isArray(json.products) ? json.products : [];
+                        arr.forEach(p => { overrides[p.id] = p; });
+                    }
+                }
+            } catch (_) {}
+
             const parts = catalog.map((p, idx) => {
                 const id = p.id || `prod-${idx+1}`;
                 const cats = (p.categories || []).join(', ');
-                const price = parseInt(p.price);
+                const ov = overrides[id] || {};
+                if (ov && ov.active === false) {
+                    return '';
+                }
+                const price = isFinite(parseInt(ov.price)) ? parseInt(ov.price) : parseInt(p.price);
+                const stockValRaw = ov && typeof ov.stock !== 'undefined' ? ov.stock : undefined;
+                const stockVal = isFinite(parseInt(stockValRaw)) ? parseInt(stockValRaw) : undefined;
+                const badgeHtml = (typeof stockVal !== 'undefined') ? (stockVal <= 0 ? '<span class="stock-badge out">Sin stock</span>' : (stockVal <= 5 ? '<span class="stock-badge low">Últimas unidades</span>' : '')) : '';
+                const btnDisabledAttr = (typeof stockVal !== 'undefined' && stockVal <= 0) ? 'disabled' : '';
                 const priceText = isFinite(price) ? `$${price.toLocaleString('es-AR')} ARS` : (p.priceText || '');
                 // Soportar claves imageSrc o image, y normalizar espacios
                 const rawImg = p.imageSrc || p.image || '';
@@ -3019,8 +3045,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Si no hay imagen, usar una segura para evitar espacios en blanco
                 const imgSrc = normalizedImg || 'Imagenes/asus-proart-p16.png';
                 const imgAlt = p.imageAlt || p.name || '';
-                const desc = p.description || '';
-                const name = p.name || `Producto ${idx+1}`;
+                const desc = (typeof ov.details === 'string' && ov.details) ? ov.details : (p.description || '');
+                const name = (typeof ov.name === 'string' && ov.name.trim()) ? ov.name : (p.name || `Producto ${idx+1}`);
                 return `
                 <div class="product-card searchable-item" id="${id}" data-food-category="${cats}">
                     <div class="product-image">
@@ -3029,9 +3055,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="product-info">
                         <h3>${name}</h3>
                         ${desc ? `<p class=\"product-description\">${desc}</p>` : ''}
+                        ${badgeHtml}
                         ${priceText ? `<p class=\"product-price\">${priceText}</p>` : ''}
-                        <button class="add-to-cart-btn" data-id="${id}" data-name="${name}" data-price="${isFinite(price) ? price : 0}">Añadir al carrito</button>
-                    </div>
+                        <button class="add-to-cart-btn" ${btnDisabledAttr} data-id="${id}" data-name="${name}" data-price="${isFinite(price) ? price : 0}">Añadir al carrito</button>
+                </div>
                 </div>`;
             });
 
@@ -3046,6 +3073,77 @@ document.addEventListener('DOMContentLoaded', function() {
             // Refrescar buscables y botones
             refreshSearchableItems();
             bindAddToCartEvents(grid);
+
+            // Segunda pasada: garantizar overrides desde API sobre el DOM final
+            try {
+                const origin = window.location.origin || '';
+                const base = /^file:/i.test(origin) ? 'http://127.0.0.1:8000' : origin;
+                const slug = (document.body && document.body.dataset && (document.body.dataset.tenant || document.body.dataset.slug)) || getBusinessSlug() || '';
+                if (slug) {
+                    const u = new URL('/api/products', base);
+                    u.searchParams.set('tenant_slug', slug);
+                    const resp = await fetch(u.toString(), { credentials: 'include' });
+                    if (resp.ok) {
+                        const json = await resp.json();
+                        const arr = Array.isArray(json.products) ? json.products : [];
+                        const map = {};
+                        arr.forEach(p => { map[p.id] = p; });
+                const cards = grid.querySelectorAll('.product-card');
+                cards.forEach(card => {
+                    let id = card.getAttribute('id') || '';
+                    const btn = card.querySelector('.add-to-cart-btn');
+                    let ov = map[id];
+                    if (!ov && btn) {
+                        const bid = btn.getAttribute('data-id') || '';
+                        ov = map[bid];
+                    }
+                    if (!ov && /^destacado(\d+)/.test(id)) {
+                        try {
+                            const n = id.match(/^destacado(\d+)/)[1];
+                            ov = map[`dest${n}`];
+                        } catch (_) {}
+                    }
+                    if (!ov) return;
+                    if (ov.active === false) { card.style.display = 'none'; return; }
+                    const h = card.querySelector('.product-info h3');
+                    if (h && typeof ov.name === 'string') h.textContent = String(ov.name || '');
+                    const desc = card.querySelector('.product-description');
+                    if (desc && typeof ov.details === 'string') desc.textContent = ov.details;
+                    const pr = card.querySelector('.product-price');
+                    const priceVal = isFinite(parseInt(ov.price)) ? parseInt(ov.price) : 0;
+                    if (pr) pr.textContent = `$${priceVal.toLocaleString('es-AR')} ARS`;
+                    if (btn) {
+                        btn.setAttribute('data-price', String(priceVal));
+                        btn.setAttribute('data-name', String(ov.name || ''));
+                        if (isFinite(parseInt(ov.stock)) && parseInt(ov.stock) <= 0) { btn.setAttribute('disabled',''); } else { btn.removeAttribute('disabled'); }
+                    }
+                    const info = card.querySelector('.product-info');
+                    if (info && isFinite(parseInt(ov.stock))) {
+                        let badge = card.querySelector('.stock-badge');
+                        const sval = parseInt(ov.stock);
+                        const txt = sval <= 0 ? 'Sin stock' : (sval <= 5 ? 'Últimas unidades' : '');
+                        const cls = sval <= 0 ? 'stock-badge out' : (sval <= 5 ? 'stock-badge low' : '');
+                        if (txt) {
+                            if (!badge) {
+                                badge = document.createElement('span');
+                                badge.className = cls;
+                                badge.textContent = txt;
+                                const priceEl = card.querySelector('.product-price');
+                                if (priceEl && priceEl.parentElement === info) info.insertBefore(badge, priceEl);
+                                else info.appendChild(badge);
+                            } else {
+                                badge.className = cls;
+                                badge.textContent = txt;
+                                badge.style.display = '';
+                            }
+                        } else if (badge) {
+                            badge.style.display = 'none';
+                        }
+                    }
+                });
+                    }
+                }
+            } catch (_) {}
         }
 
         function renderFiltersFromBusinessConfig() {
@@ -3116,8 +3214,8 @@ document.addEventListener('DOMContentLoaded', function() {
             applyCategoryFilter();
         }
 
-        function renderGastronomyFromBusinessConfig() {
-            renderCatalogFromBusinessConfig();
+        async function renderGastronomyFromBusinessConfig() {
+            await renderCatalogFromBusinessConfig();
             renderFiltersFromBusinessConfig();
             // Re-inicializar loaders para imágenes recién renderizadas
             try {
@@ -3128,6 +3226,7 @@ document.addEventListener('DOMContentLoaded', function() {
             } catch (e) {
                 // silencioso
             }
+            await applyOverridesToDocumentProducts();
         }
 
         // Render al estar lista la BusinessConfig
@@ -3136,6 +3235,53 @@ document.addEventListener('DOMContentLoaded', function() {
         if (window.BusinessConfig && window.BusinessConfig.__loaded) {
             renderGastronomyFromBusinessConfig();
         }
+
+        async function applyOverridesToDocumentProducts() {
+            try {
+                const origin = window.location.origin || '';
+                const base = /^file:/i.test(origin) ? 'http://127.0.0.1:8000' : origin;
+                const slug = (document.body && document.body.dataset && (document.body.dataset.tenant || document.body.dataset.slug)) || getBusinessSlug() || '';
+                if (!slug) return;
+                const u = new URL('/api/products', base);
+                u.searchParams.set('tenant_slug', slug);
+                const resp = await fetch(u.toString(), { credentials: 'include' });
+                if (!resp.ok) return;
+                const json = await resp.json();
+                const arr = Array.isArray(json.products) ? json.products : [];
+                const map = {};
+                arr.forEach(p => { map[p.id] = p; });
+                const cards = document.querySelectorAll('.product-card');
+                cards.forEach(card => {
+                    let id = card.getAttribute('id') || '';
+                    const btn = card.querySelector('.add-to-cart-btn');
+                    let ov = map[id];
+                    if (!ov && btn) {
+                        const bid = btn.getAttribute('data-id') || '';
+                        ov = map[bid];
+                    }
+                    if (!ov && /^destacado(\d+)/.test(id)) {
+                        try {
+                            const n = id.match(/^destacado(\d+)/)[1];
+                            ov = map[`dest${n}`];
+                        } catch (_) {}
+                    }
+                    if (!ov) return;
+                    if (ov.active === false) { card.style.display = 'none'; return; }
+                    const h = card.querySelector('.product-info h3');
+                    if (h && typeof ov.name === 'string') h.textContent = String(ov.name || '');
+                    const desc = card.querySelector('.product-description');
+                    if (desc && typeof ov.details === 'string') desc.textContent = ov.details;
+                    const pr = card.querySelector('.product-price');
+                    const priceVal = isFinite(parseInt(ov.price)) ? parseInt(ov.price) : 0;
+                    if (pr) pr.textContent = `$${priceVal.toLocaleString('es-AR')} ARS`;
+                    if (btn) {
+                        btn.setAttribute('data-price', String(priceVal));
+                        btn.setAttribute('data-name', String(ov.name || ''));
+                    }
+                });
+            } catch (_) {}
+        }
+        document.addEventListener('DOMContentLoaded', () => { applyOverridesToDocumentProducts(); });
     }
     
     // =============================

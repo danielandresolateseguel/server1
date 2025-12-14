@@ -7,7 +7,15 @@
   <link rel="stylesheet" href="index.css" />
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 16px; }
-    header { display:flex; align-items:center; justify-content:space-between; margin-bottom: 16px; }
+    header { display:flex; flex-direction: column; align-items: stretch; gap: 8px; margin-bottom: 16px; }
+    .header-main { display:flex; align-items:center; gap: 8px; width: 100%; }
+    .header-rest { display:flex; align-items:center; gap: 8px; flex: 1 1 auto; }
+    .header-end { display:flex; align-items:center; gap: 10px; margin-left: auto; }
+    @media (min-width: 961px) {
+      .header-main { flex-wrap: nowrap; }
+      .header-rest { order: 2; flex: 1 1 auto; }
+      .header-end { order: 3; margin-left: auto; }
+    }
     .controls { display:flex; flex-direction: column; gap:8px; }
     .toolbar { display:flex; gap:12px; align-items:center; flex-wrap: nowrap; }
     .subcontrols { display:flex; gap:12px; align-items:center; flex-wrap: wrap; width:100%; }
@@ -31,6 +39,7 @@
     .status-entregado { background:#6a1b9a; }
     .status-cancelado { background:#c62828; }
     table { width:100%; border-collapse: collapse; }
+    body { max-width: 100vw; overflow-x: hidden; }
     th, td { border-bottom: 1px solid #ddd; padding: 8px; text-align: left; }
     th { background: #f5f5f5; }
     .actions { display:flex; gap:8px; align-items:center; }
@@ -42,7 +51,7 @@
     .sla-warning { background:#ff9800; }
     .sla-critical { background:#f44336; }
     .sla-label { margin-left:4px; font-size:12px; color:#666; }
-    .delivered summary { cursor:pointer; padding:6px 10px; border:1px solid #ddd; border-radius:8px; background:#f9f9f9; }
+    .delivered summary, .inventory summary { cursor:pointer; padding:6px 10px; border:1px solid #ddd; border-radius:8px; background:#f9f9f9; }
     .canceled summary, .archived summary { cursor:pointer; padding:6px 10px; border:1px solid #ddd; border-radius:8px; background:#f9f9f9; }
     .pager { display:flex; gap:8px; align-items:center; margin-top:8px; }
     .phone-row { display:inline-flex; align-items:center; gap:6px; }
@@ -68,7 +77,7 @@
     :root { --kds-bg: #f5f7fb; --kds-card-bg: #ffffff; --kds-border: #e6e8ee; --kds-text: #2c3e50; --kds-accent: #4a6fa5; 
       --st-pendiente: #90caf9; --st-preparacion: #ffd54f; --st-listo: #81c784; --st-en_camino: #4fc3f7; --st-entregado: #b0bec5; --st-cancelado: #ef9a9a; --st-overdue: #f44336; }
     body { background: var(--kds-bg); color: var(--kds-text); }
-    header h1 { font-size: 1.4rem; font-weight: 600; color: #425b76; margin: 0; }
+    header h1 { font-size: 1.2rem; font-weight: 600; color: #425b76; margin: 0; }
     button { min-height: 32px; padding: 0 12px; border: none; border-radius: 8px; background: var(--kds-accent); color: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
     button:hover { background: #3f5f8a; }
     .controls input, .controls select { border: 1px solid var(--kds-border); border-radius: 8px; padding: 0 10px; background: #fff; }
@@ -82,7 +91,7 @@
     .pill-mesa { font-weight: 700; }
     .sla-label { font-weight: 600; color: #445; }
     .sla-dot { transition: background-color 0.2s ease; }
-    .delivered summary, .canceled summary, .archived summary { background: #f0f3f8; border-color: var(--kds-border); }
+    .delivered summary, .canceled summary, .archived summary, .inventory summary { background: #f0f3f8; border-color: var(--kds-border); }
     .actions button, .pager button { border-radius: 8px; }
     button { touch-action: manipulation; }
     .archived .copy-phone { background:#0f766e; color:#fff; }
@@ -97,16 +106,54 @@
     .metric-card.delivered .metric-value { color: #2e7d32; }
     .metric-card.canceled .metric-value { color: #c62828; }
     .metric-card.money .metric-value { color: #1f2937; }
+    body.no-auth header .toolbar, body.no-auth header .subcontrols { display: none !important; }
+    body.no-auth .header-rest, body.no-auth .header-end { display: none !important; }
+    body.no-auth .header-main > :not(h1) { display: none !important; }
     body.no-auth #top-controls, body.no-auth #metrics, body.no-auth #analytics, body.no-auth #cash-box, body.no-auth #cash-history, body.no-auth section.grid { display: none !important; }
     body.no-auth #login-box { display: block !important; }
     #cash-history { display:grid; grid-template-columns: 1fr; gap: 10px; }
     .history-card { background: var(--kds-card-bg); border: 1px solid var(--kds-border); border-radius: 12px; padding: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
     .history-table { width: 100%; border-collapse: collapse; }
     .history-table th, .history-table td { border: 1px solid var(--kds-border); padding: 6px 8px; font-size: 12px; }
+    .history-mobile { display: none; }
+    .delivered-mobile, .canceled-mobile, .inventory-mobile, .archived-mobile { display:none; }
+    @media (max-width: 720px) {
+      .history-table { display: none; }
+      .history-mobile { display: grid; grid-template-columns: 1fr; gap: 8px; }
+      .history-mobile .hm-row { background: #fff; border: 1px solid var(--kds-border); border-radius: 12px; padding: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+      .history-mobile .hm-header { font-weight: 700; color: #425b76; margin-bottom: 6px; }
+      .history-mobile .hm-meta { font-size: 12px; color: #6b7280; margin-bottom: 6px; }
+      .history-mobile .hm-metrics { display: grid; grid-template-columns: repeat(2, minmax(140px, 1fr)); gap: 6px; margin-bottom: 8px; }
+      .history-mobile .hm-metrics .item { font-size: 13px; color: #1f2937; }
+      .history-mobile .hm-actions { display: flex; gap: 8px; }
+      #delivered-box table { display:none; }
+      #delivered-box .delivered-mobile { display:grid; grid-template-columns: 1fr; gap:8px; }
+      #canceled-box table { display:none; }
+      #canceled-box .canceled-mobile { display:grid; grid-template-columns: 1fr; gap:8px; }
+      #inventory-box table { display:none; }
+      #inventory-box .inventory-mobile { display:grid; grid-template-columns: 1fr; gap:8px; }
+      #archived-box table { display:none; }
+      #archived-box .archived-mobile { display:grid; grid-template-columns: 1fr; gap:8px; }
+      .card { background:#fff; border:1px solid var(--kds-border); border-radius:12px; padding:10px; box-shadow:0 2px 8px rgba(0,0,0,0.05); }
+      .card .title { font-weight:700; color:#425b76; margin-bottom:4px; }
+      .card .meta { font-size:12px; color:#6b7280; margin-bottom:6px; }
+      .card .grid { display:grid; grid-template-columns: repeat(2, minmax(140px, 1fr)); gap:6px; }
+      .card .actions { display:flex; gap:8px; margin-top:8px; }
+    }
     .history-actions { display:flex; gap:8px; align-items:center; }
     #top-controls button { border: 1px solid var(--kds-border); border-radius: 8px; padding: 6px 10px; background:#fff; color:#2c3e50; }
     #top-controls button:hover { background:#f0f3f8; }
+    .eye-btn { display:inline-flex; align-items:center; justify-content:center; height: 24px; padding: 0 8px; border: 1px solid var(--kds-border); border-radius: 8px; background:#fff; color:#2c3e50; }
+    .eye-btn svg { width:16px; height:16px; display:block; }
+    @media (max-width: 720px) {
+      #top-controls { gap:6px; }
+      #top-controls .top-actions { gap:6px; }
+      #top-controls button { padding: 6px 8px; font-size: 13px; }
+    }
     #cash-box { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; }
+    #top-controls { display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap: nowrap; }
+    #top-controls .small { white-space: nowrap; }
+    #top-controls .top-actions { display:flex; align-items:center; gap:8px; flex-wrap: nowrap; }
     .cash-card { background: var(--kds-card-bg); border: 1px solid var(--kds-border); border-radius: 12px; padding: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
     .cash-title { font-weight: 700; color:#425b76; }
     .cash-row { display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap: wrap; }
@@ -132,29 +179,42 @@
     .auth-badge { display:inline-block; padding: 2px 10px; border-radius: 999px; font-weight: 600; font-size: 12px; }
     .auth-badge.on { background:#2e7d32; color:#fff; }
     .auth-badge.off { background:#b0bec5; color:#fff; }
+    @media (max-width: 720px) {
+      .archived .controls { flex-direction: row !important; align-items: center !important; flex-wrap: wrap !important; }
+      .archived .controls > * { width: auto !important; }
+      .archived .controls button { width: auto !important; flex: 0 0 auto !important; }
+    }
 
     /* Responsivo: evitar scroll horizontal en móviles */
     @media (max-width: 720px) {
+      header h1 { font-size: 1.2rem; width: 100%; margin: 8px 0; text-align: left; }
       .controls { flex-direction: column; align-items: stretch; gap: 8px; }
+      .toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
       .controls > * { width: 100%; }
+      .controls label { width: 100%; }
       .controls input, .controls select, .controls button { width: 100%; }
       #tenant-input, #status-filter { width: 100% !important; }
       #search-input { flex: 0 0 auto; width: 100% !important; }
       .mobile-filters > div { flex-direction: column; align-items: stretch; gap: 6px; }
-      .right-actions { flex-wrap: wrap; margin-left: 0; }
+      .right-actions { flex-wrap: wrap; margin-left: 0; width: 100%; justify-content: space-between; }
+      .auth-bar { width: 100%; justify-content: space-between; }
+      header .controls { margin-top: 0; }
       .mobile-filters summary { padding: 8px 12px; }
       table { table-layout: fixed; }
       th, td { padding: 6px; font-size: 13px; word-break: break-word; }
       th:nth-child(2), td:nth-child(2) { display: none; }
-      .actions { flex-wrap: wrap; gap: 6px; }
-      .actions select { max-width: 140px; }
-      .actions button { flex: 0 0 auto; }
+      .actions { flex-wrap: wrap; gap: 8px; }
+      .actions select { max-width: 100%; }
+      .actions button { flex: 0 0 auto; width: 100%; }
+      .status-quick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+      .status-quick .status-action { width: 100%; height: 36px; font-size: 14px; border-radius: 8px; }
+      .ver-detalle { width: 100%; }
 
       #orders-table thead { display: none; }
       #orders-table { display: block; border: none; box-shadow: none; background: transparent; }
-      #orders-table tbody { display: grid; gap: 12px; }
+      #orders-table tbody { display: grid; gap: 12px; grid-template-columns: repeat(2, 1fr); }
       #orders-table tbody tr { display: block; background: var(--kds-card-bg); border: 1px solid var(--kds-border); border-radius: 12px; padding: 10px 12px; box-shadow: 0 6px 16px rgba(0,0,0,0.08); }
-      #orders-table tbody tr td { display: grid; grid-template-columns: 110px 1fr; gap: 8px; align-items: center; border: none; padding: 6px 0; }
+      #orders-table tbody tr td { display: grid; grid-template-columns: 100px 1fr; gap: 8px; align-items: center; border: none; padding: 6px 0; }
       #orders-table tbody tr td::before { display: inline-block; font-weight: 600; color: #445; pointer-events: none; }
       #orders-table tbody tr td:nth-child(1)::before { content: 'ID'; }
       #orders-table tbody tr td:nth-child(2)::before { content: 'Fecha'; }
@@ -169,12 +229,28 @@
       #orders-table tbody tr td.actions button { width: 100%; margin-bottom: 8px; }
       #orders-table tbody tr td .order-total-tip { display: block; margin: 4px 0 0 0; }
     }
+    @media (max-width: 960px) {
+      header { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 8px; }
+      .header-main { width: 100%; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+      .header-end { margin-left: 0; gap: 8px; }
+      .header-rest { flex: 0 0 100%; display: flex; flex-wrap: wrap; gap: 8px; }
+      header h1 { width: 100%; margin: 8px 0; text-align: left; }
+      .controls { flex-direction: column; align-items: stretch; gap: 8px; }
+      .toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
+      .controls > * { width: 100%; }
+      .controls label { width: 100%; }
+      .controls input, .controls select, .controls button { width: 100%; }
+      #tenant-input, #status-filter { width: 100% !important; }
+      #search-input { flex: 0 0 auto; width: 100% !important; }
+      .right-actions { flex-wrap: wrap; margin-left: 0; width: 100%; justify-content: space-between; }
+      .auth-bar { width: 100%; justify-content: space-between; }
+    }
     @media (min-width: 961px) {
       #orders-table thead { display: none; }
       #orders-table { display: block; border: none; box-shadow: none; background: transparent; }
-      #orders-table tbody { display: grid; gap: 12px; grid-template-columns: repeat(5, 1fr); }
+      #orders-table tbody { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, 280px); justify-content: start; margin: 0; }
       #orders-table tbody tr { display: block; background: var(--kds-card-bg); border: 1px solid var(--kds-border); border-radius: 12px; padding: 10px 12px; box-shadow: 0 6px 16px rgba(0,0,0,0.08); }
-      #orders-table tbody tr td { display: grid; grid-template-columns: 120px 1fr; gap: 8px; align-items: center; border: none; padding: 6px 0; }
+      #orders-table tbody tr td { display: grid; grid-template-columns: 120px 1fr; gap: 10px; align-items: center; border: none; padding: 7px 0; }
       #orders-table tbody tr td::before { display: inline-block; font-weight: 600; color: #445; pointer-events: none; }
       #orders-table tbody tr td:nth-child(1)::before { content: 'ID'; }
       #orders-table tbody tr td:nth-child(2)::before { content: 'Fecha'; }
@@ -188,6 +264,9 @@
       #orders-table tbody tr td.actions select { width: 100%; margin-bottom: 8px; }
       #orders-table tbody tr td.actions button { width: 100%; margin-bottom: 8px; }
       #orders-table tbody tr td .order-total-tip { display: block; margin: 4px 0 0 0; }
+    }
+    @media (min-width: 1600px) {
+      #orders-table tbody { grid-template-columns: repeat(5, 280px); max-width: calc(5 * 280px + 4 * 12px); margin: 0; justify-content: start; }
     }
     #orders-table tbody tr.card-overdue { border-color: var(--st-overdue); box-shadow: 0 0 0 2px rgba(244, 67, 54, 0.3), 0 6px 16px rgba(0,0,0,0.08); }
     /* Contorno por estado en tarjetas */
@@ -197,29 +276,70 @@
     #orders-table tbody tr.card-en_camino { border-color: var(--st-en_camino); box-shadow: 0 0 0 2px rgba(79,195,247,0.25), 0 6px 16px rgba(0,0,0,0.08); }
     #orders-table tbody tr.card-entregado { border-color: var(--st-entregado); box-shadow: 0 0 0 2px rgba(176,190,197,0.25), 0 6px 16px rgba(0,0,0,0.08); }
     #orders-table tbody tr.card-cancelado { border-color: var(--st-cancelado); box-shadow: 0 0 0 2px rgba(239,154,154,0.25), 0 6px 16px rgba(0,0,0,0.08); }
+    @page { size: A4; margin: 12mm; }
     @media print {
+      html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       body * { visibility: hidden; }
       #order-detail, #order-detail * { visibility: visible; }
-      #order-detail { position: absolute; left: 0; top: 0; width: 100%; }
-      #order-detail { font-size: 12px; line-height: 1.3; }
+      #order-detail { position: absolute; left: 0; top: 0; width: 100%; font-size: 12px; line-height: 1.3; }
       .detail-items-table { width: 100%; border-collapse: collapse; }
+      .detail-items-table thead { display: table-header-group; }
+      .detail-items-table tr { page-break-inside: avoid; }
       .detail-items-table th, .detail-items-table td { padding: 4px; }
     }
     @media print {
-      body.print-modal * { visibility: hidden; }
-      body.print-modal #detail-modal-body, body.print-modal #detail-modal-body * { visibility: visible; }
+      html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      body.print-modal * { visibility: hidden !important; }
+      body.print-modal #order-detail-modal,
+      body.print-modal #order-detail-modal * { visibility: visible !important; }
+      body.print-modal .kds-modal-overlay { display: none !important; }
+      body.print-modal .kds-modal-content { box-shadow: none; border: 0; padding: 0; }
       body.print-modal #order-detail { visibility: hidden; }
-      body.print-modal #detail-modal-body { position: absolute; left: 0; top: 0; width: 100%; font-size: 12px; line-height: 1.3; }
+      body.print-modal #detail-modal-body { position: static; width: 100%; font-size: 12px; line-height: 1.3; }
       body.print-modal .detail-items-table { width: 100%; border-collapse: collapse; }
+      body.print-modal .detail-items-table thead { display: table-header-group; }
+      body.print-modal .detail-items-table tr { page-break-inside: avoid; }
       body.print-modal .detail-items-table th, body.print-modal .detail-items-table td { padding: 4px; }
+    }
+    @media print {
+      html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      body.print-ticket * { visibility: hidden !important; }
+      body.print-ticket #order-detail-modal,
+      body.print-ticket #order-detail-modal * { visibility: visible !important; }
+      body.print-ticket .kds-modal-overlay { display: none !important; }
+      body.print-ticket .kds-modal-content { width: 80mm; max-width: none; padding: 0; border: 0; box-shadow: none; }
+      body.print-ticket #detail-modal-body { font-family: 'Courier New', monospace; font-size: 12pt; line-height: 1.4; color:#000; }
+      body.print-ticket .d-id { font-size: 16pt; font-weight: 700; }
+      body.print-ticket .d-tenant, body.print-ticket .d-type, body.print-ticket .d-status { display:none !important; }
+      body.print-ticket .timeline { display:none !important; }
+      body.print-ticket .d-date, body.print-ticket .d-dest, body.print-ticket .d-phone, body.print-ticket .d-notes { margin: 2px 0; }
+      body.print-ticket h3, body.print-ticket .detail-summary, body.print-ticket .tip-section { display: none !important; }
+      body.print-ticket .detail-items-table { width: 100%; border-collapse: collapse; }
+      body.print-ticket .detail-items-table thead { display: none; }
+      body.print-ticket .detail-items-table td { border-bottom: 1px solid #000; }
+      body.print-ticket .detail-items-table tr { page-break-inside: avoid; }
+      body.print-ticket .detail-items-table th:nth-child(3),
+      body.print-ticket .detail-items-table th:nth-child(4),
+      body.print-ticket .detail-items-table td:nth-child(3),
+      body.print-ticket .detail-items-table td:nth-child(4) { display: none; }
+      body.print-ticket .detail-items-table td:nth-child(2) { text-transform: uppercase; }
+      body.print-ticket .pill, body.print-ticket .status-badge { display: none; }
     }
   </style>
   </head>
 <body>
   <header>
-    <h1>Panel de Administración (KDS)</h1>
-    <div class="controls">
-      <div class="toolbar">
+    <div class="header-main">
+      <h1>Panel de Administración (KDS)</h1>
+      <div class="header-end">
+        <label class="small" style="display:flex; align-items:center; gap:6px;"><input id="sound-toggle" type="checkbox" checked /> Sonido</label>
+        <div class="auth-bar">
+          <span id="auth-status-badge" class="auth-badge off">Sin sesión</span>
+          <button id="login-open-btn">Entrar</button>
+          <button id="logout-btn" disabled>Salir</button>
+        </div>
+      </div>
+      <div class="header-rest">
         <label>Establecimiento:
           <input id="tenant-input" list="tenants-list" type="text" value="gastronomia-local1" />
           <datalist id="tenants-list"></datalist>
@@ -237,55 +357,60 @@
         </label>
         <input id="search-input" type="text" placeholder="Buscar por ID, nombre, teléfono o destino" />
         <button id="search-btn">Buscar</button>
-        <div class="right-actions">
-          <button id="refresh-btn">Refrescar</button>
-          <div class="auth-bar">
-            <span id="auth-status-badge" class="auth-badge off">Sin sesión</span>
-            <button id="login-open-btn">Entrar</button>
-            <button id="logout-btn" disabled>Salir</button>
-          </div>
+        <button id="refresh-btn">Refrescar</button>
+      </div>
+    </div>
+    <div class="subcontrols">
+      <details class="mobile-filters" id="more-filters">
+        <summary>Más filtros</summary>
+        <div>
+          <label>Desde <input id="from-date" type="date" /></label>
+          <label>Hasta <input id="to-date" type="date" /></label>
+          <label>Tamaño
+            <select id="page-size">
+              <option value="20">20</option>
+              <option value="50" selected>50</option>
+              <option value="100">100</option>
+            </select>
+          </label>
+          <button id="export-btn">Exportar CSV</button>
         </div>
-      </div>
-      <div class="subcontrols">
-        <details class="mobile-filters" id="more-filters">
-          <summary>Más filtros</summary>
-          <div>
-            <label>Desde <input id="from-date" type="date" /></label>
-            <label>Hasta <input id="to-date" type="date" /></label>
-            <label>Tamaño
-              <select id="page-size">
-                <option value="20">20</option>
-                <option value="50" selected>50</option>
-                <option value="100">100</option>
-              </select>
-            </label>
-            <button id="export-btn">Exportar CSV</button>
-          </div>
-        </details>
-        <details id="sla-config" class="mobile-filters">
-          <summary>Configurar SLA</summary>
-          <div>
-            <label>Advertencia (min)
-              <input id="sla-warning" type="number" min="1" step="1" value="15" />
-            </label>
-            <label>Crítico (min)
-              <input id="sla-critical" type="number" min="2" step="1" value="30" />
-            </label>
-            <button id="sla-save">Guardar SLA</button>
-          </div>
-        </details>
-        <button id="analytics-open">Métricas</button>
-      </div>
+      </details>
+      <details id="sla-config" class="mobile-filters">
+        <summary>Configurar SLA</summary>
+        <div>
+          <label>Advertencia (min)
+            <input id="sla-warning" type="number" min="1" step="1" value="15" />
+          </label>
+          <label>Crítico (min)
+            <input id="sla-critical" type="number" min="2" step="1" value="30" />
+          </label>
+          <button id="sla-save">Guardar SLA</button>
+        </div>
+      </details>
+      <button id="analytics-open">Métricas</button>
     </div>
   </header>
 
   
 
   <div id="top-controls" style="display:flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom:8px;">
-    <div class="small" style="font-weight:700; color:#415a77;">Movimientos del día</div>
-    <div>
-      <button id="toggle-cash" class="small">Mostrar Caja</button>
-      <button id="toggle-cash-history" class="small">Mostrar Historial</button>
+    <div class="small" style="font-weight:700; color:#415a77; display:flex; align-items:center; gap:6px;">Movimientos del día
+      <button id="daily-eye" class="eye-btn" aria-label="Ocultar movimientos">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5zm0 12.5a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg>
+      </button>
+    </div>
+    <div class="top-actions">
+      <span class="small" style="display:flex; align-items:center; gap:6px;">Caja
+        <button id="cash-eye-top" class="eye-btn" aria-label="Ocultar caja">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5zm0 12.5a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg>
+        </button>
+      </span>
+      <span class="small" style="display:flex; align-items:center; gap:6px;">Historial
+        <button id="history-eye-top" class="eye-btn" aria-label="Ocultar historial">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5zm0 12.5a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg>
+        </button>
+      </span>
       <button id="daily-reset-btn" class="small">Reiniciar movimientos</button>
     </div>
   </div>
@@ -323,6 +448,9 @@
 
   <div id="login-box" style="border:1px solid #e0e0e0; border-radius:8px; padding:12px; margin-bottom:16px; max-width:360px;">
     <h2>Ingresar</h2>
+    <label style="display:block; margin-bottom:12px;">Establecimiento
+      <input id="login-tenant" list="tenants-list" type="text" style="width:100%; height:32px;" />
+    </label>
     <label style="display:block; margin-bottom:8px;">Usuario
       <input id="login-user" type="text" style="width:100%; height:32px;" />
     </label>
@@ -393,6 +521,7 @@
         </thead>
         <tbody id="delivered-tbody"></tbody>
       </table>
+      <div id="delivered-mobile" class="delivered-mobile"></div>
     </details>
     <details class="canceled" id="canceled-box">
       <summary>Cancelados</summary>
@@ -426,6 +555,7 @@
         </thead>
         <tbody id="canceled-tbody"></tbody>
       </table>
+      <div id="canceled-mobile" class="canceled-mobile"></div>
     </details>
     <details class="inventory" id="inventory-box">
       <summary>Inventario</summary>
@@ -438,6 +568,7 @@
           <tr>
             <th>ID</th>
             <th>Producto</th>
+            <th>Detalles</th>
             <th>Precio</th>
             <th>Stock</th>
             <th>Activo</th>
@@ -446,6 +577,7 @@
         </thead>
         <tbody id="inventory-tbody"></tbody>
       </table>
+      <div id="inventory-mobile" class="inventory-mobile"></div>
     </details>
     <details class="archived" id="archived-box">
       <summary>Archivados</summary>
@@ -490,6 +622,7 @@
         </thead>
         <tbody id="archived-delivered-tbody"></tbody>
       </table>
+      <div id="archived-mobile-del" class="archived-mobile"></div>
       <h3 class="small" style="margin-top:12px;">Cancelados archivados <span id="arch-can-count"></span></h3>
       <table>
         <thead>
@@ -504,17 +637,20 @@
         </thead>
         <tbody id="archived-canceled-tbody"></tbody>
       </table>
+      <div id="archived-mobile-can" class="archived-mobile"></div>
     </details>
   </div>
   
   </section>
   <div id="order-detail-modal" class="kds-modal" aria-hidden="true" role="dialog" aria-modal="true">
     <div class="kds-modal-overlay"></div>
-    <div class="kds-modal-content">
-      <button id="detail-modal-close" class="kds-modal-close">Cerrar</button>
-      <button id="detail-modal-print" style="position:absolute; right:90px; top:10px;">Imprimir</button>
-      <div id="detail-modal-body"></div>
-    </div>
+      <div class="kds-modal-content">
+        <button id="detail-modal-close" class="kds-modal-close">Cerrar</button>
+        <button id="detail-modal-ticket" style="position:absolute; right:170px; top:10px;">Comanda</button>
+        <button id="detail-modal-directprint" style="position:absolute; right:250px; top:10px;">Imprimir directo</button>
+        <button id="detail-modal-print" style="position:absolute; right:90px; top:10px;">Imprimir</button>
+        <div id="detail-modal-body"></div>
+      </div>
   </div>
 
   <div id="confirm-modal" class="kds-modal" aria-hidden="true" role="dialog" aria-modal="true">
@@ -541,13 +677,145 @@
     const statusOptions = Object.keys(statusClasses);
     // Firma de la última renderización para evitar parpadeos por re-render innecesario
     let lastOrdersSignature = '';
+    let lastActiveIds = new Set();
+    let audioCtx;
+    const SOUND_PREF_KEY = 'sound_enabled';
+    let soundEnabled = true;
+    try { const sraw = localStorage.getItem(SOUND_PREF_KEY); if (sraw === '0') soundEnabled = false; } catch (_) {}
+    const slaStateMap = new Map();
+    async function playNewOrderSound() {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        await audioCtx.resume();
+        const g = audioCtx.createGain();
+        const t0 = audioCtx.currentTime;
+        const o1 = audioCtx.createOscillator();
+        const o2 = audioCtx.createOscillator();
+        o1.type = 'square';
+        o2.type = 'square';
+        o1.frequency.setValueAtTime(880, t0);
+        o1.frequency.setValueAtTime(660, t0 + 0.7);
+        o2.frequency.setValueAtTime(1320, t0);
+        o2.frequency.setValueAtTime(990, t0 + 0.7);
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(0.28, t0 + 0.05);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.5);
+        o1.connect(g);
+        o2.connect(g);
+        g.connect(audioCtx.destination);
+        o1.start(t0);
+        o2.start(t0);
+        o1.stop(t0 + 1.5);
+        o2.stop(t0 + 1.5);
+      } catch (_) {}
+    }
+    async function playSlaWarningSound() {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        await audioCtx.resume();
+        const g = audioCtx.createGain();
+        const t0 = audioCtx.currentTime;
+        const o = audioCtx.createOscillator();
+        o.type = 'sawtooth';
+        o.frequency.setValueAtTime(740, t0);
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(0.22, t0 + 0.04);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.9);
+        o.connect(g);
+        g.connect(audioCtx.destination);
+        o.start(t0);
+        o.stop(t0 + 0.9);
+      } catch (_) {}
+    }
+    async function playSlaCriticalSound() {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        await audioCtx.resume();
+        const g = audioCtx.createGain();
+        const t0 = audioCtx.currentTime;
+        const o = audioCtx.createOscillator();
+        o.type = 'square';
+        o.frequency.setValueAtTime(520, t0);
+        o.frequency.setValueAtTime(440, t0 + 0.5);
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(0.3, t0 + 0.05);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.4);
+        o.connect(g);
+        g.connect(audioCtx.destination);
+        o.start(t0);
+        o.stop(t0 + 1.4);
+      } catch (_) {}
+    }
 
     const tenantInput = document.getElementById('tenant-input');
     const filterSelect = document.getElementById('status-filter');
     const refreshBtn = document.getElementById('refresh-btn');
+    const soundToggle = document.getElementById('sound-toggle');
+    const dailyEyeBtn = document.getElementById('daily-eye');
+    const cashEyeTop = document.getElementById('cash-eye-top');
+    const historyEyeTop = document.getElementById('history-eye-top');
+    const metricsBoxEl = document.getElementById('metrics');
+    const cashBoxEl = document.getElementById('cash-box');
+    const cashHistoryEl = document.getElementById('cash-history');
+    const DAILY_VISIBLE_KEY = 'daily_visible';
+    let dailyVisible = true;
+    try { const v = localStorage.getItem(DAILY_VISIBLE_KEY); if (v === '0') dailyVisible = false; } catch (_) {}
+    function setDailyVisible(v){
+      dailyVisible = !!v;
+      if (metricsBoxEl) metricsBoxEl.style.display = dailyVisible ? '' : 'none';
+      if (cashBoxEl) cashBoxEl.style.display = dailyVisible ? '' : 'none';
+      if (cashHistoryEl) cashHistoryEl.style.display = dailyVisible ? '' : 'none';
+      try { localStorage.setItem(DAILY_VISIBLE_KEY, dailyVisible ? '1' : '0'); } catch (_) {}
+      updateEyeIcon();
+    }
+    function eyeSvg(show){
+      return show
+        ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5zm0 12.5a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg>'
+        : '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M2.1 3.51 1 4.6l4.11 4.11C3.33 9.87 1.86 11.74 1 12c1.73 4.39 6 7.5 11 7.5 2.11 0 4.08-.51 5.82-1.41l3.58 3.58 1.11-1.09L2.1 3.51zM12 6.5c1.41 0 2.67.58 3.57 1.5l-1.06 1.06a3 3 0 0 0-4.1 4.1L9.35 14.2A5 5 0 0 1 12 6.5zm0 10.5a9.31 9.31 0 0 1-6.63-2.72c-.54-.54-.99-1.1-1.37-1.66l3.17-3.17 1.55 1.55a5 5 0 0 0 6.08 6.08l1.55 1.55A10.97 10.97 0 0 1 12 17z"/></svg>';
+    }
+    function updateEyeIcon(){
+      if (dailyEyeBtn) {
+        dailyEyeBtn.setAttribute('aria-label', dailyVisible ? 'Ocultar movimientos' : 'Mostrar movimientos');
+        dailyEyeBtn.innerHTML = eyeSvg(dailyVisible);
+      }
+      if (cashEyeTop && (typeof cashCollapsed !== 'undefined')) {
+        cashEyeTop.setAttribute('aria-label', cashCollapsed ? 'Mostrar caja' : 'Ocultar caja');
+        cashEyeTop.innerHTML = eyeSvg(!cashCollapsed);
+      }
+      if (historyEyeTop && (typeof cashHistoryCollapsed !== 'undefined')) {
+        historyEyeTop.setAttribute('aria-label', cashHistoryCollapsed ? 'Mostrar historial' : 'Ocultar historial');
+        historyEyeTop.innerHTML = eyeSvg(!cashHistoryCollapsed);
+      }
+    }
+    if (dailyEyeBtn) { dailyEyeBtn.addEventListener('click', () => setDailyVisible(!dailyVisible)); }
+    if (cashEyeTop) cashEyeTop.addEventListener('click', async () => {
+      cashCollapsed = !cashCollapsed;
+      const btn = document.getElementById('toggle-cash');
+      const box = document.getElementById('cash-box');
+      if (btn) btn.textContent = cashCollapsed ? 'Mostrar Caja' : 'Ocultar Caja';
+      if (box) box.style.display = cashCollapsed ? 'none' : 'grid';
+      if (!cashCollapsed) await renderCashBox();
+      updateEyeIcon();
+    });
+    if (historyEyeTop) historyEyeTop.addEventListener('click', async () => {
+      cashHistoryCollapsed = !cashHistoryCollapsed;
+      const btn = document.getElementById('toggle-cash-history');
+      const box = document.getElementById('cash-history');
+      if (btn) btn.textContent = cashHistoryCollapsed ? 'Mostrar Historial' : 'Ocultar Historial';
+      if (box) box.style.display = cashHistoryCollapsed ? 'none' : 'block';
+      if (!cashHistoryCollapsed) await renderCashHistory();
+      updateEyeIcon();
+    });
     const tbody = document.getElementById('orders-tbody');
     const countEl = document.getElementById('orders-count');
     const detailEl = document.getElementById('order-detail');
+    if (soundToggle) {
+      try { soundToggle.checked = !!soundEnabled; } catch (_) {}
+      soundToggle.addEventListener('change', () => {
+        soundEnabled = !!soundToggle.checked;
+        try { localStorage.setItem(SOUND_PREF_KEY, soundEnabled ? '1' : '0'); } catch (_) {}
+      });
+    }
     const archiveDeliveredAllBtn = document.getElementById('archive-delivered-all');
     const archiveCanceledAllBtn = document.getElementById('archive-canceled-all');
     const deliveredEligibleEl = document.getElementById('delivered-eligible-count');
@@ -618,6 +886,8 @@
     function wFetch(url, opts){ const o = opts || {}; o.credentials = 'include'; return fetch(url, o); }
     let csrfToken = '';
     let isAuthed = false;
+    let currentTenantSlug = '';
+    let currentUserName = '';
     const LOGIN_KEY_USER = 'kds_login_user';
     const LOGIN_KEY_PASS = 'kds_login_pass';
     const LOGIN_KEY_REM = 'kds_login_rem';
@@ -638,10 +908,12 @@
     let cashOpenDraft = { amount: 0, notes: '' };
     let cashCloseDraft = { amount: undefined, notes: '' };
     let isCashEditing = false;
+    let cashKeepModalOpen = false;
     const DAILY_RESET_HOUR = 5;
     let dailyResetFrom = '';
     let dailyResetOverride = false;
     let cashHistoryCollapsed = true;
+    try { setDailyVisible(dailyVisible); } catch (_) {}
     const logoutBtn = document.getElementById('logout-btn');
     const loginOpenBtn = document.getElementById('login-open-btn');
     const authBadge = document.getElementById('auth-status-badge');
@@ -661,13 +933,18 @@
       if (authBadge) {
         authBadge.classList.remove('on','off');
         authBadge.classList.add(isAuthed ? 'on' : 'off');
-        authBadge.textContent = isAuthed ? 'Activo' : 'Sin sesión';
+        authBadge.textContent = isAuthed ? (`${currentUserName || 'Usuario'} activo`) : 'Sin sesión';
       }
       if (logoutBtn) logoutBtn.disabled = !isAuthed;
       if (loginOpenBtn) loginOpenBtn.style.display = isAuthed ? 'none' : '';
       if (loginBox) loginBox.style.display = isAuthed ? 'none' : 'block';
       document.body.classList.toggle('no-auth', !isAuthed);
+      if (tenantInput) {
+        tenantInput.disabled = !!isAuthed;
+      }
     }
+
+    setAuthUI();
 
     function computeDailyResetUTC() {
       const now = new Date();
@@ -675,14 +952,14 @@
       const m = now.getMonth();
       const d = now.getDate();
       const h = now.getHours();
-      let base = new Date(y, m, d, DAILY_RESET_HOUR, 0, 0);
-      if (h < DAILY_RESET_HOUR) base = new Date(y, m, d - 1, DAILY_RESET_HOUR, 0, 0);
-      const yyyy = base.getFullYear();
-      const mm = String(base.getMonth() + 1).padStart(2, '0');
-      const dd = String(base.getDate()).padStart(2, '0');
-      const HH = String(base.getHours()).padStart(2, '0');
-      const MM = String(base.getMinutes()).padStart(2, '0');
-      const SS = String(base.getSeconds()).padStart(2, '0');
+      let baseLocal = new Date(y, m, d, DAILY_RESET_HOUR, 0, 0);
+      if (h < DAILY_RESET_HOUR) baseLocal = new Date(y, m, d - 1, DAILY_RESET_HOUR, 0, 0);
+      const yyyy = baseLocal.getUTCFullYear();
+      const mm = String(baseLocal.getUTCMonth() + 1).padStart(2, '0');
+      const dd = String(baseLocal.getUTCDate()).padStart(2, '0');
+      const HH = String(baseLocal.getUTCHours()).padStart(2, '0');
+      const MM = String(baseLocal.getUTCMinutes()).padStart(2, '0');
+      const SS = String(baseLocal.getUTCSeconds()).padStart(2, '0');
       return `${yyyy}-${mm}-${dd}T${HH}:${MM}:${SS}`;
     }
     function applyDailyReset(fromIso) {
@@ -756,7 +1033,11 @@
       if (dataSlug) return dataSlug;
       try {
         const name = (window.location.pathname.split('/').pop() || '').replace(/\.html$/,'');
-        if (name) return name;
+        if (name && name !== 'admin') return name;
+      } catch (_) {}
+      try {
+        const last = localStorage.getItem('tenant_last_selected') || '';
+        if (last) return last;
       } catch (_) {}
       return 'gastronomia-local1';
     }
@@ -790,7 +1071,11 @@
     }
     function formatMoney(n) {
       const v = Number(n || 0);
-      return `$${v}`;
+      try {
+        return `$${v.toLocaleString('es-AR')}`;
+      } catch (_) {
+        return `$${v}`;
+      }
     }
     function numberToWordsEs(n) {
       n = Math.floor(Math.abs(Number(n || 0)));
@@ -920,6 +1205,7 @@
       }
     }
     let refreshTimer = null;
+    const POLL_MS = 5000;
     const metricsGroupEl = document.getElementById('metrics-group');
     const dateFieldEl = document.getElementById('date-field');
     const metricsChartEl = document.getElementById('metrics-chart');
@@ -1017,6 +1303,7 @@
       } catch (_) {}
     });
     tenantInput.addEventListener('change', loadAggregatesSafe);
+    tenantInput.addEventListener('change', () => { try { localStorage.setItem('tenant_last_selected', tenantInput.value.trim()); } catch (_) {} });
     const analyticsOpenBtn = document.getElementById('analytics-open');
     if (analyticsOpenBtn) {
       analyticsOpenBtn.addEventListener('click', async () => {
@@ -1076,22 +1363,41 @@
     // Inicializar métricas agregadas al cargar
     (async () => { try { await loadAggregatesSafe(); } catch (_) {} })();
 
-    async function renderOrders(data) {
-      const orders = data.orders || [];
-      const total = Number(data.total || orders.length || 0);
-      const page = Math.floor(currentOffset / currentLimit) + 1;
-      const totalPages = Math.max(1, Math.ceil(total / currentLimit));
-      // Construir una firma ligera del estado actual (id, status, total) para detectar cambios reales
-      const newSignature = JSON.stringify(orders.map(o => ({id:o.id, s:o.status, t:o.total})));
-      // Si la firma no cambió y ya hay filas, evitar reconstrucción para prevenir parpadeo
-      if (newSignature === lastOrdersSignature && tbody.children.length > 0) {
-        countEl.textContent = `Mostrando ${orders.filter(o => o.status !== 'entregado' && o.status !== 'cancelado').length} pedido(s) activos`;
-        const pageInfo = document.getElementById('page-info');
-        pageInfo.textContent = `Página ${page} de ${totalPages}`;
-        return;
-      }
-      const active = orders.filter(o => o.status !== 'entregado' && o.status !== 'cancelado');
-      tbody.innerHTML = '';
+      async function renderOrders(data) {
+        const orders = data.orders || [];
+        const total = Number(data.total || orders.length || 0);
+        const page = Math.floor(currentOffset / currentLimit) + 1;
+        const totalPages = Math.max(1, Math.ceil(total / currentLimit));
+        // Construir una firma ligera del estado actual (id, status, total) para detectar cambios reales
+        const newSignature = JSON.stringify(orders.map(o => ({id:o.id, s:o.status, t:o.total})));
+        // Si la firma no cambió y ya hay filas, evitar reconstrucción para prevenir parpadeo
+        if (newSignature === lastOrdersSignature && tbody.children.length > 0) {
+          countEl.textContent = `Mostrando ${orders.filter(o => o.status !== 'entregado' && o.status !== 'cancelado').length} pedido(s) activos`;
+          const pageInfo = document.getElementById('page-info');
+          pageInfo.textContent = `Página ${page} de ${totalPages}`;
+          return;
+        }
+        const active = orders.filter(o => o.status !== 'entregado' && o.status !== 'cancelado');
+        const activeIds = new Set(active.map(o => o.id));
+        let hasNew = false;
+        if (lastActiveIds && lastActiveIds.size > 0) {
+          for (const id of activeIds) { if (!lastActiveIds.has(id)) { hasNew = true; break; } }
+        }
+        window.activeCurrent = active;
+        if (hasNew) {
+          const newList = active.filter(o => !(lastActiveIds && lastActiveIds.has(o.id)));
+          let targetId = 0;
+          if (newList.length) {
+            const sortedNew = newList.slice().sort((a,b) => parseDateSafe(b.created_at) - parseDateSafe(a.created_at));
+            targetId = sortedNew[0].id;
+          }
+          window.lastNewOrderId = targetId;
+          try { await renderMetricsBox(); } catch(_) {}
+          try { startActiveCardFlash(); } catch(_) {}
+          try { if (document.hidden) startTabNotify(); } catch(_) {}
+        }
+        if (hasNew && soundEnabled) { try { await playNewOrderSound(); } catch (_) {} }
+        tbody.innerHTML = '';
       // Auto-archivar pedidos entregados/cancelados con más de 24 horas desde el cambio de estado
       async function getStatusChangeTs(orderId, status) {
         try {
@@ -1205,6 +1511,23 @@
             const newStatus = qb.getAttribute('data-status') || '';
             if (!newStatus) return;
             if (newStatus === 'entregado') {
+              try {
+                const cs = await fetchCashSession();
+                if (!cs || !cs.active) {
+                  const openReq = await askConfirm('No hay caja abierta. ¿Abrir ahora?');
+                  if (!openReq) return;
+                  let amtRaw = null;
+                  let amt = 0;
+                  let notes = '';
+                  try { amtRaw = prompt('Monto inicial en $:', ''); } catch(_) { amtRaw = null; }
+                  if (amtRaw === null) return;
+                  amt = parseInt(String(amtRaw).trim(), 10);
+                  if (Number.isNaN(amt) || amt < 0) { alert('Ingresa un monto válido'); return; }
+                  try { notes = String(prompt('Notas de apertura (opcional):') || '').trim(); } catch(_) {}
+                  const opened = await openCash({ opening_amount: amt, notes });
+                  if (!opened) return;
+                }
+              } catch(_) {}
               const ok = await askConfirm('¿Confirma entrega?');
               if (!ok) return;
             }
@@ -1216,7 +1539,7 @@
             }
             qb.disabled = true;
             try {
-              await updateStatus(o.id, newStatus, reason);
+              const resp = await updateStatus(o.id, newStatus, reason);
               if (newStatus === 'preparacion') {
                 const nowIso = new Date().toISOString();
                 const rowSla = tr.querySelector('.sla-container');
@@ -1246,7 +1569,14 @@
               }
               await load();
             } catch (e) {
-              alert('No se pudo actualizar el estado');
+              try {
+                const url = new URL(`/api/orders/${o.id}/status`, API_BASE);
+                const r = await fetch(url.toString(), { method:'PATCH', headers:{ 'Content-Type':'application/json', 'X-CSRF-Token': csrfToken }, body: JSON.stringify({ status: newStatus, reason }) });
+                const j = await r.json();
+                alert(String(j && j.error || 'No se pudo actualizar el estado'));
+              } catch(_) {
+                alert('No se pudo actualizar el estado');
+              }
             } finally {
               qb.disabled = false;
             }
@@ -1293,8 +1623,8 @@
             `;
             const timeline = history.length ? `
               <h3>Historial de estados</h3>
-              <div>
-                ${history.map(h => `<div class="small">${h.status} — ${formatARDate(h.changed_at)}</div>`).join('')}
+              <div class="timeline">
+                ${history.map(h => `<div class=\"small\">${h.status} — ${formatARDate(h.changed_at)}</div>`).join('')}
               </div>
             ` : '';
             // Si el pedido está entregado, mostrar el tiempo total
@@ -1322,15 +1652,15 @@
             }
             const statusLabelText = (order.order_type === 'mesa' && order.status === 'en_camino') ? 'mesa' : order.status;
             box.innerHTML = `
-              <p><strong>Pedido #${order.id}</strong></p>
+              <p class="d-id"><strong>Pedido #${order.id}</strong></p>
               <span id="detail-order-id" style="display:none;">${order.id}</span>
-              <p>Establecimiento: ${order.tenant_slug}</p>
-              <p>Fecha: ${formatARDate(order.created_at)}</p>
-              <p>Tipo: ${order.order_type}</p>
-              <p>Destino: ${order.order_type === 'mesa' ? `<span class="pill pill-mesa">Mesa ${order.table_number || ''}</span>` : destino}</p>
-              ${telefono ? `<p>Teléfono de contacto: ${telefono}</p>` : ''}
-              <p>Estado: ${statusLabelText}</p>
-              ${order.order_notes ? `<p>Detalle adicional: ${order.order_notes}</p>` : ''}
+              <p class="d-tenant">Establecimiento: ${order.tenant_slug}</p>
+              <p class="d-date">Fecha: ${formatARDate(order.created_at)}</p>
+              <p class="d-type">Tipo: ${order.order_type}</p>
+              <p class="d-dest">Destino: ${order.order_type === 'mesa' ? `<span class=\"pill pill-mesa\">Mesa ${order.table_number || ''}</span>` : destino}</p>
+              ${telefono ? `<p class=\"d-phone\">Teléfono de contacto: ${telefono}</p>` : ''}
+              <p class="d-status">Estado: ${statusLabelText}</p>
+              ${order.order_notes ? `<p class=\"d-notes\">Detalle adicional: ${order.order_notes}</p>` : ''}
               ${itemsHtml}
               ${tipBlock}
               ${timeline}
@@ -1374,6 +1704,29 @@
               try { await logOrderEvent(order.id, 'printed', { copies: 1 }); } catch(_) {}
               window.print();
             };
+            const ticketBtn = document.getElementById('detail-modal-ticket');
+            if (ticketBtn) ticketBtn.onclick = async function(){
+              let sty = document.getElementById('print-ticket-page-style');
+              if (!sty) { sty = document.createElement('style'); sty.id = 'print-ticket-page-style'; document.head.appendChild(sty); }
+              sty.textContent = '@page { size: 80mm auto; margin: 2mm; }';
+              document.body.classList.add('print-ticket');
+              try { await logOrderEvent(order.id, 'printed_ticket', { copies: 1 }); } catch(_) {}
+              window.print();
+            };
+            const directBtn = document.getElementById('detail-modal-directprint');
+            if (directBtn) directBtn.onclick = async function(){
+              const idEl = document.getElementById('detail-order-id');
+              const oid = idEl ? Number(idEl.textContent || 0) : NaN;
+              if (!isAuthed || !csrfToken) { alert('Debes iniciar sesión'); return; }
+              if (Number.isNaN(oid) || oid <= 0) { alert('ID inválido'); return; }
+              try {
+                const url = new URL(`/api/print/ticket/${oid}`, API_BASE);
+                const resp = await wFetch(url.toString(), { method:'POST', headers:{ 'X-CSRF-Token': csrfToken } });
+                const data = await resp.json().catch(()=>({}));
+                if (!resp.ok) { alert(data && data.error ? data.error : 'Error al imprimir'); return; }
+                alert('Enviado a la impresora predeterminada');
+              } catch (_) { alert('No se pudo enviar a la impresora'); }
+            };
             // Wire tip toggle in detalle
             const tipToggleDetail = box.querySelector('.tip-detail-toggle');
             const tipAmtEl = box.querySelector('.tip-amount');
@@ -1403,12 +1756,14 @@
       window.canceledCurrent = canceled;
       await renderDelivered(delivered);
       await renderCanceled(canceled);
-      try { await renderInventory(); } catch (_) {}
+      
       lastOrdersSignature = newSignature;
+      lastActiveIds = activeIds;
     }
 
     async function renderDelivered(list) {
       const dtbody = document.getElementById('delivered-tbody');
+      const dmobile = document.getElementById('delivered-mobile');
       let archDelList = [];
       try { archDelList = await fetchArchived('delivered'); } catch (_) { archDelList = []; }
       const archDeliveredIds = new Set(archDelList.map(x => x.id));
@@ -1416,6 +1771,7 @@
       const total = filtered.length;
       const pageList = filtered.slice(deliveredOffset, deliveredOffset + deliveredLimit);
       dtbody.innerHTML = '';
+      if (dmobile) dmobile.innerHTML = '';
       if (!pageList.length) {
         const tr = document.createElement('tr');
         tr.innerHTML = `<td colspan="9" class="small">Sin resultados</td>`;
@@ -1452,6 +1808,32 @@
           </td>
         `;
         dtbody.appendChild(tr);
+        if (dmobile) {
+          const card = document.createElement('div');
+          const destLabel = o.order_type === 'mesa' ? `Mesa ${o.table_number || ''}` : (o.address_json || '').slice(0, 64);
+          const phoneRaw = (o.order_type === 'direccion' && o.customer_phone) ? String(o.customer_phone) : '';
+          const phoneDigits = phoneRaw.replace(/\D/g, '');
+          const waUrl = phoneDigits ? `https://wa.me/${phoneDigits}` : '';
+          const baseTotal = Number(o.total || 0);
+          const tip = computeTipAmount(baseTotal);
+          const totalWithTip = baseTotal + tip;
+          card.className = 'card';
+          card.innerHTML = `
+            <div class="title">Pedido #${o.id}</div>
+            <div class="meta">${formatARDate(o.created_at||'')} · ${o.order_type}</div>
+            <div class="meta">Destino: ${o.order_type==='mesa'?`<span class='pill pill-mesa'>${destLabel}</span>`:destLabel}</div>
+            <div class="meta">${phoneRaw ? `Tel: ${phoneRaw}` : ''} ${waUrl ? `<a href='${waUrl}' target='_blank' rel='noopener'>WhatsApp</a>`:''}</div>
+            <div class="grid">
+              <div>Total: $${baseTotal}</div>
+              <div>Total c/propina: ${formatMoney(totalWithTip)}</div>
+            </div>
+            <div class="actions">
+              <button class="ver-detalle" data-id="${o.id}">Ver</button>
+              <button class="archivar" data-id="${o.id}">Archivar</button>
+            </div>
+          `;
+          dmobile.appendChild(card);
+        }
         const copyBtn = tr.querySelector('.copy-phone');
         if (copyBtn) {
           copyBtn.addEventListener('click', async () => {
@@ -1518,9 +1900,9 @@
             const statusLabelText = (order.order_type === 'mesa' && order.status === 'en_camino') ? 'mesa' : order.status;
             box.innerHTML = `
               <p><strong>Pedido #${order.id}</strong></p>
-              <p>Establecimiento: ${order.tenant_slug}</p>
-              <p>Fecha: ${formatARDate(order.created_at)}</p>
-              <p>Tipo: ${order.order_type}</p>
+              <p class="d-tenant">Establecimiento: ${order.tenant_slug}</p>
+              <p class="d-date">Fecha: ${formatARDate(order.created_at)}</p>
+              <p class="d-type">Tipo: ${order.order_type}</p>
               <p>Destino: ${order.order_type === 'mesa' ? `<span class="pill pill-mesa">Mesa ${order.table_number || ''}</span>` : destino}</p>
               ${telefono ? `<p>Teléfono de contacto: ${telefono}</p>` : ''}
               <p>Estado: ${statusLabelText}</p>
@@ -1551,6 +1933,28 @@
               document.body.classList.add('print-modal');
               window.print();
             };
+            const ticketBtn = document.getElementById('detail-modal-ticket');
+            if (ticketBtn) ticketBtn.onclick = function(){
+              let sty = document.getElementById('print-ticket-page-style');
+              if (!sty) { sty = document.createElement('style'); sty.id = 'print-ticket-page-style'; document.head.appendChild(sty); }
+              sty.textContent = '@page { size: 80mm auto; margin: 2mm; }';
+              document.body.classList.add('print-ticket');
+              window.print();
+            };
+            const directBtn = document.getElementById('detail-modal-directprint');
+            if (directBtn) directBtn.onclick = async function(){
+              const idEl = document.getElementById('detail-order-id');
+              const oid = idEl ? Number(idEl.textContent || 0) : NaN;
+              if (!isAuthed || !csrfToken) { alert('Debes iniciar sesión'); return; }
+              if (Number.isNaN(oid) || oid <= 0) { alert('ID inválido'); return; }
+              try {
+                const url = new URL(`/api/print/ticket/${oid}`, API_BASE);
+                const resp = await wFetch(url.toString(), { method:'POST', headers:{ 'X-CSRF-Token': csrfToken } });
+                const data = await resp.json().catch(()=>({}));
+                if (!resp.ok) { alert(data && data.error ? data.error : 'Error al imprimir'); return; }
+                alert('Enviado a la impresora predeterminada');
+              } catch (_) { alert('No se pudo enviar a la impresora'); }
+            };
           } catch (e) {
             alert('No se pudo cargar el detalle.');
           }
@@ -1566,6 +1970,109 @@
           }
         });
       }
+      if (dmobile) {
+        dmobile.querySelectorAll('.ver-detalle').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const id = parseInt(btn.getAttribute('data-id')||'0',10);
+            const found = pageList.find(x => x.id === id);
+            // Reutilizar lógica de ver detalle sobre fila
+            try {
+              const detail = await fetchOrderDetail(id);
+              const order = detail.order || found;
+              const items = detail.items || [];
+              const history = detail.history || [];
+              const destino = order.order_type === 'mesa' ? `Mesa ${order.table_number || ''}` : (order.address_json || '');
+              const telefono = (order.order_type === 'direccion' && order.customer_phone) ? String(order.customer_phone) : '';
+              const box = document.createElement('div');
+              const itemsRows = items.map(it => {
+                const qty = Number(it.qty || 0);
+                const unit = Number(it.unit_price || 0);
+                const subtotal = qty * unit;
+                const notes = it.notes ? String(it.notes) : '';
+                return `<tr><td>${qty}</td><td>${it.name}</td><td>$${unit}</td><td>$${subtotal}</td></tr>${notes ? `<tr><td colspan=4 class='small'>Nota: ${notes}</td></tr>` : ''}`;
+              }).join('');
+              const itemsHtml = items.length ? `
+                <h3>Ítems</h3>
+                <table class="detail-items-table">
+                  <thead><tr><th>Cant.</th><th>Producto</th><th>Unitario</th><th>Subtotal</th></tr></thead>
+                  <tbody>${itemsRows}</tbody>
+                </table>
+                <p class="detail-summary">Total: $${order.total}</p>
+              ` : '<p class="small">Sin ítems registrados.</p>';
+              const timeline = history.length ? `
+                <h3>Historial de estados</h3>
+                <div>
+                  ${history.map(h => `<div class='small'>${h.status} — ${formatARDate(h.changed_at)}</div>`).join('')}
+                </div>
+              ` : '';
+              let totalTimeHtml = '';
+              if (order.status === 'entregado') {
+                let totalSec = getSlaFinal(order.id);
+                if (!totalSec || totalSec <= 0) {
+                  const endHist = history.filter(h => h.status === 'entregado').slice(-1)[0];
+                  const endTs = endHist ? parseDateSafe(endHist.changed_at) : Date.now();
+                  const overrideStart = getSlaOverride(order.id);
+                  const createdTs = parseDateSafe(order.created_at);
+                  const baseStart = (!Number.isNaN(overrideStart)) ? overrideStart : createdTs;
+                  const prevSec = getSlaAccumulated(order.id);
+                  if (!Number.isNaN(baseStart)) {
+                    const segmentSec = Math.max(0, Math.floor((endTs - baseStart) / 1000));
+                    totalSec = prevSec + segmentSec;
+                  }
+                }
+                if (totalSec && totalSec > 0) {
+                  const th = String(Math.floor(totalSec / 3600)).padStart(2, '0');
+                  const tm = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
+                  const ts = String(totalSec % 60).padStart(2, '0');
+                  totalTimeHtml = `<p class='small'>Tiempo total: ${th}:${tm}:${ts}</p>`;
+                }
+              }
+              const statusLabelText = (order.order_type === 'mesa' && order.status === 'en_camino') ? 'mesa' : order.status;
+              box.innerHTML = `
+                <p><strong>Pedido #${order.id}</strong></p>
+                <p>Establecimiento: ${order.tenant_slug}</p>
+                <p>Fecha: ${formatARDate(order.created_at)}</p>
+                <p>Tipo: ${order.order_type}</p>
+                <p>Destino: ${order.order_type === 'mesa' ? `<span class='pill pill-mesa'>Mesa ${order.table_number || ''}</span>` : destino}</p>
+                ${telefono ? `<p>Teléfono de contacto: ${telefono}</p>` : ''}
+                <p>Estado: ${statusLabelText}</p>
+                ${itemsHtml}
+                ${timeline}
+                ${totalTimeHtml}
+              `;
+              const modalBody = document.getElementById('detail-modal-body');
+              const modal = document.getElementById('order-detail-modal');
+              const closeBtn = document.getElementById('detail-modal-close');
+              modalBody.innerHTML = '';
+              modalBody.appendChild(box);
+              modal.classList.add('active');
+              modal.setAttribute('aria-hidden','false');
+              document.body.style.overflow = 'hidden';
+              if (closeBtn) closeBtn.onclick = function(){
+                modal.classList.remove('active');
+                modal.setAttribute('aria-hidden','true');
+                modalBody.innerHTML = '';
+                document.body.style.overflow = 'auto';
+              };
+              const overlay = modal.querySelector('.kds-modal-overlay');
+              if (overlay) overlay.onclick = closeBtn.onclick;
+              document.addEventListener('keydown', function(e){ if (e.key==='Escape' && modal.classList.contains('active')) closeBtn.onclick(); });
+            } catch (e) { alert('No se pudo cargar el detalle.'); }
+          });
+        });
+        dmobile.querySelectorAll('.archivar').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const id = parseInt(btn.getAttribute('data-id')||'0',10);
+            const found = pageList.find(x => x.id === id);
+            try {
+              await archiveSnapshot(found, 'delivered');
+              try { await renderArchived(); } catch (_) {}
+              try { await renderMetricsBox(); } catch (_) {}
+              await renderDelivered(list);
+            } catch (_) { alert('No se pudo archivar el pedido'); }
+          });
+        });
+      }
       const pageNum = Math.floor(deliveredOffset / deliveredLimit) + 1;
       const totalPages = Math.max(1, Math.ceil(total / deliveredLimit));
       if (delPageInfoEl) delPageInfoEl.textContent = `Página ${pageNum} de ${totalPages} · Total: ${total}`;
@@ -1576,6 +2083,7 @@
 
     async function renderCanceled(list) {
       const ctbody = document.getElementById('canceled-tbody');
+      const cmobile = document.getElementById('canceled-mobile');
       let archCanList = [];
       try { archCanList = await fetchArchived('canceled'); } catch (_) { archCanList = []; }
       const archCanceledIds = new Set(archCanList.map(x => x.id));
@@ -1583,6 +2091,7 @@
       const total = filtered.length;
       const pageList = filtered.slice(canceledOffset, canceledOffset + canceledLimit);
       ctbody.innerHTML = '';
+      if (cmobile) cmobile.innerHTML = '';
       if (!pageList.length) {
         const tr = document.createElement('tr');
         tr.innerHTML = `<td colspan="7" class="small">Sin resultados</td>`;
@@ -1605,6 +2114,25 @@
           </td>
         `;
         ctbody.appendChild(tr);
+        if (cmobile) {
+          const card = document.createElement('div');
+          const destLabel = o.order_type === 'mesa' ? `Mesa ${o.table_number || ''}` : (o.address_json || '').slice(0, 64);
+          card.className = 'card';
+          card.innerHTML = `
+            <div class="title">Pedido #${o.id}</div>
+            <div class="meta">${formatARDate(o.created_at||'')} · ${o.order_type}</div>
+            <div class="meta">Destino: ${o.order_type==='mesa'?`<span class='pill pill-mesa'>${destLabel}</span>`:destLabel}</div>
+            <div class="grid">
+              <div>Total: $${o.total}</div>
+              <div>Estado: ${o.status}</div>
+            </div>
+            <div class="actions">
+              <button class="ver-detalle" data-id="${o.id}">Ver</button>
+              <button class="archivar" data-id="${o.id}">Archivar</button>
+            </div>
+          `;
+          cmobile.appendChild(card);
+        }
         const viewBtn = tr.querySelector('.ver-detalle');
         const archiveBtn = tr.querySelector('.archivar');
         viewBtn.addEventListener('click', async () => {
@@ -1651,12 +2179,12 @@
             })();
             const statusLabelText = (order.order_type === 'mesa' && order.status === 'en_camino') ? 'mesa' : order.status;
             box.innerHTML = `
-              <p><strong>Pedido #${order.id}</strong></p>
+              <p class="d-id"><strong>Pedido #${order.id}</strong></p>
               <p>Establecimiento: ${order.tenant_slug}</p>
               <p>Fecha: ${formatARDate(order.created_at)}</p>
               <p>Tipo: ${order.order_type}</p>
-              <p>Destino: ${order.order_type === 'mesa' ? `<span class="pill pill-mesa">Mesa ${order.table_number || ''}</span>` : destino}</p>
-              <p>Estado: ${statusLabelText}</p>
+              <p class="d-dest">Destino: ${order.order_type === 'mesa' ? `<span class=\"pill pill-mesa\">Mesa ${order.table_number || ''}</span>` : destino}</p>
+              <p class="d-status">Estado: ${statusLabelText}</p>
               ${order.status === 'cancelado' && cancelReason ? `<p>Motivo de cancelación: ${cancelReason}</p>` : ''}
               ${order.order_notes ? `<p>Detalle adicional: ${order.order_notes}</p>` : ''}
               ${itemsHtml}
@@ -1684,6 +2212,28 @@
               document.body.classList.add('print-modal');
               window.print();
             };
+            const ticketBtn = document.getElementById('detail-modal-ticket');
+            if (ticketBtn) ticketBtn.onclick = function(){
+              let sty = document.getElementById('print-ticket-page-style');
+              if (!sty) { sty = document.createElement('style'); sty.id = 'print-ticket-page-style'; document.head.appendChild(sty); }
+              sty.textContent = '@page { size: 80mm auto; margin: 2mm; }';
+              document.body.classList.add('print-ticket');
+              window.print();
+            };
+            const directBtn = document.getElementById('detail-modal-directprint');
+            if (directBtn) directBtn.onclick = async function(){
+              const idEl = document.getElementById('detail-order-id');
+              const oid = idEl ? Number(idEl.textContent || 0) : NaN;
+              if (!isAuthed || !csrfToken) { alert('Debes iniciar sesión'); return; }
+              if (Number.isNaN(oid) || oid <= 0) { alert('ID inválido'); return; }
+              try {
+                const url = new URL(`/api/print/ticket/${oid}`, API_BASE);
+                const resp = await wFetch(url.toString(), { method:'POST', headers:{ 'X-CSRF-Token': csrfToken } });
+                const data = await resp.json().catch(()=>({}));
+                if (!resp.ok) { alert(data && data.error ? data.error : 'Error al imprimir'); return; }
+                alert('Enviado a la impresora predeterminada');
+              } catch (_) { alert('No se pudo enviar a la impresora'); }
+            };
           } catch (e) {
             alert('No se pudo cargar el detalle.');
           }
@@ -1699,6 +2249,98 @@
           }
         });
       }
+      if (cmobile) {
+        cmobile.querySelectorAll('.ver-detalle').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const id = parseInt(btn.getAttribute('data-id')||'0',10);
+            const found = pageList.find(x => x.id === id);
+            try {
+              const detail = await fetchOrderDetail(id);
+              const order = detail.order || found;
+              const items = detail.items || [];
+              const history = detail.history || [];
+              const events = detail.events || [];
+              const destino = order.order_type === 'mesa' ? `Mesa ${order.table_number || ''}` : (order.address_json || '');
+              const box = document.createElement('div');
+              const itemsRows = items.map(it => {
+                const qty = Number(it.qty || 0);
+                const unit = Number(it.unit_price || 0);
+                const subtotal = qty * unit;
+                const notes = it.notes ? String(it.notes) : '';
+                return `<tr><td>${qty}</td><td>${it.name}</td><td>$${unit}</td><td>$${subtotal}</td></tr>${notes ? `<tr><td colspan=4 class='small'>Nota: ${notes}</td></tr>` : ''}`;
+              }).join('');
+              const itemsHtml = items.length ? `
+                <h3>Ítems</h3>
+                <table class="detail-items-table">
+                  <thead><tr><th>Cant.</th><th>Producto</th><th>Unitario</th><th>Subtotal</th></tr></thead>
+                  <tbody>${itemsRows}</tbody>
+                </table>
+                <p class="detail-summary">Total: $${order.total}</p>
+              ` : '<p class="small">Sin ítems registrados.</p>';
+              const timeline = history.length ? `
+                <h3>Historial de estados</h3>
+                <div>
+                  ${history.map(h => `<div class='small'>${h.status} — ${formatARDate(h.changed_at)}</div>`).join('')}
+                </div>
+              ` : '';
+              const cancelReason = (() => {
+                for (let i = events.length - 1; i >= 0; i--) {
+                  const ev = events[i] || {};
+                  if (String(ev.event_type || '').toLowerCase() === 'canceled') {
+                    let meta = {};
+                    try { meta = JSON.parse(ev.payload_json || '{}'); } catch (_) {}
+                    const r = String((meta && meta.reason) || '').trim();
+                    if (r) return r;
+                  }
+                }
+                return '';
+              })();
+              const statusLabelText = (order.order_type === 'mesa' && order.status === 'en_camino') ? 'mesa' : order.status;
+              box.innerHTML = `
+                <p><strong>Pedido #${order.id}</strong></p>
+                <p>Establecimiento: ${order.tenant_slug}</p>
+                <p>Fecha: ${formatARDate(order.created_at)}</p>
+                <p>Tipo: ${order.order_type}</p>
+                <p>Destino: ${order.order_type === 'mesa' ? `<span class='pill pill-mesa'>Mesa ${order.table_number || ''}</span>` : destino}</p>
+                <p>Estado: ${statusLabelText}</p>
+                ${order.status === 'cancelado' && cancelReason ? `<p>Motivo de cancelación: ${cancelReason}</p>` : ''}
+                ${order.order_notes ? `<p>Detalle adicional: ${order.order_notes}</p>` : ''}
+                ${itemsHtml}
+                ${timeline}
+              `;
+              const modalBody = document.getElementById('detail-modal-body');
+              const modal = document.getElementById('order-detail-modal');
+              const closeBtn = document.getElementById('detail-modal-close');
+              modalBody.innerHTML = '';
+              modalBody.appendChild(box);
+              modal.classList.add('active');
+              modal.setAttribute('aria-hidden','false');
+              document.body.style.overflow = 'hidden';
+              if (closeBtn) closeBtn.onclick = function(){
+                modal.classList.remove('active');
+                modal.setAttribute('aria-hidden','true');
+                modalBody.innerHTML = '';
+                document.body.style.overflow = 'auto';
+              };
+              const overlay = modal.querySelector('.kds-modal-overlay');
+              if (overlay) overlay.onclick = closeBtn.onclick;
+              document.addEventListener('keydown', function(e){ if (e.key==='Escape' && modal.classList.contains('active')) closeBtn.onclick(); });
+            } catch (e) { alert('No se pudo cargar el detalle.'); }
+          });
+        });
+        cmobile.querySelectorAll('.archivar').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const id = parseInt(btn.getAttribute('data-id')||'0',10);
+            const found = pageList.find(x => x.id === id);
+            try {
+              await archiveSnapshot(found, 'canceled');
+              try { await renderArchived(); } catch (_) {}
+              try { await renderMetricsBox(); } catch (_) {}
+              await renderCanceled(list);
+            } catch (_) { alert('No se pudo archivar el pedido'); }
+          });
+        });
+      }
       const pageNum = Math.floor(canceledOffset / canceledLimit) + 1;
       const totalPages = Math.max(1, Math.ceil(total / canceledLimit));
       if (canPageInfoEl) canPageInfoEl.textContent = `Página ${pageNum} de ${totalPages} · Total: ${total}`;
@@ -1707,7 +2349,7 @@
       if (canNextBtn) canNextBtn.disabled = atEndCan;
     }
     async function fetchProducts() {
-      const slug = tenantInput.value.trim() || defaultSlug();
+      const slug = currentTenantSlug || (tenantInput.value.trim() || defaultSlug());
       const url = new URL('/api/products', API_BASE);
       url.searchParams.set('tenant_slug', slug);
       const resp = await wFetch(url.toString());
@@ -1720,33 +2362,86 @@
       invTbody.innerHTML = '<tr><td colspan="6" class="small">Cargando...</td></tr>';
       const items = await fetchProducts();
       invTbody.innerHTML = '';
+      const imobile = document.getElementById('inventory-mobile');
+      if (imobile) imobile.innerHTML = '';
       if (!items.length) {
         const tr = document.createElement('tr');
         tr.innerHTML = '<td colspan="6" class="small">Sin productos</td>';
         invTbody.appendChild(tr);
+        if (imobile) imobile.innerHTML = '<div class="small">Sin productos</div>';
         return;
       }
       for (const p of items) {
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${p.id}</td>
-          <td>${p.name}</td>
-          <td>$${p.price}</td>
+          <td>${isAuthed ? `<input type="text" class="inv-name" value="${p.name}" />` : p.name}</td>
+          <td>${isAuthed ? `<input type="text" class="inv-details" value="${p.details || ''}" />` : (p.details || '')}</td>
+          <td>${isAuthed ? `<input type="number" class="inv-price" value="${p.price}" min="0" style="width:90px" />` : `$${p.price}`}</td>
           <td><input type="number" class="inv-stock" value="${p.stock}" min="0" style="width:90px" ${isAuthed ? '' : 'disabled'} /></td>
           <td><input type="checkbox" class="inv-active" ${p.active ? 'checked' : ''} ${isAuthed ? '' : 'disabled'} /></td>
           <td><button class="inv-save" ${isAuthed ? '' : 'disabled'}>Guardar</button></td>
         `;
         invTbody.appendChild(tr);
+        if (imobile) {
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.innerHTML = `
+            <div class="title">${p.id} · ${isAuthed ? `<input type='text' class='inv-name' value='${p.name}' />` : p.name}</div>
+            <div class="meta">${isAuthed ? `<input type='text' class='inv-details' value='${p.details||''}' />` : (p.details||'')}</div>
+            <div class="grid">
+              <div>${isAuthed ? `<input type='number' class='inv-price' value='${p.price}' min='0' />` : `$${p.price}`}</div>
+              <div><input type='number' class='inv-stock' value='${p.stock}' min='0' ${isAuthed ? '' : 'disabled'} /></div>
+              <div><label class='small'><input type='checkbox' class='inv-active' ${p.active ? 'checked' : ''} ${isAuthed ? '' : 'disabled'} /> Activo</label></div>
+            </div>
+            <div class="actions"><button class="inv-save" ${isAuthed ? '' : 'disabled'}>Guardar</button></div>
+          `;
+          imobile.appendChild(card);
+          const nameEl = card.querySelector('.inv-name');
+          const detailsEl = card.querySelector('.inv-details');
+          const priceEl = card.querySelector('.inv-price');
+          const stockEl = card.querySelector('.inv-stock');
+          const activeEl = card.querySelector('.inv-active');
+          const saveBtn = card.querySelector('.inv-save');
+          if (saveBtn) saveBtn.addEventListener('click', async () => {
+            if (!isAuthed) { alert('Requiere sesión de administrador'); return; }
+            try {
+              const ok = await askConfirm('¿Desea guardar lo modificado?');
+              if (!ok) return;
+              const slug = currentTenantSlug || (tenantInput.value.trim() || defaultSlug());
+              const url = new URL(`/api/products/${encodeURIComponent(p.id)}`, API_BASE);
+              url.searchParams.set('tenant_slug', slug);
+              const body = { };
+              if (nameEl) body.name = String(nameEl.value || '').trim();
+              if (detailsEl) body.details = String(detailsEl.value || '').trim();
+              if (priceEl) body.price = parseInt(priceEl.value || '0', 10) || 0;
+              body.stock = parseInt(stockEl.value || '0', 10);
+              body.active = !!(activeEl && activeEl.checked);
+              const resp = await wFetch(url.toString(), { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }, body: JSON.stringify(body) });
+              if (!resp.ok) throw new Error('No se pudo guardar');
+              alert('Guardado');
+            } catch (_) { alert('Error al guardar'); }
+          });
+        }
+        const nameEl = tr.querySelector('.inv-name');
+        const detailsEl = tr.querySelector('.inv-details');
+        const priceEl = tr.querySelector('.inv-price');
         const stockEl = tr.querySelector('.inv-stock');
         const activeEl = tr.querySelector('.inv-active');
         const saveBtn = tr.querySelector('.inv-save');
         saveBtn.addEventListener('click', async () => {
           if (!isAuthed) { alert('Requiere sesión de administrador'); return; }
           try {
-            const slug = tenantInput.value.trim() || defaultSlug();
+            const ok = await askConfirm('¿Desea guardar lo modificado?');
+            if (!ok) return;
+            const slug = currentTenantSlug || (tenantInput.value.trim() || defaultSlug());
             const url = new URL(`/api/products/${encodeURIComponent(p.id)}`, API_BASE);
             url.searchParams.set('tenant_slug', slug);
-            const body = { stock: parseInt(stockEl.value || '0', 10) };
+            const body = { };
+            if (nameEl) body.name = String(nameEl.value || '').trim();
+            if (detailsEl) body.details = String(detailsEl.value || '').trim();
+            if (priceEl) body.price = parseInt(priceEl.value || '0', 10) || 0;
+            body.stock = parseInt(stockEl.value || '0', 10);
             body.active = !!activeEl.checked;
             const resp = await wFetch(url.toString(), {
               method: 'PATCH', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }, body: JSON.stringify(body)
@@ -1760,9 +2455,12 @@
       }
     }
 
+
     async function renderArchived() {
       const atDel = document.getElementById('archived-delivered-tbody');
       const atCan = document.getElementById('archived-canceled-tbody');
+      const mDel = document.getElementById('archived-mobile-del');
+      const mCan = document.getElementById('archived-mobile-can');
       const delCountEl = document.getElementById('arch-del-count');
       const canCountEl = document.getElementById('arch-can-count');
       const fetchPage = async (type) => {
@@ -1790,12 +2488,15 @@
       const archCan = canData.list;
       atDel.innerHTML = '';
       atCan.innerHTML = '';
+      if (mDel) mDel.innerHTML = '';
+      if (mCan) mCan.innerHTML = '';
       if (delCountEl) delCountEl.textContent = `(${archDel.length})`;
       if (canCountEl) canCountEl.textContent = `(${archCan.length})`;
       if (!archDel.length) {
         const tr = document.createElement('tr');
         tr.innerHTML = `<td colspan="6" class="small">Sin resultados</td>`;
         atDel.appendChild(tr);
+        if (mDel) mDel.innerHTML = '<div class="small">Sin resultados</div>';
       }
       for (const o of archDel) {
         const dest = o.order_type === 'mesa' ? `Mesa ${o.table_number || ''}` : (o.address_json || '').slice(0, 64);
@@ -1821,6 +2522,149 @@
           </td>
         `;
         atDel.appendChild(tr);
+        if (mDel) {
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.innerHTML = `
+            <div class="title">Pedido #${o.id}</div>
+            <div class="meta">${formatARDate(o.created_at||'')} · ${o.order_type}</div>
+            <div class="meta">Destino: ${o.order_type==='mesa'?`<span class='pill pill-mesa'>Mesa ${o.table_number||''}</span>`:dest}</div>
+            <div class="meta">${phoneRaw ? `Tel: ${phoneRaw}` : ''} ${waUrl ? `<a href='${waUrl}' target='_blank' rel='noopener'>WhatsApp</a>`:''}</div>
+            <div class="grid"><div>Total: $${o.total}</div><div>Estado: entregado</div></div>
+            <div class="actions"><button class="view-detail" data-id="${o.id}">Ver</button></div>
+          `;
+          mDel.appendChild(card);
+          const viewBtnCard = card.querySelector('.view-detail');
+          if (viewBtnCard) {
+            viewBtnCard.addEventListener('click', async () => {
+              try {
+                const data = await fetchOrderDetail(o.id);
+                const order = data.order || {};
+                const destino = order.order_type === 'mesa' ? `Mesa ${order.table_number || ''}` : ((order.address_json||'').replace(/\n+/g,' ').trim());
+                const telefono = String(order.customer_phone||'').trim();
+                const items = Array.isArray(data.items) ? data.items : [];
+                const history = Array.isArray(data.history) ? data.history : [];
+                const events = Array.isArray(data.events) ? data.events : [];
+                const itemsHtml = items.length ? (() => {
+                  let html = '<table class="detail-items-table"><thead><tr><th>Item</th><th>Cant</th><th>Precio</th><th>Total</th></tr></thead><tbody>';
+                  for (const it of items) { const q = Number(it.qty||0); const p = Number(it.unit_price||0); html += `<tr><td>${it.name||it.product_id||''}</td><td>${q}</td><td>${formatMoney(p)}</td><td>${formatMoney(q*p)}</td></tr>`; }
+                  html += '</tbody></table><p class="detail-summary">Total: $'+Number(order.total||0)+'</p>'; return html;
+                })() : '<p class="small">Sin ítems registrados.</p>';
+                const tipEnabledDetailRaw = getTipPref(order.id);
+                const tipEnabledDetail = hasTipPref(order.id) ? tipEnabledDetailRaw : currentTipDefaultEnabled;
+                const tipAmt = computeTipAmount(order.total);
+                const totalWithTip = Number(order.total || 0) + tipAmt;
+                const tipBlock = `
+                  <div class="tip-section" style="margin-top:8px;">
+                  <label class="small"><input type="checkbox" class="tip-detail-toggle" ${tipEnabledDetail?'checked':''}> Aplicar propina (${currentTipPercent}%)</label>
+                    <div class="small" style="margin-top:4px;">
+                      Propina (${currentTipPercent}%): <span class="tip-amount">${formatMoney(tipAmt)}</span>
+                    </div>
+                    <p class="detail-summary">Total con propina: <span class="tip-total">${formatMoney(tipEnabledDetail ? totalWithTip : order.total)}</span></p>
+                  </div>
+                `;
+                const timeline = history.length ? `
+                  <h3>Historial de estados</h3>
+                  <div>${history.map(h => `<div class="small">${h.status} — ${formatARDate(h.changed_at)}</div>`).join('')}</div>
+                ` : '';
+                const cancelReason = (() => {
+                  for (let i = events.length - 1; i >= 0; i--) {
+                    const ev = events[i] || {};
+                    if (String(ev.event_type || '').toLowerCase() === 'canceled') {
+                      let meta = {};
+                      try { meta = JSON.parse(ev.payload_json || '{}'); } catch (_) {}
+                      const r = String((meta && meta.reason) || '').trim();
+                      if (r) return r;
+                    }
+                  }
+                  return '';
+                })();
+                let totalTimeHtml = '';
+                if (order.status === 'entregado') {
+                  let totalSec = getSlaFinal(order.id);
+                  if (!totalSec || totalSec <= 0) {
+                    const endHist = history.filter(h => h.status === 'entregado').slice(-1)[0];
+                    const endTs = endHist ? parseDateSafe(endHist.changed_at) : Date.now();
+                    const overrideStart = getSlaOverride(order.id);
+                    const createdTs = parseDateSafe(order.created_at);
+                    const baseStart = (!Number.isNaN(overrideStart)) ? overrideStart : createdTs;
+                    const prevSec = getSlaAccumulated(order.id);
+                    if (!Number.isNaN(baseStart)) {
+                      const segmentSec = Math.max(0, Math.floor((endTs - baseStart) / 1000));
+                      totalSec = prevSec + segmentSec;
+                    }
+                  }
+                  if (totalSec && totalSec > 0) {
+                    const th = String(Math.floor(totalSec / 3600)).padStart(2, '0');
+                    const tm = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
+                    const ts = String(totalSec % 60).padStart(2, '0');
+                    totalTimeHtml = `<p class="small">Tiempo total: ${th}:${tm}:${ts}</p>`;
+                  }
+                }
+                const box = document.createElement('div');
+                const statusLabelText = (order.order_type === 'mesa' && order.status === 'en_camino') ? 'mesa' : order.status;
+                box.innerHTML = `
+                  <p><strong>Pedido #${order.id}</strong></p>
+                  <span id="detail-order-id" style="display:none;">${order.id}</span>
+                  <p>Establecimiento: ${order.tenant_slug}</p>
+                  <p>Fecha: ${formatARDate(order.created_at)}</p>
+                  <p>Tipo: ${order.order_type}</p>
+                  <p>Destino: ${order.order_type === 'mesa' ? `<span class="pill pill-mesa">Mesa ${order.table_number || ''}</span>` : destino}</p>
+                  ${telefono ? `<p>Teléfono de contacto: ${telefono}</p>` : ''}
+                  <p>Estado: ${statusLabelText}</p>
+                  ${order.status === 'cancelado' && cancelReason ? `<p>Motivo de cancelación: ${cancelReason}</p>` : ''}
+                  ${order.order_notes ? `<p>Detalle adicional: ${order.order_notes}</p>` : ''}
+                  ${itemsHtml}
+                  ${tipBlock}
+                  ${timeline}
+                  ${totalTimeHtml}
+                `;
+                const modalBody = document.getElementById('detail-modal-body');
+                const modal = document.getElementById('order-detail-modal');
+                const closeBtn = document.getElementById('detail-modal-close');
+                modalBody.innerHTML = '';
+                modalBody.appendChild(box);
+                const prevFocus = document.activeElement;
+                modal.classList.add('active');
+                modal.setAttribute('aria-hidden','false');
+                document.body.style.overflow = 'hidden';
+                const tipToggleDetail = box.querySelector('.tip-detail-toggle');
+                const tipAmtEl = box.querySelector('.tip-amount');
+                const tipTotalEl = box.querySelector('.tip-total');
+                const baseTotalDet = Number(order.total || 0);
+                const refreshDetailTip = () => {
+                  const enabled = tipToggleDetail.checked;
+                  const tip = computeTipAmount(baseTotalDet);
+                  tipAmtEl.textContent = formatMoney(tip);
+                  tipTotalEl.textContent = formatMoney(enabled ? (baseTotalDet + tip) : baseTotalDet);
+                };
+                tipToggleDetail.addEventListener('change', () => {
+                  setTipPref(order.id, tipToggleDetail.checked);
+                  refreshDetailTip();
+                });
+                refreshDetailTip();
+                const overlay = modal.querySelector('.kds-modal-overlay');
+                if (overlay) overlay.onclick = function(){ closeBtn?.click(); };
+                if (closeBtn) closeBtn.onclick = function(){
+                  modal.classList.remove('active');
+                  modal.setAttribute('aria-hidden','true');
+                  modalBody.innerHTML = '';
+                  document.body.style.overflow = 'auto';
+                  try { if (prevFocus && typeof prevFocus.focus === 'function') prevFocus.focus(); } catch(_) {}
+                };
+                document.addEventListener('keydown', function(e){ if (e.key==='Escape' && modal.classList.contains('active')) closeBtn?.click(); });
+                const printBtn = document.getElementById('detail-modal-print');
+                if (printBtn) printBtn.onclick = async function(){
+                  document.body.classList.add('print-modal');
+                  try { await logOrderEvent(order.id, 'printed', { copies: 1 }); } catch(_) {}
+                  window.print();
+                };
+              } catch (e) {
+                alert('No se pudo cargar el detalle.');
+              }
+            });
+          }
+        }
         const copyBtn = tr.querySelector('.copy-phone');
         if (copyBtn) {
           copyBtn.addEventListener('click', async () => {
@@ -1860,12 +2704,12 @@
                   <p class="detail-summary">Total con propina: <span class="tip-total">${formatMoney(tipEnabledDetail ? totalWithTip : order.total)}</span></p>
                 </div>
               `;
-              const timeline = history.length ? `
-                <h3>Historial de estados</h3>
-                <div>
-                  ${history.map(h => `<div class="small">${h.status} — ${formatARDate(h.changed_at)}</div>`).join('')}
-                </div>
-              ` : '';
+            const timeline = history.length ? `
+              <h3>Historial de estados</h3>
+              <div class="timeline">
+                ${history.map(h => `<div class=\"small\">${h.status} — ${formatARDate(h.changed_at)}</div>`).join('')}
+              </div>
+            ` : '';
               const cancelReason = (() => {
                 for (let i = events.length - 1; i >= 0; i--) {
                   const ev = events[i] || {};
@@ -1958,6 +2802,29 @@
                 try { await logOrderEvent(order.id, 'printed', { copies: 1 }); } catch(_) {}
                 window.print();
               };
+              const ticketBtn = document.getElementById('detail-modal-ticket');
+              if (ticketBtn) ticketBtn.onclick = async function(){
+                let sty = document.getElementById('print-ticket-page-style');
+                if (!sty) { sty = document.createElement('style'); sty.id = 'print-ticket-page-style'; document.head.appendChild(sty); }
+                sty.textContent = '@page { size: 80mm auto; margin: 2mm; }';
+                document.body.classList.add('print-ticket');
+                try { await logOrderEvent(order.id, 'printed_ticket', { copies: 1 }); } catch(_) {}
+                window.print();
+              };
+              const directBtn = document.getElementById('detail-modal-directprint');
+              if (directBtn) directBtn.onclick = async function(){
+                const idEl = document.getElementById('detail-order-id');
+                const oid = idEl ? Number(idEl.textContent || 0) : NaN;
+                if (!isAuthed || !csrfToken) { alert('Debes iniciar sesión'); return; }
+                if (Number.isNaN(oid) || oid <= 0) { alert('ID inválido'); return; }
+                try {
+                  const url = new URL(`/api/print/ticket/${oid}`, API_BASE);
+                  const resp = await wFetch(url.toString(), { method:'POST', headers:{ 'X-CSRF-Token': csrfToken } });
+                  const data = await resp.json().catch(()=>({}));
+                  if (!resp.ok) { alert(data && data.error ? data.error : 'Error al imprimir'); return; }
+                  alert('Enviado a la impresora predeterminada');
+                } catch (_) { alert('No se pudo enviar a la impresora'); }
+              };
             } catch (e) {
               alert('No se pudo cargar el detalle.');
             }
@@ -1968,6 +2835,7 @@
         const tr = document.createElement('tr');
         tr.innerHTML = `<td colspan="6" class="small">Sin resultados</td>`;
         atCan.appendChild(tr);
+        if (mCan) mCan.innerHTML = '<div class="small">Sin resultados</div>';
       }
       for (const o of archCan) {
         const dest = o.order_type === 'mesa' ? `Mesa ${o.table_number || ''}` : (o.address_json || '').slice(0, 64);
@@ -1993,6 +2861,128 @@
           </td>
         `;
         atCan.appendChild(tr);
+        if (mCan) {
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.innerHTML = `
+            <div class="title">Pedido #${o.id}</div>
+            <div class="meta">${formatARDate(o.created_at||'')} · ${o.order_type}</div>
+            <div class="meta">Destino: ${o.order_type==='mesa'?`<span class='pill pill-mesa'>Mesa ${o.table_number||''}</span>`:dest}</div>
+            <div class="meta">${phoneRaw ? `Tel: ${phoneRaw}` : ''} ${waUrl ? `<a href='${waUrl}' target='_blank' rel='noopener'>WhatsApp</a>`:''}</div>
+            <div class="grid"><div>Total: $${o.total}</div><div>Estado: cancelado</div></div>
+            <div class="actions"><button class="view-detail" data-id="${o.id}">Ver</button></div>
+          `;
+          mCan.appendChild(card);
+          const viewBtnCard2 = card.querySelector('.view-detail');
+          if (viewBtnCard2) {
+            viewBtnCard2.addEventListener('click', async () => {
+              try {
+                const data = await fetchOrderDetail(o.id);
+                const order = data.order || {};
+                const destino = order.order_type === 'mesa' ? `Mesa ${order.table_number || ''}` : ((order.address_json||'').replace(/\n+/g,' ').trim());
+                const telefono = String(order.customer_phone||'').trim();
+                const items = Array.isArray(data.items) ? data.items : [];
+                const history = Array.isArray(data.history) ? data.history : [];
+                const events = Array.isArray(data.events) ? data.events : [];
+                const itemsHtml = items.length ? (() => {
+                  let html = '<table class="detail-items-table"><thead><tr><th>Item</th><th>Cant</th><th>Precio</th><th>Total</th></tr></thead><tbody>';
+                  for (const it of items) { const q = Number(it.qty||0); const p = Number(it.unit_price||0); html += `<tr><td>${it.name||it.product_id||''}</td><td>${q}</td><td>${formatMoney(p)}</td><td>${formatMoney(q*p)}</td></tr>`; }
+                  html += '</tbody></table><p class="detail-summary">Total: $'+Number(order.total||0)+'</p>'; return html;
+                })() : '<p class="small">Sin ítems registrados.</p>';
+                const tipEnabledDetailRaw = getTipPref(order.id);
+                const tipEnabledDetail = hasTipPref(order.id) ? tipEnabledDetailRaw : currentTipDefaultEnabled;
+                const tipAmt = computeTipAmount(order.total);
+                const totalWithTip = Number(order.total || 0) + tipAmt;
+                const tipBlock = `
+                  <div class="tip-section" style="margin-top:8px;">
+                  <label class="small"><input type="checkbox" class="tip-detail-toggle" ${tipEnabledDetail?'checked':''}> Aplicar propina (${currentTipPercent}%)</label>
+                    <div class="small" style="margin-top:4px;">
+                      Propina (${currentTipPercent}%): <span class="tip-amount">${formatMoney(tipAmt)}</span>
+                    </div>
+                    <p class="detail-summary">Total con propina: <span class="tip-total">${formatMoney(tipEnabledDetail ? totalWithTip : order.total)}</span></p>
+                  </div>
+                `;
+                const timeline = history.length ? `
+                  <h3>Historial de estados</h3>
+                  <div>${history.map(h => `<div class="small">${h.status} — ${formatARDate(h.changed_at)}</div>`).join('')}</div>
+                ` : '';
+                const cancelReason = (() => {
+                  for (let i = events.length - 1; i >= 0; i--) {
+                    const ev = events[i] || {};
+                    if (String(ev.event_type || '').toLowerCase() === 'canceled') {
+                      let meta = {};
+                      try { meta = JSON.parse(ev.payload_json || '{}'); } catch (_) {}
+                      const r = String((meta && meta.reason) || '').trim();
+                      if (r) return r;
+                    }
+                  }
+                  return '';
+                })();
+                let totalTimeHtml = '';
+                const box = document.createElement('div');
+                const statusLabelText = (order.order_type === 'mesa' && order.status === 'en_camino') ? 'mesa' : order.status;
+                box.innerHTML = `
+                  <p><strong>Pedido #${order.id}</strong></p>
+                  <span id="detail-order-id" style="display:none;">${order.id}</span>
+                  <p>Establecimiento: ${order.tenant_slug}</p>
+                  <p>Fecha: ${formatARDate(order.created_at)}</p>
+                  <p>Tipo: ${order.order_type}</p>
+                  <p>Destino: ${order.order_type === 'mesa' ? `<span class="pill pill-mesa">Mesa ${order.table_number || ''}</span>` : destino}</p>
+                  ${telefono ? `<p>Teléfono de contacto: ${telefono}</p>` : ''}
+                  <p>Estado: ${statusLabelText}</p>
+                  ${order.status === 'cancelado' && cancelReason ? `<p>Motivo de cancelación: ${cancelReason}</p>` : ''}
+                  ${order.order_notes ? `<p>Detalle adicional: ${order.order_notes}</p>` : ''}
+                  ${itemsHtml}
+                  ${tipBlock}
+                  ${timeline}
+                  ${totalTimeHtml}
+                `;
+                const modalBody = document.getElementById('detail-modal-body');
+                const modal = document.getElementById('order-detail-modal');
+                const closeBtn = document.getElementById('detail-modal-close');
+                modalBody.innerHTML = '';
+                modalBody.appendChild(box);
+                const prevFocus = document.activeElement;
+                modal.classList.add('active');
+                modal.setAttribute('aria-hidden','false');
+                document.body.style.overflow = 'hidden';
+                const tipToggleDetail = box.querySelector('.tip-detail-toggle');
+                const tipAmtEl = box.querySelector('.tip-amount');
+                const tipTotalEl = box.querySelector('.tip-total');
+                const baseTotalDet = Number(order.total || 0);
+                const refreshDetailTip = () => {
+                  const enabled = tipToggleDetail.checked;
+                  const tip = computeTipAmount(baseTotalDet);
+                  tipAmtEl.textContent = formatMoney(tip);
+                  tipTotalEl.textContent = formatMoney(enabled ? (baseTotalDet + tip) : baseTotalDet);
+                };
+                tipToggleDetail.addEventListener('change', () => {
+                  setTipPref(order.id, tipToggleDetail.checked);
+                  refreshDetailTip();
+                });
+                refreshDetailTip();
+                const overlay = modal.querySelector('.kds-modal-overlay');
+                if (overlay) overlay.onclick = function(){ closeBtn?.click(); };
+                if (closeBtn) closeBtn.onclick = function(){
+                  modal.classList.remove('active');
+                  modal.setAttribute('aria-hidden','true');
+                  modalBody.innerHTML = '';
+                  document.body.style.overflow = 'auto';
+                  try { if (prevFocus && typeof prevFocus.focus === 'function') prevFocus.focus(); } catch(_) {}
+                };
+                document.addEventListener('keydown', function(e){ if (e.key==='Escape' && modal.classList.contains('active')) closeBtn?.click(); });
+                const printBtn = document.getElementById('detail-modal-print');
+                if (printBtn) printBtn.onclick = async function(){
+                  document.body.classList.add('print-modal');
+                  try { await logOrderEvent(order.id, 'printed', { copies: 1 }); } catch(_) {}
+                  window.print();
+                };
+              } catch (e) {
+                alert('No se pudo cargar el detalle.');
+              }
+            });
+          }
+        }
         const copyBtn = tr.querySelector('.copy-phone');
         if (copyBtn) {
           copyBtn.addEventListener('click', async () => {
@@ -2107,6 +3097,12 @@
               if (printBtn) printBtn.onclick = async function(){
                 document.body.classList.add('print-modal');
                 try { await logOrderEvent(order.id, 'printed', { copies: 1 }); } catch(_) {}
+                window.print();
+              };
+              const ticketBtn = document.getElementById('detail-modal-ticket');
+              if (ticketBtn) ticketBtn.onclick = async function(){
+                document.body.classList.add('print-ticket');
+                try { await logOrderEvent(order.id, 'printed_ticket', { copies: 1 }); } catch(_) {}
                 window.print();
               };
             } catch (e) {
@@ -2246,7 +3242,7 @@
     function initSLAClock() {
       if (slaTimer) clearInterval(slaTimer);
       const thresholds = currentSlaThresholds;
-      const update = () => {
+      const update = async () => {
         const now = Date.now();
         const nodes = Array.from(document.querySelectorAll('.sla-container'));
         for (const n of nodes) {
@@ -2287,22 +3283,33 @@
           const totalElapsedSec = (orderId ? getSlaAccumulated(orderId) : 0) + currentSec;
           const mins = Math.floor(totalElapsedSec / 60);
           dot.classList.remove('sla-warning', 'sla-critical');
+          let stateStr = '';
           if (mins >= thresholds.critical) {
             dot.classList.add('sla-critical');
             dot.style.background = '#f44336';
+            stateStr = 'critical';
           } else if (mins >= thresholds.warning) {
             dot.classList.add('sla-warning');
             dot.style.background = '#ff9800';
+            stateStr = 'warning';
           } else {
             dot.style.background = '#bbb';
           }
-          const row = n.closest('tr');
-          if (row) {
-            if (mins >= thresholds.critical) {
-              row.classList.add('card-overdue');
-            } else {
-              row.classList.remove('card-overdue');
+      const row = n.closest('tr');
+      if (row) {
+        if (mins >= thresholds.critical) {
+          row.classList.add('card-overdue');
+        } else {
+          row.classList.remove('card-overdue');
+        }
+      }
+          if (orderId) {
+            const prev = slaStateMap.get(orderId) || '';
+            if (stateStr !== prev && soundEnabled) {
+              if (stateStr === 'warning') { try { await playSlaWarningSound(); } catch (_) {} }
+              else if (stateStr === 'critical') { try { await playSlaCriticalSound(); } catch (_) {} }
             }
+            slaStateMap.set(orderId, stateStr);
           }
         }
       };
@@ -2333,8 +3340,10 @@
     filterSelect.addEventListener('change', () => { currentOffset = 0; load(); });
     document.getElementById('search-btn').addEventListener('click', () => {
       currentSearch = document.getElementById('search-input').value.trim();
-      currentFrom = document.getElementById('from-date').value;
-      currentTo = document.getElementById('to-date').value;
+      const fd = document.getElementById('from-date').value;
+      const td = document.getElementById('to-date').value;
+      if (fd) { currentFrom = fd; }
+      if (td) { currentTo = td; }
       currentLimit = parseInt(document.getElementById('page-size').value, 10) || 50;
       currentOffset = 0;
       load();
@@ -2365,6 +3374,10 @@
       }
       if (!cashHistoryCollapsed) await renderCashHistory();
     };
+    const inventoryBox = document.getElementById('inventory-box');
+    if (inventoryBox) inventoryBox.addEventListener('toggle', async () => {
+      if (inventoryBox.open) { try { await renderInventory(); } catch (_) {} }
+    });
     document.getElementById('search-input').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         document.getElementById('search-btn').click();
@@ -2454,12 +3467,16 @@
         const data = await resp.json();
         if (data && data.authenticated) {
           isAuthed = true;
+          currentUserName = String(data.user || '');
+          currentTenantSlug = String(data.tenant_slug || '') || currentTenantSlug;
           await fetchCSRF();
           document.getElementById('login-box').style.display = 'none';
           return true;
         }
       } catch (_) {}
       isAuthed = false;
+      currentUserName = '';
+      currentTenantSlug = '';
       document.getElementById('login-box').style.display = 'block';
       setAuthUI();
       return false;
@@ -2478,6 +3495,7 @@
           if (box) box.style.display = 'block';
         }
       } catch (_) {}
+      await populateTenantsList();
       await ensureAuth();
       setAuthUI();
       if (isAuthed) {
@@ -2502,21 +3520,24 @@
       const p = pEl ? pEl.value : '';
       try {
         if (btn) btn.disabled = true;
+        const ltEl = document.getElementById('login-tenant');
+        const slug = (ltEl && ltEl.value && ltEl.value.trim()) || (tenantInput && tenantInput.value && tenantInput.value.trim()) || defaultSlug();
         let resp = await wFetch(new URL('/api/auth/login', API_BASE).toString(), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: u, password: p })
+          body: JSON.stringify({ username: u, password: p, tenant_slug: slug })
         });
         if (!resp.ok && u === 'admin' && p === 'admin123') {
           resp = await wFetch(new URL('/api/auth/login_dev', API_BASE).toString(), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: u })
+            body: JSON.stringify({ username: u, tenant_slug: slug })
           });
         }
         if (!resp.ok) { if (errEl) errEl.style.display = 'block'; return; }
         if (errEl) errEl.style.display = 'none';
         await fetchCSRF();
+        currentUserName = u;
         const remEl = document.getElementById('login-remember');
         if (remEl && remEl.checked) {
           try {
@@ -2532,13 +3553,17 @@
           } catch (_) {}
         }
         isAuthed = true;
+        currentTenantSlug = slug;
+        try { localStorage.setItem('tenant_last_selected', slug); } catch (_) {}
+        if (tenantInput) tenantInput.value = slug;
         const box = document.getElementById('login-box');
         if (box) box.style.display = 'none';
         document.body.classList.remove('show-login');
         setAuthUI();
         await loadSlaThresholds();
         await load();
-        refreshTimer = setInterval(loadOrdersSafe, 10000);
+        try { if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } await audioCtx.resume(); } catch (_) {}
+        refreshTimer = setInterval(loadOrdersSafe, POLL_MS);
       } catch (_) {
         if (errEl) errEl.style.display = 'block';
       } finally {
@@ -2551,6 +3576,7 @@
         try { await wFetch(new URL('/api/auth/logout', API_BASE).toString(), { method: 'POST' }); } catch (_) {}
         isAuthed = false;
         csrfToken = '';
+        if (refreshTimer) { try { clearInterval(refreshTimer); } catch (_) {} refreshTimer = null; }
         document.getElementById('login-box').style.display = 'block';
         document.body.classList.add('show-login');
         setAuthUI();
@@ -2586,6 +3612,8 @@
     document.addEventListener('DOMContentLoaded', init);
     window.addEventListener('afterprint', () => {
       document.body.classList.remove('print-modal');
+      document.body.classList.remove('print-ticket');
+      try { const sty = document.getElementById('print-ticket-page-style'); if (sty && sty.parentNode) sty.parentNode.removeChild(sty); } catch (_) {}
       const modal = document.getElementById('order-detail-modal');
       if (modal && modal.classList.contains('active')) {
         modal.classList.remove('active');
@@ -2788,6 +3816,70 @@
       if (!resp.ok) return null;
       return resp.json();
     }
+    let originalTitle = document.title;
+    function startActiveCardFlash() {
+      if (window.activeCardFlashTimer) return;
+      window.activeCardFlashTimer = setInterval(() => {
+        const el = document.getElementById('metric-active');
+        if (!el) return;
+        const on = el.getAttribute('data-flash') === '1';
+        if (on) {
+          el.style.boxShadow = '';
+          el.style.backgroundColor = '';
+          el.setAttribute('data-flash','0');
+        } else {
+          el.style.boxShadow = '0 0 0 3px #ff9800 inset';
+          el.style.backgroundColor = '#fff3e0';
+          el.setAttribute('data-flash','1');
+        }
+      }, 700);
+    }
+    function stopActiveCardFlash() {
+      if (window.activeCardFlashTimer) { clearInterval(window.activeCardFlashTimer); window.activeCardFlashTimer = null; }
+      const el = document.getElementById('metric-active');
+      if (el) { el.style.boxShadow = ''; el.style.backgroundColor = ''; el.removeAttribute('data-flash'); }
+    }
+    function startTabNotify() {
+      if (window.tabNotifyTimer) return;
+      let alertOn = false;
+      window.tabNotifyTimer = setInterval(() => {
+        document.title = alertOn ? originalTitle : '¡Nuevo pedido activo!';
+        alertOn = !alertOn;
+      }, 1200);
+    }
+    function stopTabNotify() {
+      if (window.tabNotifyTimer) { clearInterval(window.tabNotifyTimer); window.tabNotifyTimer = null; }
+      document.title = originalTitle;
+    }
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        stopTabNotify();
+      } else {
+        if (window.lastNewOrderId && window.lastNewOrderId > 0) startTabNotify();
+      }
+    });
+    function startActiveCardFlash() {
+      if (window.activeCardFlashTimer) return;
+      window.activeCardFlashTimer = setInterval(() => {
+        const el = document.getElementById('metric-active');
+        if (!el) return;
+        const on = el.getAttribute('data-flash') === '1';
+        if (on) {
+          el.style.boxShadow = '';
+          el.style.backgroundColor = '';
+          el.setAttribute('data-flash','0');
+        } else {
+          el.style.boxShadow = '0 0 0 3px #ff9800 inset';
+          el.style.backgroundColor = '#fff3e0';
+          el.setAttribute('data-flash','1');
+        }
+      }, 700);
+    }
+    function stopActiveCardFlash() {
+      if (window.activeCardFlashTimer) { clearInterval(window.activeCardFlashTimer); window.activeCardFlashTimer = null; }
+      const el = document.getElementById('metric-active');
+      if (el) { el.style.boxShadow = ''; el.style.backgroundColor = ''; el.removeAttribute('data-flash'); }
+    }
     async function renderMetricsBox() {
       try {
         const m = await fetchMetrics();
@@ -2798,7 +3890,7 @@
         const rangeLine = (rangeFrom || rangeTo) ? `<div class="small" style="margin-bottom:6px; color:#555;">Rango: ${rangeFrom || '-'} → ${rangeTo || 'ahora'}</div>` : '';
         el.innerHTML = `
           ${rangeLine}
-          <div class="metric-card">
+          <div id="metric-active" class="metric-card">
             <div class="metric-label">Activos</div>
             <div class="metric-value">${m.active_count}</div>
             <div class="metric-sub">Pedidos en curso</div>
@@ -2819,6 +3911,38 @@
             <div class="metric-sub">Propina(10%): $${m.delivered_tip_10} · Total c/propina: $${m.delivered_total_with_tip}</div>
           </div>
         `;
+        const activeCard = el.querySelector('#metric-active');
+        if (activeCard) {
+          activeCard.style.cursor = 'pointer';
+          activeCard.title = 'Ir al último pedido activo';
+          activeCard.onclick = () => {
+            const list = Array.isArray(window.activeCurrent) ? window.activeCurrent : [];
+            let targetId = 0;
+            if (window.lastNewOrderId && typeof window.lastNewOrderId === 'number' && window.lastNewOrderId > 0) {
+              targetId = window.lastNewOrderId;
+            }
+            if (!targetId && list.length) {
+              const sorted = list.slice().sort((a,b) => parseDateSafe(b.created_at) - parseDateSafe(a.created_at));
+              targetId = sorted[0].id;
+            }
+            if (targetId > 0) {
+              const totalEl = document.querySelector(`.order-total[data-orderid="${targetId}"]`);
+              const row = totalEl ? totalEl.closest('tr') : null;
+              if (row) {
+                const card = document.getElementById('metric-active');
+                const rowTop = row.getBoundingClientRect().top + window.scrollY;
+                const cardBottom = card ? (card.getBoundingClientRect().bottom + window.scrollY) : window.scrollY;
+                const targetTop = Math.max(0, rowTop - (cardBottom - window.scrollY) - 12);
+                window.scrollTo({ top: targetTop, behavior: 'smooth' });
+                row.style.boxShadow = '0 0 0 3px #2196f3 inset';
+                row.style.backgroundColor = '#e3f2fd';
+                setTimeout(() => { row.style.boxShadow=''; row.style.backgroundColor=''; }, 2000);
+              }
+            }
+            stopActiveCardFlash();
+            stopTabNotify();
+          };
+        }
         
         const btn = document.getElementById('toggle-cash');
         const box = document.getElementById('cash-box');
@@ -2837,12 +3961,19 @@
       if (!resp.ok) return { active: false };
       return resp.json();
     }
-    async function openCash() {
+    async function openCash(opts) {
       const slug = tenantInput.value.trim() || defaultSlug();
       const amtEl = document.getElementById('cash-open-amount');
       const noteEl = document.getElementById('cash-open-notes');
-      const opening_amount = parseInt(amtEl && amtEl.value || '0', 10) || 0;
-      const notes = noteEl ? String(noteEl.value || '').trim() : '';
+      let opening_amount = 0;
+      let notes = '';
+      if (opts && typeof opts === 'object') {
+        opening_amount = parseInt(String(opts.opening_amount ?? '0'), 10) || 0;
+        notes = String(opts.notes || '').trim();
+      } else {
+        opening_amount = parseInt(amtEl && amtEl.value || '0', 10) || 0;
+        notes = noteEl ? String(noteEl.value || '').trim() : '';
+      }
       try { await ensureAuth(); } catch(_) {}
       if (!isAuthed || !csrfToken) {
         alert('Debes iniciar sesión para abrir caja.');
@@ -2889,13 +4020,9 @@
         return false;
       }
       const data = await resp.json();
-      try {
-        const s = data.summary || {};
-        alert(`Cierre de caja\nTotal ventas: $${s.delivered_total||0}\nEntradas: $${s.entradas||0} · Salidas: $${s.salidas||0}\nCaja teórica: $${s.theoretical_cash||0}\nMonto contado: $${closing_amount}\nDiferencia: $${s.closing_diff||0}`);
-      } catch (_) {}
       cashCloseDraft = { amount: undefined, notes: '' };
-      await renderCashBox();
-      return true;
+      if (!cashKeepModalOpen) { await renderCashBox(); }
+      return data;
     }
     async function renderCashBox() {
       try {
@@ -2939,48 +4066,424 @@
             note.addEventListener('focus', () => { isCashEditing = true; });
             note.addEventListener('blur', () => { setTimeout(() => { const ae = document.activeElement; isCashEditing = ['cash-open-amount','cash-open-notes','cash-close-amount','cash-close-notes'].includes(ae && ae.id); }, 10); });
           }
+          const salesEl = document.getElementById('cash-session-sales');
+          const inoutEl = document.getElementById('cash-session-inout');
+          const sysEl = document.getElementById('cash-session-system');
+          const countedEl = document.getElementById('cash-session-counted');
+          const diffEl = document.getElementById('cash-session-diff');
+          const efInput = document.getElementById('arqueo-efectivo');
+          const posInput = document.getElementById('arqueo-pos');
+          const transInput = document.getElementById('arqueo-trans');
+          const otrosInput = document.getElementById('arqueo-otros');
+          const useToggle = document.getElementById('arqueo-use-toggle');
+          const closeAmtInput = document.getElementById('cash-close-amount');
+          const updateArqueoTotal = () => {
+            const ef = parseInt(efInput && efInput.value || '0', 10) || 0;
+            const pos = parseInt(posInput && posInput.value || '0', 10) || 0;
+            const trn = parseInt(transInput && transInput.value || '0', 10) || 0;
+            const otr = parseInt(otrosInput && otrosInput.value || '0', 10) || 0;
+            const total = ef + pos + trn + otr;
+            const el = document.getElementById('arqueo-total');
+            if (el) el.textContent = `Total contado: $${total}`;
+            return total;
+          };
+          const updateSessionTotals = () => {
+            const sdel = Number(sum.delivered_total || 0);
+            const sin = Number(sum.entradas || 0);
+            const sout = Number(sum.salidas || 0);
+            const sys = Number((sum.theoretical_cash || 0));
+            const counted = (useToggle && useToggle.checked) ? updateArqueoTotal() : (parseInt(closeAmtInput && closeAmtInput.value || '0',10)||0);
+            if (salesEl) salesEl.textContent = `Ventas sesión: ${formatMoney(sdel)}`;
+            if (inoutEl) inoutEl.textContent = `Ingresos: ${formatMoney(sin)} · Salidas: ${formatMoney(sout)}`;
+            if (sysEl) sysEl.textContent = `Sistema: ${formatMoney(sys)}`;
+            if (countedEl) countedEl.textContent = `Contado: ${formatMoney(counted)}`;
+            if (diffEl) diffEl.textContent = `Diferencia: ${formatMoney(counted - sys)}`;
+          };
+          updateArqueoTotal();
+          updateSessionTotals();
+          [efInput, posInput, transInput, otrosInput, useToggle, closeAmtInput].forEach(el => { if (el) el.addEventListener('input', () => { updateArqueoTotal(); updateSessionTotals(); }); });
           return;
         }
         const s = data.session || {};
         const sum = data.summary || {};
         box.innerHTML = `
           <div class="cash-card">
-            <div class="cash-title">Caja abierta</div>
+            <div class="cash-title" style="display:flex; align-items:center; justify-content:space-between;">
+              <span>Caja abierta</span>
+              <button id="cash-eye" class="eye-btn" aria-label="Ocultar caja"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5zm0 12.5a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg></button>
+            </div>
+            <div id="cash-body">
             <div class="small">Abierta: ${formatARDate(s.opened_at || '')} · Por: ${s.opened_by || ''}</div>
-            <div class="small">Monto inicial: $${s.opening_amount || 0}</div>
-            <div class="small">Entregados: ${sum.delivered_count || 0} · Total ventas: $${sum.delivered_total || 0}</div>
-            <div class="small">Entradas: $${sum.entradas || 0} · Salidas: $${sum.salidas || 0}</div>
-            <div class="small">Caja teórica: $${sum.theoretical_cash || (s.opening_amount||0)}</div>
+            <div class="small">Monto inicial: ${formatMoney(s.opening_amount || 0)}</div>
+            <div class="small">Completa los montos reales para cerrar la caja.</div>
+            <div class="cash-row" style="display:flex; gap:8px;">
+              <button id="cash-movement-btn">Registrar movimiento</button>
+            </div>
             <div class="cash-row">
-              <label>Monto de cierre <input id="cash-close-amount" type="number" min="0" step="1" value="${(cashCloseDraft.amount !== undefined && cashCloseDraft.amount !== null) ? cashCloseDraft.amount : (sum.theoretical_cash || 0)}" /></label>
+              <div class="small" style="font-weight:700;">Arqueo rápido</div>
+            </div>
+            <div class="cash-row" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:8px;">
+              <label>Efectivo contado $ <input id="arqueo-efectivo" type="number" min="0" step="1" value="${(cashCloseDraft.methods && cashCloseDraft.methods.efectivo) || 0}" /></label>
+              <label>POS/QR $ <input id="arqueo-pos" type="number" min="0" step="1" value="${(cashCloseDraft.methods && cashCloseDraft.methods.pos) || 0}" /></label>
+              <label>Transferencias $ <input id="arqueo-trans" type="number" min="0" step="1" value="${(cashCloseDraft.methods && cashCloseDraft.methods.trans) || 0}" /></label>
+              <label>Otros $ <input id="arqueo-otros" type="number" min="0" step="1" value="${(cashCloseDraft.methods && cashCloseDraft.methods.otros) || 0}" /></label>
+            </div>
+            <div class="small" id="arqueo-total">Total contado: $0</div>
+            <div class="cash-row">
+              <div class="small" style="font-weight:700;">Resumen de totales</div>
+            </div>
+            <div class="small" id="cash-session-sales">Ventas sesión: $0</div>
+            <div class="small" id="cash-session-inout">Ingresos: $0 · Salidas: $0</div>
+            <div class="small" id="cash-session-system">Sistema: $0</div>
+            <div class="small" id="cash-session-counted">Contado: $0</div>
+            <div class="small" id="cash-session-diff">Diferencia: $0</div>
+            <div class="cash-row">
+              <label style="display:flex; align-items:center; gap:8px;">
+                <input id="arqueo-use-toggle" type="checkbox" ${(cashCloseDraft.useArqueo ? 'checked' : '')} /> Usar arqueo para monto de cierre
+              </label>
+            </div>
+            <div class="cash-row">
+              <label>Monto de cierre <input id="cash-close-amount" type="number" min="0" step="1" value="${(cashCloseDraft.amount !== undefined && cashCloseDraft.amount !== null) ? cashCloseDraft.amount : ''}" /></label>
             </div>
             <div class="cash-row">
               <textarea id="cash-close-notes" placeholder="Notas de cierre">${cashCloseDraft.notes || ''}</textarea>
             </div>
-            <div class="small" id="cash-close-diff" style="margin-top:4px;">Diferencia estimada: $0</div>
             <div class="cash-row">
               <button id="cash-close-btn">Cerrar caja</button>
+            </div>
+            <div id="cash-close-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.35); z-index:1000;">
+              <div id="cash-close-dialog" role="dialog" aria-modal="true" style="background:#fff; margin:10vh auto; max-width:540px; padding:16px; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.2);">
+              <div class="cash-title">Resumen de cierre</div>
+                <div class="small" id="cash-close-review-count">Contado: $0</div>
+                <div class="small" id="cash-close-review-sales">Total ventas: $0</div>
+                <div class="small" id="cash-close-review-es">Entradas: $0 · Salidas: $0</div>
+                <div class="small" id="cash-close-review-theo">Teórico del sistema: $0</div>
+                <div class="small" id="cash-close-review-diff" style="font-weight:700;">Diferencia: $0</div>
+                <div class="cash-row" style="display:flex; gap:8px; justify-content:flex-end;">
+                  <button id="confirm-close">Confirmar cierre</button>
+                  <button id="dismiss-close-modal" style="display:none;">Cerrar modal</button>
+                </div>
+                <div class="cash-row">
+                  <div class="small" style="font-weight:700; margin-top:8px;">Pedidos entregados en la sesión</div>
+                  <div id="close-orders" style="max-height:40vh; overflow:auto; border:1px solid #ddd;">
+                    <table style="width:100%; border-collapse:collapse;">
+                      <thead>
+                        <tr style="background:#f5f5f5;">
+                          <th style="text-align:left; padding:6px; border-bottom:1px solid #ddd;">ID</th>
+                          <th style="text-align:left; padding:6px; border-bottom:1px solid #ddd;">Creado</th>
+                          <th style="text-align:right; padding:6px; border-bottom:1px solid #ddd;">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody id="close-orders-body"></tbody>
+                    </table>
+                  </div>
+                  <div class="small" id="close-orders-sum">Total pedidos en sesión: $0</div>
+                </div>
+                <div class="cash-row">
+                  <div class="small" style="font-weight:700;">Ingresos y salidas de dinero</div>
+                  <div class="small" id="close-mov-sums">Total ingresos: $0 · Total salidas: $0</div>
+                  <div id="close-movements" style="max-height:40vh; overflow:auto; border:1px solid #ddd;">
+                    <table style="width:100%; border-collapse:collapse;">
+                      <thead>
+                        <tr style="background:#f5f5f5;">
+                          <th style="text-align:left; padding:6px; border-bottom:1px solid #ddd;">Fecha</th>
+                          <th style="text-align:left; padding:6px; border-bottom:1px solid #ddd;">Tipo</th>
+                          <th style="text-align:right; padding:6px; border-bottom:1px solid #ddd;">Monto</th>
+                          <th style="text-align:left; padding:6px; border-bottom:1px solid #ddd;">Nota</th>
+                          <th style="text-align:left; padding:6px; border-bottom:1px solid #ddd;">Actor</th>
+                        </tr>
+                      </thead>
+                      <tbody id="close-movements-body"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div id="cash-movement-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.35); z-index:1000;">
+              <div role="dialog" aria-modal="true" style="background:#fff; margin:10vh auto; max-width:560px; padding:16px; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.2);">
+                <div class="cash-title">Nuevo movimiento de caja</div>
+                <div class="cash-row" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:8px;">
+                  <label>Tipo
+                    <select id="cash-mov-type">
+                      <option value="entrada">Entrada</option>
+                      <option value="salida">Salida</option>
+                    </select>
+                  </label>
+                  <label>Monto $ <input id="cash-mov-amount" type="number" min="1" step="1" /></label>
+                </div>
+                <div class="cash-row">
+                  <textarea id="cash-mov-motive" placeholder="Motivo"></textarea>
+                </div>
+                <div class="cash-row">
+                  <textarea id="cash-mov-detail" placeholder="Detalles"></textarea>
+                </div>
+                <div class="cash-row" style="display:flex; gap:8px; justify-content:flex-end;">
+                  <button id="cash-mov-cancel">Cancelar</button>
+                  <button id="cash-mov-submit">Registrar</button>
+                </div>
+              </div>
+            </div>
+            <div id="cash-mov-notify" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.35); z-index:1000;">
+              <div role="dialog" aria-modal="true" style="background:#fff; margin:20vh auto; max-width:420px; padding:16px; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.2); text-align:center;">
+                <div id="cash-mov-notify-text" class="small" style="margin-bottom:12px;">Movimiento registrado</div>
+                <button id="cash-mov-notify-ok">Aceptar</button>
+              </div>
+            </div>
             </div>
           </div>
         `;
         const cbtn = document.getElementById('cash-close-btn');
-        if (cbtn) cbtn.onclick = async () => { cbtn.disabled = true; try { await closeCash(); } finally { cbtn.disabled = false; } };
+        const reviewModal = document.getElementById('cash-close-modal');
+        const cashEyeBtn = document.getElementById('cash-eye');
+        const cashBodyEl = document.getElementById('cash-body');
+        const CASH_BODY_VISIBLE_KEY = 'cash_body_visible';
+        let cashBodyVisible = true;
+        try { const v = localStorage.getItem(CASH_BODY_VISIBLE_KEY); if (v === '0') cashBodyVisible = false; } catch (_) {}
+        function setCashBodyVisible(v){ cashBodyVisible = !!v; if (cashBodyEl) cashBodyEl.style.display = cashBodyVisible ? '' : 'none'; if (cashEyeBtn) cashEyeBtn.setAttribute('aria-label', cashBodyVisible ? 'Ocultar caja' : 'Mostrar caja'); if (cashEyeBtn) cashEyeBtn.innerHTML = cashBodyVisible ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5zm0 12.5a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg>' : '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M2.1 3.51 1 4.6l4.11 4.11C3.33 9.87 1.86 11.74 1 12c1.73 4.39 6 7.5 11 7.5 2.11 0 4.08-.51 5.82-1.41l3.58 3.58 1.11-1.09L2.1 3.51zM12 6.5c1.41 0 2.67.58 3.57 1.5l-1.06 1.06a3 3 0 0 0-4.1 4.1L9.35 14.2A5 5 0 0 1 12 6.5zm0 10.5a9.31 9.31 0 0 1-6.63-2.72c-.54-.54-.99-1.1-1.37-1.66l3.17-3.17 1.55 1.55a5 5 0 0 0 6.08 6.08l1.55 1.55A10.97 10.97 0 0 1 12 17z"/></svg>'; try { localStorage.setItem(CASH_BODY_VISIBLE_KEY, cashBodyVisible ? '1' : '0'); } catch (_) {} }
+        setCashBodyVisible(cashBodyVisible);
+        if (cashEyeBtn) cashEyeBtn.addEventListener('click', () => setCashBodyVisible(!cashBodyVisible));
+        const reviewCount = document.getElementById('cash-close-review-count');
+        const reviewTheo = document.getElementById('cash-close-review-theo');
+        const reviewDiff = document.getElementById('cash-close-review-diff');
+        async function showCloseReview() {
+          const v = parseInt(amtInput && amtInput.value || '0', 10) || 0;
+          try {
+            const latest = await fetchCashSession();
+            const theo = Number(latest && latest.summary && latest.summary.theoretical_cash || 0);
+            if (reviewCount) reviewCount.textContent = `Contado: ${formatMoney(v)}`;
+            if (reviewTheo) reviewTheo.textContent = `Teórico del sistema: ${formatMoney(theo)}`;
+            if (reviewDiff) reviewDiff.textContent = `Diferencia: ${formatMoney(v - theo)}`;
+            cashKeepModalOpen = true;
+            isCashEditing = true;
+            try {
+              const slug = tenantInput.value.trim() || defaultSlug();
+              const sessId = latest && latest.session && latest.session.id;
+              const nowIso = new Date().toISOString();
+              const url = new URL('/api/cash/session/orders', API_BASE);
+              url.searchParams.set('tenant_slug', slug);
+              if (sessId) url.searchParams.set('session_id', String(sessId));
+              url.searchParams.set('to', nowIso);
+              const resp = await wFetch(url.toString());
+              if (resp && resp.ok) {
+                const payload = await resp.json();
+                const rows = Array.isArray(payload.orders) ? payload.orders : [];
+                const body = document.getElementById('close-orders-body');
+                const sumEl = document.getElementById('close-orders-sum');
+                if (body) {
+                  body.innerHTML = rows.map(r => `
+                    <tr>
+                      <td style="padding:6px; border-bottom:1px solid #eee;">${r.id}</td>
+                      <td style="padding:6px; border-bottom:1px solid #eee;">${formatARDate(r.created_at || '')}</td>
+                      <td style="padding:6px; border-bottom:1px solid #eee; text-align:right;">$${r.total || 0}</td>
+                    </tr>
+                  `).join('');
+                }
+                try { if (sumEl) { const total = rows.reduce((a,b)=>a+Number(b.total||0),0); sumEl.textContent = `Total pedidos en sesión: ${formatMoney(total)}`; } } catch(_){ }
+              }
+            } catch (_) {}
+            [efInput, posInput, transInput, otrosInput, useToggle, amtInput, noteClose].forEach(el => { try { if (el) el.disabled = true; } catch(_){} });
+            if (reviewModal) reviewModal.style.display = 'block';
+          } catch (_) {
+            if (reviewCount) reviewCount.textContent = `Contado: $${v}`;
+            if (reviewTheo) reviewTheo.textContent = `Teórico del sistema: (no disponible)`;
+            if (reviewDiff) reviewDiff.textContent = `Diferencia: (no disponible)`;
+            cashKeepModalOpen = true;
+            isCashEditing = true;
+            if (reviewModal) reviewModal.style.display = 'block';
+          }
+        }
+        if (cbtn) cbtn.onclick = async () => { await showCloseReview(); };
+        const confirmBtn = document.getElementById('confirm-close');
+        const dismissBtn = document.getElementById('dismiss-close-modal');
+        if (confirmBtn) confirmBtn.onclick = async () => {
+          confirmBtn.disabled = true;
+          try {
+            const res = await closeCash();
+            if (res && res.summary) {
+              const s = res.summary;
+              const salesEl = document.getElementById('cash-close-review-sales');
+              const esEl = document.getElementById('cash-close-review-es');
+              const theoEl = document.getElementById('cash-close-review-theo');
+              const diffEl = document.getElementById('cash-close-review-diff');
+              if (salesEl) salesEl.textContent = `Total ventas: ${formatMoney(Number(s.delivered_total||0))}`;
+              if (esEl) esEl.textContent = `Entradas: ${formatMoney(Number(s.entradas||0))} · Salidas: ${formatMoney(Number(s.salidas||0))}`;
+              if (theoEl) theoEl.textContent = `Teórico del sistema: ${formatMoney(Number(s.theoretical_cash||0))}`;
+              const v = parseInt(document.getElementById('cash-close-amount').value||'0',10)||0;
+              if (diffEl) diffEl.textContent = `Diferencia: ${formatMoney(Number(s.closing_diff|| (v - Number(s.theoretical_cash||0))))}`;
+              try {
+                const slug = tenantInput.value.trim() || defaultSlug();
+                const urlMov = new URL('/api/cash/movements', API_BASE);
+                urlMov.searchParams.set('tenant_slug', slug);
+                urlMov.searchParams.set('session_id', String(res.session_id||''));
+                const mresp = await wFetch(urlMov.toString());
+                if (mresp && mresp.ok) {
+                  const mp = await mresp.json();
+                  let movs = Array.isArray(mp.movements) ? mp.movements : [];
+                  if (!movs || movs.length === 0) {
+                    const urlMovRange = new URL('/api/cash/movements', API_BASE);
+                    urlMovRange.searchParams.set('tenant_slug', slug);
+                    const openedAt = res && res.opened_at || '';
+                    if (openedAt) urlMovRange.searchParams.set('from', openedAt);
+                    if (res.closed_at) urlMovRange.searchParams.set('to', res.closed_at);
+                    const r2 = await wFetch(urlMovRange.toString());
+                    if (r2 && r2.ok) {
+                      const mp2 = await r2.json();
+                      movs = Array.isArray(mp2.movements) ? mp2.movements : [];
+                    }
+                  }
+                  const body = document.getElementById('close-movements-body');
+                  const sums = document.getElementById('close-mov-sums');
+                  let inSum = 0, outSum = 0;
+                  if (body) {
+                    body.innerHTML = movs.map(m => {
+                      const isIn = m.type==='entrada';
+                      const label = isIn ? 'Ingreso' : 'Salida';
+                      const sign = isIn ? '+' : '-';
+                      const amt = Number(m.amount||0);
+                      if (isIn) inSum += amt; else outSum += amt;
+                      return `<tr><td style="padding:6px; border-bottom:1px solid #eee;">${formatARDate(m.created_at||'')}</td><td style="padding:6px; border-bottom:1px solid #eee;">${label}</td><td style="padding:6px; border-bottom:1px solid #eee; text-align:right;">${sign}$${amt}</td><td style="padding:6px; border-bottom:1px solid #eee;">${m.note||''}</td><td style="padding:6px; border-bottom:1px solid #eee;">${m.actor||''}</td></tr>`;
+                    }).join('');
+                  }
+                  if (sums) sums.textContent = `Total ingresos: ${formatMoney(inSum)} · Total salidas: ${formatMoney(outSum)}`;
+                }
+                // Actualizar listado de pedidos entregados a la sesión cerrada
+                try {
+                  const ordersUrl = new URL('/api/cash/session/orders', API_BASE);
+                  ordersUrl.searchParams.set('tenant_slug', slug);
+                  ordersUrl.searchParams.set('session_id', String(res.session_id||''));
+                  if (res.closed_at) ordersUrl.searchParams.set('to', res.closed_at);
+                  const oresp = await wFetch(ordersUrl.toString());
+                  if (oresp && oresp.ok) {
+                    const op = await oresp.json();
+                    const rows = Array.isArray(op.orders) ? op.orders : [];
+                    const body = document.getElementById('close-orders-body');
+                    const sumEl = document.getElementById('close-orders-sum');
+                    if (body) {
+                      body.innerHTML = rows.map(r => `
+                        <tr>
+                          <td style="padding:6px; border-bottom:1px solid #eee;">${r.id}</td>
+                          <td style="padding:6px; border-bottom:1px solid #eee;">${formatARDate(r.created_at || '')}</td>
+                          <td style="padding:6px; border-bottom:1px solid #eee; text-align:right;">$${r.total || 0}</td>
+                        </tr>
+                      `).join('');
+                    }
+                    try {
+                      const total = rows.reduce((a,b)=>a+Number(b.total||0),0);
+                      if (sumEl) sumEl.textContent = `Total pedidos en sesión: ${formatMoney(total)}`;
+                      const salesEl = document.getElementById('cash-close-review-sales');
+                      if (salesEl) salesEl.textContent = `Total ventas: ${formatMoney(total)}`;
+                    } catch(_) {}
+                  }
+                } catch(_) {}
+              } catch(_) {}
+              confirmBtn.textContent = 'Caja cerrada';
+              confirmBtn.disabled = true;
+              if (dismissBtn) dismissBtn.style.display = 'inline-block';
+            }
+          } finally {}
+        };
+        if (dismissBtn) dismissBtn.onclick = () => {
+          if (reviewModal) reviewModal.style.display = 'none';
+          cashKeepModalOpen = false;
+          isCashEditing = false;
+          renderCashBox();
+        };
         const amtInput = document.getElementById('cash-close-amount');
         const noteClose = document.getElementById('cash-close-notes');
-        const diffEl = document.getElementById('cash-close-diff');
-        const baseTheo = Number(sum.theoretical_cash || 0);
-        if (amtInput && diffEl) {
-          const refresh = () => {
+        const movBtn = document.getElementById('cash-movement-btn');
+        const movModal = document.getElementById('cash-movement-modal');
+        const movNotify = document.getElementById('cash-mov-notify');
+        const movNotifyText = document.getElementById('cash-mov-notify-text');
+        const movNotifyOk = document.getElementById('cash-mov-notify-ok');
+        const movType = document.getElementById('cash-mov-type');
+        const movAmount = document.getElementById('cash-mov-amount');
+        const movMotive = document.getElementById('cash-mov-motive');
+        const movDetail = document.getElementById('cash-mov-detail');
+        const movCancel = document.getElementById('cash-mov-cancel');
+        const movSubmit = document.getElementById('cash-mov-submit');
+        function openMovModal() {
+          if (movModal) {
+            movType.value = 'entrada';
+            movAmount.value = '';
+            movMotive.value = '';
+            movDetail.value = '';
+            movModal.style.display = 'block';
+            isCashEditing = true;
+          }
+        }
+        async function registerMovement() {
+          try { await ensureAuth(); } catch(_) {}
+          if (!isAuthed || !csrfToken) { alert('Debes iniciar sesión'); return; }
+          const t = (movType && movType.value) || 'entrada';
+          const amt = parseInt((movAmount && movAmount.value) || '0', 10) || 0;
+          const motive = (movMotive && movMotive.value || '').trim();
+          const detail = (movDetail && movDetail.value || '').trim();
+          if (amt <= 0) { alert('Monto inválido'); return; }
+          const slug = tenantInput.value.trim() || defaultSlug();
+          const note = [motive ? `Motivo: ${motive}` : '', detail ? `Detalle: ${detail}` : ''].filter(Boolean).join(' · ');
+          const resp = await fetch(new URL('/api/cash/movement', API_BASE).toString(), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+            body: JSON.stringify({ tenant_slug: slug, type: t, amount: amt, note })
+          });
+          if (!resp.ok) { try { const e = await resp.json(); alert(String(e.error||'No se pudo registrar')); } catch(_) { alert('No se pudo registrar'); } return; }
+          if (movModal) movModal.style.display = 'none';
+          const verb = t === 'entrada' ? 'ingresó' : 'retiró';
+          if (movNotifyText) movNotifyText.textContent = `Se ${verb} a tu caja ${formatMoney(amt)}`;
+          if (movNotify) movNotify.style.display = 'block';
+          const afterOk = async () => {
+            if (movNotify) movNotify.style.display = 'none';
+            isCashEditing = false;
+            await renderCashBox();
+            await renderCashHistory();
+          };
+          if (movNotifyOk) {
+            movNotifyOk.onclick = () => { afterOk(); };
+          } else {
+            await afterOk();
+          }
+        }
+        if (movBtn) movBtn.onclick = openMovModal;
+        if (movCancel) movCancel.onclick = () => { if (movModal) movModal.style.display = 'none'; isCashEditing = false; };
+        if (movSubmit) movSubmit.onclick = async () => { movSubmit.disabled = true; try { await registerMovement(); } finally { movSubmit.disabled = false; } };
+        if (amtInput) {
+          const syncAmount = () => {
             const v = parseInt(amtInput.value||'0',10)||0;
             cashCloseDraft.amount = v;
-            const d = v - baseTheo;
-            diffEl.textContent = `Diferencia estimada: $${d}`;
           };
-          amtInput.addEventListener('input', refresh);
+          amtInput.addEventListener('input', syncAmount);
           amtInput.addEventListener('focus', () => { isCashEditing = true; });
           amtInput.addEventListener('blur', () => { setTimeout(() => { const ae = document.activeElement; isCashEditing = ['cash-open-amount','cash-open-notes','cash-close-amount','cash-close-notes'].includes(ae && ae.id); }, 10); });
-          refresh();
+          syncAmount();
         }
+        cashCloseDraft.methods = cashCloseDraft.methods || { efectivo: 0, pos: 0, trans: 0, otros: 0 };
+        const efInput = document.getElementById('arqueo-efectivo');
+        const posInput = document.getElementById('arqueo-pos');
+        const transInput = document.getElementById('arqueo-trans');
+        const otrosInput = document.getElementById('arqueo-otros');
+        const totalEl = document.getElementById('arqueo-total');
+        const useToggle = document.getElementById('arqueo-use-toggle');
+        function computeArqueo() {
+          const efectivo = parseInt(efInput && efInput.value || '0', 10) || 0;
+          const pos = parseInt(posInput && posInput.value || '0', 10) || 0;
+          const trans = parseInt(transInput && transInput.value || '0', 10) || 0;
+          const otros = parseInt(otrosInput && otrosInput.value || '0', 10) || 0;
+          cashCloseDraft.methods.efectivo = efectivo;
+          cashCloseDraft.methods.pos = pos;
+          cashCloseDraft.methods.trans = trans;
+          cashCloseDraft.methods.otros = otros;
+          const total = efectivo + pos + trans + otros;
+          if (totalEl) totalEl.textContent = `Total contado: ${formatMoney(total)}`;
+          const use = !!(useToggle && useToggle.checked);
+          cashCloseDraft.useArqueo = use;
+          if (use && amtInput) { amtInput.value = String(total); const event = new Event('input'); amtInput.dispatchEvent(event); }
+        }
+        if (efInput) efInput.addEventListener('input', computeArqueo);
+        if (posInput) posInput.addEventListener('input', computeArqueo);
+        if (transInput) transInput.addEventListener('input', computeArqueo);
+        if (otrosInput) otrosInput.addEventListener('input', computeArqueo);
+        if (useToggle) useToggle.addEventListener('change', computeArqueo);
+        computeArqueo();
         if (noteClose) {
           noteClose.addEventListener('input', () => { cashCloseDraft.notes = String(noteClose.value||''); });
           noteClose.addEventListener('focus', () => { isCashEditing = true; });
@@ -3004,14 +4507,108 @@
       const box = document.getElementById('cash-history');
       if (!box) return;
       const data = await fetchCashSessions();
-      const rows = Array.isArray(data.sessions) ? data.sessions : [];
-      let html = '<div class="history-card"><div class="history-actions"><div class="cash-title">Historial de cierres</div><button id="cash-history-export">Exportar CSV</button></div>';
-      html += '<table class="history-table"><thead><tr><th>Apertura</th><th>Cierre</th><th>Inicial</th><th>Contado</th><th>Ventas</th><th>Entradas</th><th>Salidas</th><th>Teórica</th><th>Diferencia</th><th>Cerró</th></tr></thead><tbody>';
-      for (const s of rows) {
+      const allRows = Array.isArray(data.sessions) ? data.sessions : [];
+      const latestRows = allRows.slice(0, 10);
+      const prevRows = allRows.slice(10);
+      let html = '<div class="history-card"><div class="history-actions"><div class="cash-title" style="display:flex; align-items:center; justify-content:space-between;"><span>Historial de cierres</span><button id="history-eye" class="eye-btn" aria-label="Ocultar historial"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5zm0 12.5a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg></button></div><div style="display:flex; gap:8px; align-items:center;"><button id="cash-history-export">Exportar CSV</button>' + (prevRows.length ? `<button id="cash-history-toggle-prev">Mostrar anteriores (${prevRows.length})</button>` : '') + '</div></div>';
+      html += '<div id="cash-history-body"><table class="history-table"><thead><tr><th>Apertura</th><th>Cierre</th><th>Inicial</th><th>Contado</th><th>Ventas</th><th>Entradas</th><th>Salidas</th><th>Teórica</th><th>Diferencia</th><th>Cerró</th><th>Acciones</th></tr></thead><tbody id="history-latest-body">';
+      for (const s of latestRows) {
         const sum = s.summary || {};
-        html += `<tr><td>${formatARDate(s.opened_at||'')}</td><td>${formatARDate(s.closed_at||'')}</td><td>$${s.opening_amount||0}</td><td>$${s.closing_amount||0}</td><td>$${sum.delivered_total||0}</td><td>$${sum.entradas||0}</td><td>$${sum.salidas||0}</td><td>$${sum.theoretical_cash||0}</td><td>$${sum.closing_diff||0}</td><td>${s.closed_by||''}</td></tr>`;
+        html += `<tr>
+          <td>${formatARDate(s.opened_at||'')}</td>
+          <td>${formatARDate(s.closed_at||'')}</td>
+          <td>$${s.opening_amount||0}</td>
+          <td>$${s.closing_amount||0}</td>
+          <td>$${sum.delivered_total||0}</td>
+          <td>$${sum.entradas||0}</td>
+          <td>$${sum.salidas||0}</td>
+          <td>$${sum.theoretical_cash||0}</td>
+          <td>$${sum.closing_diff||0}</td>
+          <td>${s.closed_by||''}</td>
+          <td>
+            <button class="hist-view" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}" data-sales="${sum.delivered_total||0}" data-in="${sum.entradas||0}" data-out="${sum.salidas||0}" data-theo="${sum.theoretical_cash||0}" data-diff="${sum.closing_diff||0}">
+              Ver
+            </button>
+            <button class="hist-pdf" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}">
+              PDF
+            </button>
+          </td>
+        </tr>`;
       }
-      html += '</tbody></table></div>';
+      html += '</tbody>';
+      if (prevRows.length) {
+        html += '<tbody id="history-prev-body" style="display:none;">';
+        for (const s of prevRows) {
+          const sum = s.summary || {};
+          html += `<tr>
+            <td>${formatARDate(s.opened_at||'')}</td>
+            <td>${formatARDate(s.closed_at||'')}</td>
+            <td>$${s.opening_amount||0}</td>
+            <td>$${s.closing_amount||0}</td>
+            <td>$${sum.delivered_total||0}</td>
+            <td>$${sum.entradas||0}</td>
+            <td>$${sum.salidas||0}</td>
+            <td>$${sum.theoretical_cash||0}</td>
+            <td>$${sum.closing_diff||0}</td>
+            <td>${s.closed_by||''}</td>
+            <td>
+              <button class="hist-view" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}" data-sales="${sum.delivered_total||0}" data-in="${sum.entradas||0}" data-out="${sum.salidas||0}" data-theo="${sum.theoretical_cash||0}" data-diff="${sum.closing_diff||0}">Ver</button>
+              <button class="hist-pdf" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}">PDF</button>
+            </td>
+          </tr>`;
+        }
+        html += '</tbody>';
+      }
+      html += '</table><div class="history-mobile">';
+      for (const s of latestRows) {
+        const sum = s.summary || {};
+        html += `
+          <div class="hm-row">
+            <div class="hm-header">${formatARDate(s.opened_at||'')} → ${formatARDate(s.closed_at||'')}</div>
+            <div class="hm-meta">Cerró: ${s.closed_by||''}</div>
+            <div class="hm-metrics">
+              <div class="item">Inicial: $${s.opening_amount||0}</div>
+              <div class="item">Contado: $${s.closing_amount||0}</div>
+              <div class="item">Ventas: $${sum.delivered_total||0}</div>
+              <div class="item">Entradas: $${sum.entradas||0}</div>
+              <div class="item">Salidas: $${sum.salidas||0}</div>
+              <div class="item">Teórica: $${sum.theoretical_cash||0}</div>
+              <div class="item">Dif.: $${sum.closing_diff||0}</div>
+            </div>
+            <div class="hm-actions">
+              <button class="hist-view" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}" data-sales="${sum.delivered_total||0}" data-in="${sum.entradas||0}" data-out="${sum.salidas||0}" data-theo="${sum.theoretical_cash||0}" data-diff="${sum.closing_diff||0}">Ver</button>
+              <button class="hist-pdf" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}">PDF</button>
+            </div>
+          </div>
+        `;
+      }
+      if (prevRows.length) {
+        html += `<div id="history-mobile-prev" style="display:none;">`;
+        for (const s of prevRows) {
+          const sum = s.summary || {};
+          html += `
+            <div class="hm-row">
+              <div class="hm-header">${formatARDate(s.opened_at||'')} → ${formatARDate(s.closed_at||'')}</div>
+              <div class="hm-meta">Cerró: ${s.closed_by||''}</div>
+              <div class="hm-metrics">
+                <div class="item">Inicial: $${s.opening_amount||0}</div>
+                <div class="item">Contado: $${s.closing_amount||0}</div>
+                <div class="item">Ventas: $${sum.delivered_total||0}</div>
+                <div class="item">Entradas: $${sum.entradas||0}</div>
+                <div class="item">Salidas: $${sum.salidas||0}</div>
+                <div class="item">Teórica: $${sum.theoretical_cash||0}</div>
+                <div class="item">Dif.: $${sum.closing_diff||0}</div>
+              </div>
+              <div class="hm-actions">
+                <button class="hist-view" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}" data-sales="${sum.delivered_total||0}" data-in="${sum.entradas||0}" data-out="${sum.salidas||0}" data-theo="${sum.theoretical_cash||0}" data-diff="${sum.closing_diff||0}">Ver</button>
+                <button class="hist-pdf" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}">PDF</button>
+              </div>
+            </div>
+          `;
+        }
+        html += `</div>`;
+      }
+      html += '</div></div></div>';
       box.innerHTML = html;
       const exp = document.getElementById('cash-history-export');
       if (exp) exp.onclick = () => {
@@ -3021,6 +4618,175 @@
         // Export completo por defecto; puedes ajustar filtros propios aquí si se desea
         window.open(url.toString(), '_blank');
       };
+      const togglePrev = document.getElementById('cash-history-toggle-prev');
+      if (togglePrev) {
+        togglePrev.onclick = () => {
+          const tbPrev = document.getElementById('history-prev-body');
+          const mobPrev = document.getElementById('history-mobile-prev');
+          const isHidden = tbPrev && tbPrev.style.display === 'none';
+          if (tbPrev) tbPrev.style.display = isHidden ? '' : 'none';
+          if (mobPrev) mobPrev.style.display = isHidden ? '' : 'none';
+          togglePrev.textContent = isHidden ? 'Ocultar anteriores' : `Mostrar anteriores (${prevRows.length})`;
+        };
+      }
+      const attach = async (sid, opened, closed, mode, noteOpen, noteClose, openAmtStr, closeAmtStr) => {
+        try {
+          const slug = tenantInput.value.trim() || defaultSlug();
+          const urlOrd = new URL('/api/cash/session/orders', API_BASE);
+          urlOrd.searchParams.set('tenant_slug', slug);
+          urlOrd.searchParams.set('session_id', String(sid||''));
+          if (closed) urlOrd.searchParams.set('to', closed);
+          const urlMov = new URL('/api/cash/movements', API_BASE);
+          urlMov.searchParams.set('tenant_slug', slug);
+          urlMov.searchParams.set('session_id', String(sid));
+          const [ordResp, movResp] = await Promise.all([wFetch(urlOrd.toString()), wFetch(urlMov.toString())]);
+          const ordersPayload = ordResp && ordResp.ok ? await ordResp.json() : { orders: [] };
+          let movPayload = movResp && movResp.ok ? await movResp.json() : { movements: [] };
+          if (!movPayload.movements || movPayload.movements.length === 0) {
+            const urlMovRange = new URL('/api/cash/movements', API_BASE);
+            urlMovRange.searchParams.set('tenant_slug', slug);
+            if (opened) urlMovRange.searchParams.set('from', opened);
+            if (closed) urlMovRange.searchParams.set('to', closed);
+            const movRangeResp = await wFetch(urlMovRange.toString());
+            if (movRangeResp && movRangeResp.ok) movPayload = await movRangeResp.json();
+          }
+          const orders = Array.isArray(ordersPayload.orders) ? ordersPayload.orders : [];
+          const movements = Array.isArray(movPayload.movements) ? movPayload.movements : [];
+          if (mode === 'view') {
+            const modal = document.createElement('div');
+            modal.id = 'history-detail-modal';
+            modal.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.35); z-index:1000;';
+            const dialog = document.createElement('div');
+            dialog.role = 'dialog';
+            dialog.setAttribute('aria-modal','true');
+            dialog.style.cssText = 'background:#fff; margin:6vh auto; max-width:720px; padding:16px; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.2);';
+            const sumEntradas = movements.reduce((a,m)=>a + (m.type==='entrada' ? Number(m.amount||0) : 0), 0);
+            const sumSalidas = movements.reduce((a,m)=>a + (m.type==='salida' ? Number(m.amount||0) : 0), 0);
+            const sumOrders = orders.reduce((a,r)=>a + Number(r.total||0), 0);
+            const openAmt = parseInt(openAmtStr||'0',10)||0;
+            const closeAmt = parseInt(closeAmtStr||'0',10)||0;
+            const systemTotal = openAmt + sumEntradas - sumSalidas + sumOrders;
+            const diffTotal = closeAmt - systemTotal;
+            dialog.innerHTML = `
+              <div class="cash-title">Detalle de cierre</div>
+              <div class="small">Apertura: ${formatARDate(opened||'')} · Cierre: ${formatARDate(closed||'')}</div>
+              <div class="small">Notas (apertura): ${noteOpen||''}</div>
+              <div class="small">Notas (cierre): ${noteClose||''}</div>
+              <div class="small" style="font-weight:700; margin-top:8px;">Resumen</div>
+              <div class="small">Apertura: ${formatMoney(openAmt)}</div>
+              <div class="small">Ventas sesión: ${formatMoney(sumOrders)}</div>
+              <div class="small">Ingresos: ${formatMoney(sumEntradas)} · Salidas: ${formatMoney(sumSalidas)}</div>
+              <div class="small">Sistema: ${formatMoney(systemTotal)}</div>
+              <div class="small">Contado: ${formatMoney(closeAmt)}</div>
+              <div class="small">Diferencia: ${formatMoney(diffTotal)}</div>
+              <div class="small" style="font-weight:700; margin-top:8px;">Pedidos entregados</div>
+              <div style="max-height:30vh; overflow:auto; border:1px solid #ddd; margin-bottom:8px;">
+                <table style="width:100%; border-collapse:collapse;">
+                  <thead><tr style="background:#f5f5f5;"><th style="text-align:left; padding:6px; border-bottom:1px solid #ddd;">ID</th><th style="text-align:left; padding:6px; border-bottom:1px solid #ddd;">Creado</th><th style="text-align:right; padding:6px; border-bottom:1px solid #ddd;">Total</th></tr></thead>
+                  <tbody>
+                    ${orders.map(r => `<tr><td style="padding:6px; border-bottom:1px solid #eee;">${r.id}</td><td style="padding:6px; border-bottom:1px solid #eee;">${formatARDate(r.created_at||'')}</td><td style="padding:6px; border-bottom:1px solid #eee; text-align:right;">$${r.total||0}</td></tr>`).join('')}
+                  </tbody>
+                </table>
+              </div>
+              <div class="small" style="font-weight:700;">Ingresos y salidas de dinero</div>
+              <div class="small">Total ingresos: $${sumEntradas} · Total salidas: $${sumSalidas}</div>
+              <div style="max-height:30vh; overflow:auto; border:1px solid #ddd;">
+                <table style="width:100%; border-collapse:collapse;">
+                  <thead><tr style="background:#f5f5f5;"><th style="text-align:left; padding:6px; border-bottom:1px solid #ddd;">Fecha</th><th style="text-align:left; padding:6px; border-bottom:1px solid #ddd;">Tipo</th><th style="text-align:right; padding:6px; border-bottom:1px solid #ddd;">Monto</th><th style="text-align:left; padding:6px; border-bottom:1px solid #ddd;">Nota</th><th style="text-align:left; padding:6px; border-bottom:1px solid #ddd;">Actor</th></tr></thead>
+                  <tbody>
+                    ${movements.map(m => {
+                      const isIn = m.type==='entrada';
+                      const label = isIn ? 'Ingreso' : 'Salida';
+                      const sign = isIn ? '+' : '-';
+                      const amt = Number(m.amount||0);
+                      return `<tr><td style="padding:6px; border-bottom:1px solid #eee;">${formatARDate(m.created_at||'')}</td><td style="padding:6px; border-bottom:1px solid #eee;">${label}</td><td style="padding:6px; border-bottom:1px solid #eee; text-align:right;">${sign}$${amt}</td><td style="padding:6px; border-bottom:1px solid #eee;">${m.note||''}</td><td style="padding:6px; border-bottom:1px solid #eee;">${m.actor||''}</td></tr>`;
+                    }).join('')}
+                  </tbody>
+                </table>
+              </div>
+              <div class="cash-row" style="display:flex; gap:8px; justify-content:flex-end; margin-top:8px;">
+                <button id="hist-close-modal">Cerrar</button>
+              </div>
+            `;
+            dialog.setAttribute('data-open-amt', String(openAmt));
+            dialog.setAttribute('data-close-amt', String(closeAmt));
+            modal.appendChild(dialog);
+            document.body.appendChild(modal);
+            const closeBtn = document.getElementById('hist-close-modal');
+            if (closeBtn) closeBtn.onclick = () => { try { document.body.removeChild(modal); } catch(_) {} };
+          } else if (mode === 'pdf') {
+            const w = window.open('', '_blank');
+            if (!w) return;
+            const sumEntradas = movements.reduce((a,m)=>a + (m.type==='entrada' ? Number(m.amount||0) : 0), 0);
+            const sumSalidas = movements.reduce((a,m)=>a + (m.type==='salida' ? Number(m.amount||0) : 0), 0);
+            const sumOrders = orders.reduce((a,r)=>a + Number(r.total||0), 0);
+            const openAmt = parseInt(openAmtStr||'0',10)||0;
+            const closeAmt = parseInt(closeAmtStr||'0',10)||0;
+            const systemTotal = openAmt + sumEntradas - sumSalidas + sumOrders;
+            const diffTotal = closeAmt - systemTotal;
+            const fmt = (n) => {
+              try { return '$' + new Intl.NumberFormat('es-AR').format(Number(n||0)); } catch(_) { return '$' + Number(n||0); }
+            };
+            const doc = `<!doctype html><html><head><meta charset="utf-8"><title>Cierre #${sid}</title><style>body{font-family:system-ui,Segoe UI,Arial,sans-serif;padding:16px} h1{font-size:18px;margin:0 0 8px} table{width:100%;border-collapse:collapse} th,td{padding:6px;border-bottom:1px solid #ddd} th{background:#f5f5f5;text-align:left} .section{margin-top:12px}</style></head><body>
+              <h1>Detalle de cierre #${sid}</h1>
+              <div>Tenant: ${slug}</div>
+              <div>Rango: ${formatARDate(opened||'')} → ${formatARDate(closed||'')}</div>
+              <div>Notas (apertura): ${noteOpen||''}</div>
+              <div>Notas (cierre): ${noteClose||''}</div>
+              <div class="section"><strong>Resumen</strong>
+                <div>Apertura: ${fmt(openAmt)}</div>
+                <div>Ventas sesión: ${fmt(sumOrders)}</div>
+                <div>Ingresos: ${fmt(sumEntradas)} · Salidas: ${fmt(sumSalidas)}</div>
+                <div>Sistema: ${fmt(systemTotal)}</div>
+                <div>Contado: ${fmt(closeAmt)}</div>
+                <div>Diferencia: ${fmt(diffTotal)}</div>
+              </div>
+              <div class="section"><strong>Pedidos entregados</strong><table><thead><tr><th>ID</th><th>Creado</th><th style="text-align:right;">Total</th></tr></thead><tbody>
+              ${orders.map(r => `<tr><td>${r.id}</td><td>${formatARDate(r.created_at||'')}</td><td style="text-align:right;">${fmt(r.total||0)}</td></tr>`).join('')}
+              </tbody></table></div>
+              <div class="section"><strong>Ingresos y salidas de dinero</strong>
+              <table><thead><tr><th>Fecha</th><th>Tipo</th><th style="text-align:right;">Monto</th><th>Nota</th><th>Actor</th></tr></thead><tbody>
+              ${movements.map(m => {
+                const isIn = m.type==='entrada';
+                const label = isIn ? 'Ingreso' : 'Salida';
+                const sign = isIn ? '+' : '-';
+                const amt = Number(m.amount||0);
+                return `<tr><td>${formatARDate(m.created_at||'')}</td><td>${label}</td><td style="text-align:right;">${sign}${fmt(amt).replace('$','')}</td><td>${m.note||''}</td><td>${m.actor||''}</td></tr>`;
+              }).join('')}
+              </tbody></table></div>
+            </body></html>`;
+            w.document.write(doc);
+            w.document.close();
+            try { w.focus(); w.print(); } catch(_) {}
+          }
+        } catch (_) {}
+      };
+      const viewBtns = box.querySelectorAll('button.hist-view');
+      viewBtns.forEach(b => {
+        b.addEventListener('click', () => attach(
+          b.getAttribute('data-sid'),
+          b.getAttribute('data-opened'),
+          b.getAttribute('data-closed'),
+          'view',
+          b.getAttribute('data-note-open')||'',
+          b.getAttribute('data-note-close')||'',
+          b.getAttribute('data-open-amt')||'0',
+          b.getAttribute('data-close-amt')||'0'
+        ));
+      });
+      const pdfBtns = box.querySelectorAll('button.hist-pdf');
+      pdfBtns.forEach(b => {
+        b.addEventListener('click', () => attach(
+          b.getAttribute('data-sid'),
+          b.getAttribute('data-opened'),
+          b.getAttribute('data-closed'),
+          'pdf',
+          b.getAttribute('data-note-open')||'',
+          b.getAttribute('data-note-close')||'',
+          b.getAttribute('data-open-amt')||'0',
+          b.getAttribute('data-close-amt')||'0'
+        ));
+      });
     }
 
     async function loadSlaThresholds() {
@@ -3051,5 +4817,5 @@
       } catch (_) { return false; }
     }
   </script>
- </body>
+</body>
 </html>

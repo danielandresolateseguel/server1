@@ -1,11 +1,12 @@
 import os
+import tempfile
 import sqlite3
 import argparse
 from datetime import datetime, timedelta
 from flask import Flask, request, jsonify, send_from_directory, session
 import secrets
 import unicodedata
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 import threading
 import time
 
@@ -143,6 +144,29 @@ def init_db():
         """
     )
     cur.execute("CREATE INDEX IF NOT EXISTS idx_products_tenant ON products(tenant_slug)")
+    # Ampliar esquema de productos para detalles y variantes (si no existen)
+    try:
+        cur.execute("PRAGMA table_info(products)")
+        cols_prod = [r[1] for r in cur.fetchall()]
+        if 'details' not in cols_prod:
+            cur.execute("ALTER TABLE products ADD COLUMN details TEXT")
+        if 'variants_json' not in cols_prod:
+            cur.execute("ALTER TABLE products ADD COLUMN variants_json TEXT")
+        conn.commit()
+    except Exception:
+        pass
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS admin_users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tenant_slug TEXT NOT NULL,
+            username TEXT NOT NULL,
+            password_hash TEXT NOT NULL,
+            UNIQUE(tenant_slug, username)
+        )
+        """
+    )
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_admin_users_tenant ON admin_users(tenant_slug)")
     # Auditoría de eventos
     cur.execute(
         """
@@ -231,6 +255,87 @@ def seed_products_from_config():
                         "INSERT OR IGNORE INTO products (tenant_slug, product_id, name, price, stock, active) VALUES (?, ?, ?, ?, ?, 1)",
                         (slug, pid, nm, price, 50)
                     )
+            except Exception:
+                continue
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
+def backfill_product_details_from_config():
+    try:
+        import json
+        conn = get_db()
+        cur = conn.cursor()
+        for name in os.listdir(CONFIG_DIR):
+            if not name.endswith('.json'):
+                continue
+            p = os.path.join(CONFIG_DIR, name)
+            try:
+                with open(p, 'r', encoding='utf-8') as f:
+                    j = json.load(f)
+                meta = j.get('meta') or {}
+                slug = meta.get('slug') or name.replace('.json','')
+                catalog = j.get('catalog') or []
+                for it in catalog:
+                    pid = str(it.get('id') or '').strip()
+                    desc = str(it.get('description') or '').strip()
+                    if not pid or not desc:
+                        continue
+                    cur.execute(
+                        "UPDATE products SET details = ? WHERE tenant_slug = ? AND product_id = ? AND (details IS NULL OR TRIM(details) = '')",
+                        (desc, slug, pid)
+                    )
+            except Exception:
+                continue
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
+def seed_admin_users_from_env():
+    try:
+        admin_user = os.environ.get('ADMIN_USERNAME') or 'admin'
+        admin_pass = os.environ.get('ADMIN_PASSWORD') or 'admin123'
+        admin_legacy_pass = os.environ.get('ADMIN_LEGACY_PASSWORD') or 'GastroPanel!123'
+        import json
+        conn = get_db()
+        cur = conn.cursor()
+        for name in os.listdir(CONFIG_DIR):
+            if not name.endswith('.json'):
+                continue
+            p = os.path.join(CONFIG_DIR, name)
+            try:
+                with open(p, 'r', encoding='utf-8') as f:
+                    j = json.load(f)
+                meta = j.get('meta') or {}
+                slug = meta.get('slug') or name.replace('.json','')
+                ph = generate_password_hash(admin_pass)
+                cur.execute(
+                    "INSERT OR IGNORE INTO admin_users (tenant_slug, username, password_hash) VALUES (?, ?, ?)",
+                    (slug, admin_user, ph)
+                )
+                # Inserta también admin con contraseña legacy si corresponde
+                if admin_legacy_pass:
+                    ph_legacy = generate_password_hash(admin_legacy_pass)
+                    cur.execute(
+                        "INSERT OR IGNORE INTO admin_users (tenant_slug, username, password_hash) VALUES (?, ?, ?)",
+                        (slug, 'admin', ph_legacy)
+                    )
+                admins = j.get('admins') or meta.get('admins') or []
+                for adm in admins:
+                    try:
+                        un = str(adm.get('username') or '').strip()
+                        pw = str(adm.get('password') or '')
+                        if not un or not pw:
+                            continue
+                        ph2 = generate_password_hash(pw)
+                        cur.execute(
+                            "INSERT OR IGNORE INTO admin_users (tenant_slug, username, password_hash) VALUES (?, ?, ?)",
+                            (slug, un, ph2)
+                        )
+                    except Exception:
+                        continue
             except Exception:
                 continue
         conn.commit()
@@ -439,6 +544,43 @@ def list_orders():
     conn.close()
     return jsonify({'orders': data, 'count': len(data), 'total': total_count, 'limit': limit, 'offset': offset})
 
+@app.route('/api/cash/movements', methods=['GET'])
+def cash_movements_list():
+    tenant_slug = request.args.get('tenant_slug') or request.args.get('slug') or 'gastronomia-local1'
+    session_id = request.args.get('session_id')
+    from_date = request.args.get('from')
+    to_date = request.args.get('to')
+    try:
+        sid = int(session_id or 0)
+    except Exception:
+        sid = 0
+    conn = get_db()
+    cur = conn.cursor()
+    movements = []
+    if sid > 0:
+        cur.execute("SELECT id, session_id, type, amount, note, actor, created_at FROM cash_movements WHERE session_id = ? ORDER BY id ASC", (sid,))
+        rows = cur.fetchall()
+        movements = [dict(r) for r in rows]
+    elif from_date or to_date:
+        q = (
+            "SELECT m.id, m.session_id, m.type, m.amount, m.note, m.actor, m.created_at "
+            "FROM cash_movements m JOIN cash_sessions s ON m.session_id = s.id "
+            "WHERE s.tenant_slug = ?"
+        )
+        params = [tenant_slug]
+        if from_date:
+            q += " AND m.created_at >= ?"
+            params.append(from_date)
+        if to_date:
+            q += " AND m.created_at <= ?"
+            params.append(to_date)
+        q += " ORDER BY m.id ASC"
+        cur.execute(q, params)
+        rows = cur.fetchall()
+        movements = [dict(r) for r in rows]
+    conn.close()
+    return jsonify({'tenant_slug': tenant_slug, 'session_id': sid, 'movements': movements})
+
 @app.route('/api/orders/<int:order_id>/status', methods=['PATCH'])
 def update_order_status(order_id):
     if not is_authed():
@@ -452,6 +594,18 @@ def update_order_status(order_id):
         return jsonify({'error': 'status inválido'}), 400
     conn = get_db()
     cur = conn.cursor()
+    if new_status == 'entregado':
+        cur.execute("SELECT tenant_slug FROM orders WHERE id = ?", (order_id,))
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return jsonify({'error': 'orden no encontrada'}), 404
+        tenant_slug = str(row[0] or '')
+        cur.execute("SELECT id FROM cash_sessions WHERE tenant_slug = ? AND closed_at IS NULL ORDER BY opened_at DESC LIMIT 1", (tenant_slug,))
+        sess = cur.fetchone()
+        if not sess:
+            conn.close()
+            return jsonify({'error': 'no hay sesión de caja abierta'}), 400
     cur.execute("UPDATE orders SET status = ? WHERE id = ?", (new_status, order_id))
     conn.commit()
     # Registrar historial
@@ -1460,30 +1614,35 @@ def archive_bulk():
 @app.route('/api/auth/login', methods=['POST'])
 def auth_login():
     payload = request.get_json(silent=True) or {}
-    u = str(payload.get('username') or '')
-    if not u:
-        try:
-            u = str(request.form.get('username') or '')
-        except Exception:
-            pass
-    if not u:
-        try:
-            u = str(request.args.get('username') or '')
-        except Exception:
-            pass
+    username = str(payload.get('username') or '')
+    password = str(payload.get('password') or '')
+    tenant_slug = str(payload.get('tenant_slug') or '')
+    if not username or not password or not tenant_slug:
+        return jsonify({'error': 'credenciales incompletas'}), 400
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT password_hash FROM admin_users WHERE tenant_slug = ? AND username = ?", (tenant_slug, username))
+    row = cur.fetchone()
+    conn.close()
+    if not row or not check_password_hash(row[0], password):
+        return jsonify({'error': 'usuario o contraseña inválidos'}), 401
     session['admin_auth'] = True
-    session['admin_user'] = u or 'admin'
+    session['admin_user'] = username
+    session['tenant_slug'] = tenant_slug
     session['csrf_token'] = secrets.token_urlsafe(32)
-    return jsonify({'ok': True})
+    return jsonify({'ok': True, 'tenant_slug': tenant_slug})
 
 @app.route('/api/auth/login_dev', methods=['POST'])
 def auth_login_dev():
     payload = request.get_json(silent=True) or {}
     u = str(payload.get('username') or '')
+    t = str(payload.get('tenant_slug') or '')
     session['admin_auth'] = True
     session['admin_user'] = u or 'admin'
+    if t:
+        session['tenant_slug'] = t
     session['csrf_token'] = secrets.token_urlsafe(32)
-    return jsonify({'ok': True, 'dev': True})
+    return jsonify({'ok': True, 'dev': True, 'tenant_slug': t or None})
 
 @app.route('/api/auth/logout', methods=['POST'])
 def auth_logout():
@@ -1492,7 +1651,48 @@ def auth_logout():
 
 @app.route('/api/auth/me', methods=['GET'])
 def auth_me():
-    return jsonify({'authenticated': is_authed(), 'user': session.get('admin_user') or ''})
+    return jsonify({'authenticated': is_authed(), 'user': session.get('admin_user') or '', 'tenant_slug': session.get('tenant_slug') or ''})
+
+@app.route('/api/admin_users', methods=['GET'])
+def admin_users_list():
+    if not is_authed():
+        return jsonify({'error': 'no autorizado'}), 401
+    tenant_slug = request.args.get('tenant_slug') or session.get('tenant_slug') or ''
+    if session.get('tenant_slug') and tenant_slug and session.get('tenant_slug') != tenant_slug:
+        return jsonify({'error': 'acceso denegado al tenant'}), 403
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT username FROM admin_users WHERE tenant_slug = ? ORDER BY username ASC", (tenant_slug,))
+    rows = cur.fetchall()
+    conn.close()
+    return jsonify({'tenant_slug': tenant_slug, 'users': [r[0] for r in rows]})
+
+@app.route('/api/admin_users', methods=['POST'])
+def admin_users_create():
+    if not is_authed():
+        return jsonify({'error': 'no autorizado'}), 401
+    if not check_csrf():
+        return jsonify({'error': 'csrf inválido'}), 403
+    payload = request.get_json(silent=True) or {}
+    username = str(payload.get('username') or '').strip()
+    password = str(payload.get('password') or '')
+    tenant_slug = str(payload.get('tenant_slug') or session.get('tenant_slug') or '').strip()
+    if not username or not password or not tenant_slug:
+        return jsonify({'error': 'datos incompletos'}), 400
+    if session.get('tenant_slug') and session.get('tenant_slug') != tenant_slug:
+        return jsonify({'error': 'acceso denegado al tenant'}), 403
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT 1 FROM admin_users WHERE tenant_slug = ? AND username = ?", (tenant_slug, username))
+    exists = cur.fetchone()
+    if exists:
+        conn.close()
+        return jsonify({'error': 'usuario ya existe'}), 409
+    ph = generate_password_hash(password)
+    cur.execute("INSERT INTO admin_users (tenant_slug, username, password_hash) VALUES (?, ?, ?)", (tenant_slug, username, ph))
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True, 'username': username, 'tenant_slug': tenant_slug})
 
 @app.route('/api/cash/session', methods=['GET'])
 def cash_session_get():
@@ -1587,7 +1787,7 @@ def cash_close():
     cur.execute("UPDATE cash_sessions SET closed_at = ?, closed_by = ?, closing_amount = ?, notes_close = ?, closing_diff = ? WHERE id = ?", (now, actor, closing_amount, notes_close, closing_diff, sid))
     conn.commit()
     conn.close()
-    return jsonify({'session_id': sid, 'tenant_slug': tenant_slug, 'closed_at': now, 'closing_amount': closing_amount, 'summary': {'opening_amount': opening_amount, 'entradas': entradas, 'salidas': salidas, 'delivered_total': delivered_total, 'theoretical_cash': theoretical_cash, 'closing_diff': closing_diff}})
+    return jsonify({'session_id': sid, 'tenant_slug': tenant_slug, 'opened_at': opened_at, 'closed_at': now, 'closing_amount': closing_amount, 'summary': {'opening_amount': opening_amount, 'entradas': entradas, 'salidas': salidas, 'delivered_total': delivered_total, 'theoretical_cash': theoretical_cash, 'closing_diff': closing_diff}})
 
 @app.route('/api/cash/movement', methods=['POST'])
 def cash_movement():
@@ -1618,6 +1818,53 @@ def cash_movement():
     conn.commit()
     conn.close()
     return jsonify({'session_id': sid, 'type': mtype, 'amount': amount, 'note': note, 'created_at': now})
+
+@app.route('/api/cash/session/orders', methods=['GET'])
+def cash_session_orders():
+    tenant_slug = request.args.get('tenant_slug') or request.args.get('slug') or 'gastronomia-local1'
+    session_id = request.args.get('session_id')
+    to_date = request.args.get('to')
+    try:
+        sid = int(session_id or 0)
+    except Exception:
+        sid = 0
+    conn = get_db()
+    cur = conn.cursor()
+    opened_at = None
+    closed_at = None
+    if sid > 0:
+        cur.execute("SELECT opened_at, closed_at FROM cash_sessions WHERE id = ? AND tenant_slug = ?", (sid, tenant_slug))
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return jsonify({'orders': []})
+        opened_at = str(row[0] or '')
+        closed_at = str(row[1] or '')
+    else:
+        cur.execute("SELECT id, opened_at FROM cash_sessions WHERE tenant_slug = ? AND closed_at IS NULL ORDER BY opened_at DESC LIMIT 1", (tenant_slug,))
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return jsonify({'orders': []})
+        sid = int(row[0])
+        opened_at = str(row[1] or '')
+    if not opened_at:
+        conn.close()
+        return jsonify({'orders': []})
+    if to_date:
+        end_at = to_date
+    else:
+        end_at = closed_at or datetime.utcnow().isoformat()
+    base = (
+        "SELECT o.id, o.created_at, o.total FROM orders o "
+        "JOIN (SELECT order_id, MAX(changed_at) AS last_change FROM order_status_history WHERE status = 'entregado' GROUP BY order_id) h ON h.order_id = o.id "
+        "WHERE o.tenant_slug = ? AND o.status = 'entregado' AND h.last_change >= ? AND h.last_change <= ? "
+        "ORDER BY o.id DESC"
+    )
+    cur.execute(base, (tenant_slug, opened_at, end_at))
+    rows = cur.fetchall()
+    conn.close()
+    return jsonify({'orders': [ {'id': int(r[0]), 'created_at': r[1], 'total': int(r[2] or 0) } for r in rows ], 'session_id': sid, 'from': opened_at, 'to': end_at})
 
 @app.route('/api/cash/sessions', methods=['GET'])
 def cash_sessions_list():
@@ -1751,12 +1998,12 @@ def list_products():
     conn = get_db()
     cur = conn.cursor()
     cur.execute(
-        "SELECT product_id, name, price, stock, active FROM products WHERE tenant_slug = ? ORDER BY name ASC",
+        "SELECT product_id, name, price, stock, active, COALESCE(details,'') as details, COALESCE(variants_json,'') as variants_json FROM products WHERE tenant_slug = ? ORDER BY name ASC",
         (tenant_slug,)
     )
     rows = cur.fetchall()
     conn.close()
-    items = [{'id': r[0], 'name': r[1], 'price': int(r[2] or 0), 'stock': int(r[3] or 0), 'active': bool(r[4])} for r in rows]
+    items = [{'id': r[0], 'name': r[1], 'price': int(r[2] or 0), 'stock': int(r[3] or 0), 'active': bool(r[4]), 'details': r[5] or '', 'variants': r[6] or ''} for r in rows]
     return jsonify({'products': items, 'tenant_slug': tenant_slug})
 
 @app.route('/api/products/<product_id>', methods=['PATCH'])
@@ -1766,6 +2013,8 @@ def update_product(product_id):
     if not check_csrf():
         return jsonify({'error': 'csrf inválido'}), 403
     tenant_slug = request.args.get('tenant_slug') or request.args.get('slug') or 'gastronomia-local1'
+    if session.get('tenant_slug') and session.get('tenant_slug') != tenant_slug:
+        return jsonify({'error': 'acceso denegado al tenant'}), 403
     payload = request.get_json(silent=True) or {}
     fields = []
     params = []
@@ -1790,6 +2039,30 @@ def update_product(product_id):
             params.append(ac)
         except Exception:
             return jsonify({'error': 'active inválido'}), 400
+    if 'name' in payload:
+        nm = str(payload.get('name') or '').strip()
+        if not nm:
+            return jsonify({'error': 'name requerido'}), 400
+        fields.append('name = ?')
+        params.append(nm)
+    if 'details' in payload:
+        dt = str(payload.get('details') or '').strip()
+        fields.append('details = ?')
+        params.append(dt)
+    if 'variants' in payload:
+        try:
+            import json as _json
+            v = payload.get('variants')
+            if isinstance(v, str):
+                # permitir pasar JSON como string
+                _json.loads(v)
+                fields.append('variants_json = ?')
+                params.append(v)
+            else:
+                fields.append('variants_json = ?')
+                params.append(_json.dumps(v or []))
+        except Exception:
+            return jsonify({'error': 'variants inválido'}), 400
     if not fields:
         return jsonify({'error': 'sin cambios'}), 400
     params.extend([tenant_slug, product_id])
@@ -1810,6 +2083,96 @@ def auth_csrf():
 @app.route('/api/ping', methods=['GET'])
 def ping():
     return jsonify({'status': 'ok', 'time': datetime.utcnow().isoformat()})
+
+@app.route('/api/print/ticket/<int:order_id>', methods=['POST'])
+def print_ticket(order_id):
+    try:
+        if not is_authed():
+            return jsonify({'error': 'no autorizado'}), 401
+        if not check_csrf():
+            return jsonify({'error': 'csrf inválido'}), 403
+        if os.name != 'nt':
+            return jsonify({'error': 'solo disponible en Windows'}), 501
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT id, tenant_slug, customer_name, customer_phone, order_type, table_number, address_json, status, total, payment_method, payment_status, created_at, order_notes
+            FROM orders WHERE id = ?
+            """,
+            (order_id,)
+        )
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return jsonify({'error': 'orden no encontrada'}), 404
+        cur.execute(
+            """
+            SELECT name, qty, unit_price, notes
+            FROM order_items WHERE order_id = ? ORDER BY id ASC
+            """,
+            (order_id,)
+        )
+        items = cur.fetchall()
+        conn.close()
+        o = dict(row)
+        # Construcción del ticket en texto plano (monoespaciado)
+        def up(s):
+            try:
+                return unicodedata.normalize('NFKD', str(s or '')).encode('ascii', 'ignore').decode('ascii').upper()
+            except Exception:
+                return str(s or '').upper()
+        lines = []
+        lines.append(f"PEDIDO #{o['id']}")
+        if (o.get('order_type') or '').lower() == 'mesa':
+            lines.append(f"MESA {o.get('table_number') or ''}")
+        else:
+            dest = (o.get('address_json') or '').strip()
+            if dest:
+                lines.append(f"DESTINO: {dest}")
+        dt = o.get('created_at') or ''
+        if dt:
+            lines.append(f"FECHA: {dt}")
+        phone = o.get('customer_phone') or ''
+        if phone:
+            lines.append(f"TEL: {phone}")
+        lines.append("")
+        for r in items:
+            qty = int(r['qty'] or 0)
+            name = up(r['name'])
+            lines.append(f"{qty:>2}  {name}")
+            n = (r['notes'] or '').strip()
+            if n:
+                lines.append(f"    - {up(n)}")
+        onotes = (o.get('order_notes') or '').strip()
+        if onotes:
+            lines.append("")
+            lines.append(f"NOTAS: {up(onotes)}")
+        lines.append("")
+        total = int(o.get('total') or 0)
+        lines.append(f"TOTAL: ${total}")
+        content = "\r\n".join(lines) + "\r\n"
+        fd, path = tempfile.mkstemp(prefix='ticket_', suffix='.txt')
+        try:
+            with os.fdopen(fd, 'w', encoding='utf-8') as f:
+                f.write(content)
+        except Exception:
+            try:
+                os.close(fd)
+            except Exception:
+                pass
+            return jsonify({'error': 'no se pudo crear archivo temporal'}), 500
+        try:
+            os.startfile(path, 'print')
+        except Exception as e:
+            try:
+                os.remove(path)
+            except Exception:
+                pass
+            return jsonify({'error': f'no se pudo imprimir: {e}'}), 500
+        return jsonify({'ok': True, 'printed': True})
+    except Exception as e:
+        return jsonify({'error': f'error inesperado: {e}'}), 500
 
 @app.route('/api/routes', methods=['GET'])
 def routes_list():
@@ -1839,6 +2202,8 @@ def add_cache_headers(resp):
 if __name__ == '__main__':
     init_db()
     seed_products_from_config()
+    backfill_product_details_from_config()
+    seed_admin_users_from_env()
     start_background_tasks()
     try:
         print('Rutas registradas:')

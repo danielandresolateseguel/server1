@@ -427,7 +427,7 @@
                 </div>
                 <div class="product-card searchable-item" id="plato4" data-food-category="bebidas">
                     <div class="product-image">
-                        <img src="Imagenes/Limonada-casera.jpg" alt="Limonada Casera" width="800" height="600" loading="lazy">
+                        <img src="Imagenes/Limonadacasera.jpg" alt="Limonada Casera" width="800" height="600" loading="lazy">
                     </div>
                     <div class="product-info">
                         <h3>Limonada Casera</h3>
@@ -556,7 +556,80 @@
         <i class="fas fa-arrow-up" aria-hidden="true"></i>
     </button>
 
-    <script>window.BUSINESS_SLUG = 'gastronomia';</script>
+    <script>window.BUSINESS_SLUG = 'gastronomia-local4';</script>
+    <script>try{document.documentElement.classList.add('hydrating');}catch(e){}</script>
+    <style>
+      html.hydrating #menu-gastronomia .products-grid { visibility: hidden; }
+      html.hydrating .discounts-wrapper { visibility: hidden; }
+      .stock-badge { display:inline-block; padding:2px 6px; margin:4px 0; border-radius:4px; font-size:13px; }
+      .stock-badge.low { background:#fff3cd; color:#7a5a00; }
+      .stock-badge.out { background:#f8d7da; color:#842029; }
+    </style>
+    <script>
+      (function(){
+        try {
+          var origin = window.location.origin || '';
+          if (/^file:/i.test(origin)) origin = 'http://127.0.0.1:8000';
+          var slug = 'gastronomia-local4';
+          var url = new URL('/api/products', origin);
+          url.searchParams.set('tenant_slug', slug);
+          fetch(url.toString(), { credentials: 'include' })
+            .then(function(r){ return r.json(); })
+            .then(function(d){
+              var items = Array.isArray(d.products) ? d.products : [];
+              var map = {};
+              items.forEach(function(p){ map[p.id] = p; });
+              var cards = document.querySelectorAll('.product-card');
+              cards.forEach(function(card){
+                var id = card.getAttribute('id') || '';
+                var btn = card.querySelector('.add-to-cart-btn');
+                if (!id && btn) id = btn.getAttribute('data-id') || '';
+                var p = map[id];
+                if (!p) return;
+                if (p.active === false) { card.style.display = 'none'; return; }
+                var h = card.querySelector('.product-info h3');
+                if (h) h.textContent = String(p.name || '');
+                var desc = card.querySelector('.product-description');
+                if (desc && typeof p.details === 'string') desc.textContent = p.details;
+                var pr = card.querySelector('.product-price');
+                var priceVal = isFinite(parseInt(p.price)) ? parseInt(p.price) : 0;
+                if (pr) pr.textContent = '$' + priceVal.toLocaleString('es-AR') + ' ARS';
+                if (btn) {
+                  btn.setAttribute('data-price', String(priceVal));
+                  btn.setAttribute('data-name', String(p.name || ''));
+                  if (typeof p.stock !== 'undefined') {
+                    var sval = parseInt(p.stock);
+                    if (isFinite(sval) && sval <= 0) btn.setAttribute('disabled',''); else btn.removeAttribute('disabled');
+                    var info = card.querySelector('.product-info');
+                    if (info) {
+                      var badge = card.querySelector('.stock-badge');
+                      var txt = (isFinite(sval) && sval <= 0) ? 'Sin stock' : ((isFinite(sval) && sval <= 5) ? 'Últimas unidades' : '');
+                      var cls = (isFinite(sval) && sval <= 0) ? 'stock-badge out' : ((isFinite(sval) && sval <= 5) ? 'stock-badge low' : '');
+                      if (txt) {
+                        if (!badge) {
+                          badge = document.createElement('span');
+                          badge.className = cls;
+                          badge.textContent = txt;
+                          var priceEl = card.querySelector('.product-price');
+                          if (priceEl && priceEl.parentElement === info) info.insertBefore(badge, priceEl); else info.appendChild(badge);
+                        } else {
+                          badge.className = cls;
+                          badge.textContent = txt;
+                          badge.style.display = '';
+                        }
+                      } else if (badge) {
+                        badge.style.display = 'none';
+                      }
+                    }
+                  }
+                }
+              });
+            })
+            .catch(function(){})
+            .finally(function(){ try{document.documentElement.classList.remove('hydrating');}catch(e){} });
+        } catch (_) {}
+      })();
+    </script>
     <script src="theme-loader.js" defer></script>
     <script type="module" src="scrip.js"></script>
     <script src="media-loader.js" defer></script>
