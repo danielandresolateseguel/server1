@@ -2,6 +2,7 @@ import os
 import tempfile
 import sqlite3
 import argparse
+import json
 from datetime import datetime, timedelta
 from flask import Flask, request, jsonify, send_from_directory, session
 import secrets
@@ -110,11 +111,19 @@ def init_db():
             order_id INTEGER NOT NULL,
             status TEXT NOT NULL,
             changed_at TEXT NOT NULL,
+            changed_by TEXT,
             FOREIGN KEY(order_id) REFERENCES orders(id)
         )
         """
     )
     cur.execute("CREATE INDEX IF NOT EXISTS idx_order_history_order ON order_status_history(order_id)")
+    try:
+        cur.execute("PRAGMA table_info(order_status_history)")
+        cols_hist = [r[1] for r in cur.fetchall()]
+        if 'changed_by' not in cols_hist:
+            cur.execute("ALTER TABLE order_status_history ADD COLUMN changed_by TEXT")
+    except Exception:
+        pass
     cur.execute(
         """
         CREATE TABLE IF NOT EXISTS archived_orders (
@@ -128,6 +137,26 @@ def init_db():
         """
     )
     cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_archived_unique ON archived_orders(order_id, type)")
+    
+    # Configuración del tenant
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS tenant_config (
+            tenant_slug TEXT PRIMARY KEY,
+            config_json TEXT
+        )
+        """
+    )
+    
+    # Asegurar columna shipping_cost en orders
+    try:
+        cur.execute("PRAGMA table_info(orders)")
+        cols = [r[1] for r in cur.fetchall()]
+        if 'shipping_cost' not in cols:
+            cur.execute("ALTER TABLE orders ADD COLUMN shipping_cost INTEGER DEFAULT 0")
+    except Exception:
+        pass
+
     # Inventario de productos
     cur.execute(
         """
@@ -152,6 +181,10 @@ def init_db():
             cur.execute("ALTER TABLE products ADD COLUMN details TEXT")
         if 'variants_json' not in cols_prod:
             cur.execute("ALTER TABLE products ADD COLUMN variants_json TEXT")
+        if 'last_modified' not in cols_prod:
+            cur.execute("ALTER TABLE products ADD COLUMN last_modified TEXT")
+        if 'image_url' not in cols_prod:
+            cur.execute("ALTER TABLE products ADD COLUMN image_url TEXT")
         conn.commit()
     except Exception:
         pass
@@ -249,11 +282,12 @@ def seed_products_from_config():
                     pid = str(it.get('id') or '').strip()
                     nm = str(it.get('name') or '').strip()
                     price = int(it.get('price') or 0)
+                    img = str(it.get('image') or '').strip()
                     if not pid or not nm:
                         continue
                     cur.execute(
-                        "INSERT OR IGNORE INTO products (tenant_slug, product_id, name, price, stock, active) VALUES (?, ?, ?, ?, ?, 1)",
-                        (slug, pid, nm, price, 50)
+                        "INSERT OR IGNORE INTO products (tenant_slug, product_id, name, price, stock, active, image_url) VALUES (?, ?, ?, ?, ?, 1, ?)",
+                        (slug, pid, nm, price, 50, img)
                     )
             except Exception:
                 continue
@@ -285,6 +319,37 @@ def backfill_product_details_from_config():
                     cur.execute(
                         "UPDATE products SET details = ? WHERE tenant_slug = ? AND product_id = ? AND (details IS NULL OR TRIM(details) = '')",
                         (desc, slug, pid)
+                    )
+            except Exception:
+                continue
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
+def backfill_product_images_from_config():
+    try:
+        import json
+        conn = get_db()
+        cur = conn.cursor()
+        for name in os.listdir(CONFIG_DIR):
+            if not name.endswith('.json'):
+                continue
+            p = os.path.join(CONFIG_DIR, name)
+            try:
+                with open(p, 'r', encoding='utf-8') as f:
+                    j = json.load(f)
+                meta = j.get('meta') or {}
+                slug = meta.get('slug') or name.replace('.json','')
+                catalog = j.get('catalog') or []
+                for it in catalog:
+                    pid = str(it.get('id') or '').strip()
+                    img = str(it.get('image') or '').strip()
+                    if not pid or not img:
+                        continue
+                    cur.execute(
+                        "UPDATE products SET image_url = ? WHERE tenant_slug = ? AND product_id = ? AND (image_url IS NULL OR TRIM(image_url) = '')",
+                        (img, slug, pid)
                     )
             except Exception:
                 continue
@@ -382,13 +447,149 @@ def compute_total(items):
         total += max(0, price) * max(0, qty)
     return total
 
+def calculate_average_times(conn, slug):
+    """Calcula tiempos promedio de entrega/servicio basados en historial reciente (últimos 7 días)."""
+    avgs = {}
+    try:
+        cur = conn.cursor()
+        # Tipos a analizar
+        # mesa: tiempo desde creado hasta 'listo' (o entregado?) -> Asumamos 'listo' como referencia de cocina
+        # espera: igual, 'listo'
+        # direccion (delivery): tiempo hasta 'entregado'
+        
+        # Mapeo config key -> (order_type, target_status)
+        metrics = [
+            ('time_mesa', 'mesa', 'listo'),
+            ('time_espera', 'espera', 'listo'),
+            ('time_delivery', 'direccion', 'entregado')
+        ]
+        
+        limit_date = (datetime.utcnow() - timedelta(days=7)).isoformat()
+        
+        for cfg_key, otype, target_status in metrics:
+            # Buscamos pedidos completados recientemente
+            cur.execute(f"""
+                SELECT o.created_at, h.changed_at 
+                FROM orders o
+                JOIN order_status_history h ON o.id = h.order_id
+                WHERE o.tenant_slug = ? 
+                  AND o.order_type = ? 
+                  AND h.status = ?
+                  AND o.created_at >= ?
+                ORDER BY o.id DESC LIMIT 50
+            """, (slug, otype, target_status, limit_date))
+            
+            rows = cur.fetchall()
+            durations = []
+            for r in rows:
+                try:
+                    start = datetime.fromisoformat(r[0])
+                    end = datetime.fromisoformat(r[1])
+                    diff = (end - start).total_seconds() / 60
+                    # Filtrar outliers (ej: < 2 min o > 3 horas)
+                    if 2 < diff < 180:
+                        durations.append(diff)
+                except:
+                    pass
+            
+            if durations:
+                # Promedio simple, redondeado
+                avgs[cfg_key] = int(sum(durations) / len(durations))
+                
+    except Exception as e:
+        print(f"Error calculating auto times: {e}")
+        pass
+    return avgs
+
+@app.route('/api/config', methods=['GET'])
+def get_tenant_config_route():
+    slug = request.args.get('slug') or 'gastronomia-local1'
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT config_json FROM tenant_config WHERE tenant_slug = ?", (slug,))
+    row = cur.fetchone()
+    
+    cfg = {}
+    if row and row[0]:
+        try:
+            cfg = json.loads(row[0])
+        except:
+            pass
+            
+    # Si está activado el cálculo automático, sobreescribir tiempos
+    if cfg.get('time_auto'):
+        auto_times = calculate_average_times(conn, slug)
+        # Solo sobreescribir si hay datos suficientes (mayor a 0)
+        # Si no hay datos, se mantiene el manual como fallback
+        for k, v in auto_times.items():
+            if v > 0:
+                cfg[k] = v
+                
+    conn.close()
+    return jsonify(cfg)
+
+@app.route('/api/config', methods=['POST'])
+def update_tenant_config_route():
+    if not is_authed(): return jsonify({'error': 'unauthorized'}), 401
+    payload = request.get_json(silent=True) or {}
+    print(f"DEBUG: /api/config payload: {payload}")
+    slug = payload.get('slug') or 'gastronomia-local1'
+    
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT config_json FROM tenant_config WHERE tenant_slug = ?", (slug,))
+    row = cur.fetchone()
+    current_cfg = {}
+    if row and row[0]:
+        try:
+            current_cfg = json.loads(row[0])
+        except:
+            pass
+    
+    # Update known keys
+    print(f"DEBUG: Processing payload keys: {list(payload.keys())}")
+    
+    if 'shipping_cost' in payload:
+        try:
+            current_cfg['shipping_cost'] = int(payload['shipping_cost'])
+        except Exception as e:
+            print(f"DEBUG: Error updating shipping_cost: {e}")
+            
+    if 'time_mesa' in payload:
+        try:
+            current_cfg['time_mesa'] = int(payload['time_mesa'])
+        except Exception as e:
+            print(f"DEBUG: Error updating time_mesa: {e}")
+            
+    if 'time_espera' in payload:
+        try:
+            current_cfg['time_espera'] = int(payload['time_espera'])
+        except Exception as e:
+            print(f"DEBUG: Error updating time_espera: {e}")
+            
+    if 'time_delivery' in payload:
+        try:
+            current_cfg['time_delivery'] = int(payload['time_delivery'])
+        except Exception as e:
+            print(f"DEBUG: Error updating time_delivery: {e}")
+            
+    if 'time_auto' in payload:
+        current_cfg['time_auto'] = bool(payload['time_auto'])
+    
+    print(f"DEBUG: Final config to save: {current_cfg}")
+    
+    cur.execute("INSERT OR REPLACE INTO tenant_config (tenant_slug, config_json) VALUES (?, ?)", (slug, json.dumps(current_cfg)))
+    conn.commit()
+    conn.close()
+    return jsonify(current_cfg)
+
 @app.route('/api/orders', methods=['POST'])
 def create_order():
     payload = request.get_json(silent=True) or {}
     # Slug por recomendación del usuario: usar exactamente "gastronomia-local1" como default
     tenant_slug = payload.get('tenant_slug') or payload.get('slug') or 'gastronomia-local1'
     order_type = (payload.get('order_type') or 'mesa').lower()
-    if order_type not in ('mesa', 'direccion', 'none'):
+    if order_type not in ('mesa', 'direccion', 'espera', 'none'):
         return jsonify({'error': 'order_type inválido'}), 400
     table_number = payload.get('table_number') or ''
     address_json = payload.get('address') or {}
@@ -401,6 +602,11 @@ def create_order():
         return jsonify({'error': 'Número de mesa requerido'}), 400
     if order_type == 'direccion' and not address_json:
         return jsonify({'error': 'Dirección requerida'}), 400
+    if order_type == 'espera':
+        if not customer_name:
+            return jsonify({'error': 'Nombre requerido para pedidos en espera'}), 400
+        if not customer_phone:
+            return jsonify({'error': 'Teléfono requerido para pedidos en espera'}), 400
     if not items:
         return jsonify({'error': 'Carrito vacío'}), 400
 
@@ -410,13 +616,27 @@ def create_order():
 
     conn = get_db()
     cur = conn.cursor()
+    
+    shipping_cost = 0
+    if order_type == 'direccion':
+        try:
+            cur.execute("SELECT config_json FROM tenant_config WHERE tenant_slug = ?", (tenant_slug,))
+            row = cur.fetchone()
+            if row and row[0]:
+                cfg = json.loads(row[0])
+                shipping_cost = int(cfg.get('shipping_cost', 0))
+        except:
+            pass
+    
+    total += shipping_cost
+    
     order_notes = (payload.get('order_notes') or '').strip()
     cur.execute(
         """
-        INSERT INTO orders (tenant_slug, customer_name, customer_phone, order_type, table_number, address_json, status, total, payment_method, payment_status, created_at, order_notes)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO orders (tenant_slug, customer_name, customer_phone, order_type, table_number, address_json, status, total, payment_method, payment_status, created_at, order_notes, shipping_cost)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        (tenant_slug, customer_name, customer_phone, order_type, table_number, str(address_json), status, total, None, None, created_at, order_notes)
+        (tenant_slug, customer_name, customer_phone, order_type, table_number, str(address_json), status, total, None, None, created_at, order_notes, shipping_cost)
     )
     order_id = cur.lastrowid
     # Validar stock y registrar ítems
@@ -432,7 +652,7 @@ def create_order():
                 pr = int(it.get('price') or 0)
                 cur.execute(
                     "INSERT OR IGNORE INTO products (tenant_slug, product_id, name, price, stock, active) VALUES (?, ?, ?, ?, ?, 1)",
-                    (tenant_slug, pid, nm, max(0, pr), 50)
+                    (tenant_slug, pid, nm, max(0, pr), 1000)
                 )
                 conn.commit()
                 cur.execute("SELECT stock FROM products WHERE tenant_slug = ? AND product_id = ?", (tenant_slug, pid))
@@ -488,16 +708,27 @@ def list_orders():
     limit = int(request.args.get('limit') or 50)
     offset = int(request.args.get('offset') or 0)
     q = request.args.get('q')
+    qid_param = request.args.get('id')
     from_date = request.args.get('from')
     to_date = request.args.get('to')
+    exclude_archived = request.args.get('exclude_archived')
     conn = get_db()
     cur = conn.cursor()
-    base = "SELECT id, tenant_slug, order_type, table_number, address_json, status, total, created_at, customer_phone FROM orders WHERE tenant_slug = ?"
+    base = "SELECT id, tenant_slug, order_type, table_number, address_json, status, total, created_at, customer_phone, payment_status, payment_method, tip_amount, shipping_cost FROM orders WHERE tenant_slug = ?"
     params = [tenant_slug]
+    if exclude_archived == 'true':
+        base += " AND id NOT IN (SELECT order_id FROM archived_orders)"
     if status:
         base += " AND status = ?"
         params.append(status)
-    if q:
+    if qid_param:
+        try:
+            exact_id = int(qid_param)
+            base += " AND id = ?"
+            params.append(exact_id)
+        except:
+            pass
+    elif q:
         # Búsqueda por ID exacto si numérica, o texto en varios campos
         try:
             qid = int(q)
@@ -521,10 +752,19 @@ def list_orders():
     # Total con mismos filtros (status, búsqueda y rango)
     count_sql = "SELECT COUNT(*) as c FROM orders WHERE tenant_slug = ?"
     count_params = [tenant_slug]
+    if exclude_archived == 'true':
+        count_sql += " AND id NOT IN (SELECT order_id FROM archived_orders)"
     if status:
         count_sql += " AND status = ?"
         count_params.append(status)
-    if q:
+    if qid_param:
+        try:
+            exact_id = int(qid_param)
+            count_sql += " AND id = ?"
+            count_params.append(exact_id)
+        except:
+            pass
+    elif q:
         try:
             qid = int(q)
             count_sql += " AND id = ?"
@@ -534,7 +774,7 @@ def list_orders():
             count_sql += " AND (COALESCE(address_json,'') LIKE ? OR COALESCE(customer_name,'') LIKE ? OR COALESCE(customer_phone,'') LIKE ? OR COALESCE(table_number,'') LIKE ?)"
             count_params.extend([like, like, like, like])
     if from_date:
-        count_sql += " AND created_at >= ?"
+        count_sql += " AND (created_at >= ? OR status NOT IN ('entregado', 'cancelado'))"
         count_params.append(from_date)
     if to_date:
         count_sql += " AND created_at <= ?"
@@ -609,10 +849,10 @@ def update_order_status(order_id):
     cur.execute("UPDATE orders SET status = ? WHERE id = ?", (new_status, order_id))
     conn.commit()
     # Registrar historial
-    cur.execute("INSERT INTO order_status_history (order_id, status, changed_at) VALUES (?, ?, ?)", (order_id, new_status, datetime.utcnow().isoformat()))
+    actor = session.get('admin_user') or ''
+    cur.execute("INSERT INTO order_status_history (order_id, status, changed_at, changed_by) VALUES (?, ?, ?, ?)", (order_id, new_status, datetime.utcnow().isoformat(), actor))
     conn.commit()
     try:
-        actor = session.get('admin_user') or ''
         meta = {}
         if reason and new_status == 'cancelado':
             meta['reason'] = reason
@@ -625,6 +865,88 @@ def update_order_status(order_id):
         pass
     conn.close()
     return jsonify({'order_id': order_id, 'status': new_status})
+
+@app.route('/api/orders/<int:order_id>/pay', methods=['POST'])
+def pay_order(order_id):
+    if not is_authed():
+        return jsonify({'error': 'no autorizado'}), 401
+    if not check_csrf():
+        return jsonify({'error': 'csrf inválido'}), 403
+    
+    payload = request.get_json(silent=True) or {}
+    method = payload.get('payment_method') # 'contado', 'pos', 'transferencia'
+    tip_amount = int(payload.get('tip_amount') or 0)
+    
+    if method not in ('contado', 'pos', 'transferencia'):
+        return jsonify({'error': 'método de pago inválido'}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+    
+    # Obtener orden
+    cur.execute("SELECT id, tenant_slug, total, payment_status, order_type FROM orders WHERE id = ?", (order_id,))
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        return jsonify({'error': 'orden no encontrada'}), 404
+    
+    oid, tenant, total, current_pay_status, order_type = row
+    
+    if current_pay_status == 'paid':
+        conn.close()
+        return jsonify({'error': 'orden ya pagada'}), 400
+
+    # Verificar sesión de caja
+    cur.execute("SELECT id FROM cash_sessions WHERE tenant_slug = ? AND closed_at IS NULL ORDER BY opened_at DESC LIMIT 1", (tenant,))
+    sess = cur.fetchone()
+    if not sess:
+        conn.close()
+        return jsonify({'error': 'no hay sesión de caja abierta'}), 400
+    session_id = sess[0]
+
+    # Registrar pago
+    cur.execute("UPDATE orders SET payment_status = 'paid', payment_method = ?, tip_amount = ? WHERE id = ?", (method, tip_amount, order_id))
+
+    # Auto-entregar si no está cancelado (workflow de mostrador), EXCLUYENDO mesas
+    # Para mesas, el pago no implica que el servicio terminó (entregado), puede ser pago previo.
+    # ACTUALIZACIÓN: Se remueve la auto-entrega para todos los pedidos para requerir confirmación manual.
+    # order_type_norm = (order_type or '').strip().lower()
+    # if current_pay_status != 'paid' and order_type_norm != 'mesa': 
+    #    cur.execute("UPDATE orders SET status = 'entregado' WHERE id = ?", (order_id,))
+    #    # Registrar cambio de estado en historial
+    #    cur.execute(
+    #        "INSERT INTO order_status_history (order_id, status, changed_by, changed_at) VALUES (?, ?, ?, ?)",
+    #        (order_id, 'entregado', session.get('admin_user') or 'system', datetime.utcnow().isoformat())
+    #    )
+
+    # Registrar evento de pago
+    import json
+    cur.execute(
+        "INSERT INTO order_events (order_id, event_type, actor, amount_delta, payload_json, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        (order_id, 'payment', session.get('admin_user') or '', 0, json.dumps({'method': method, 'amount': total, 'tip': tip_amount}), datetime.utcnow().isoformat())
+    )
+
+    # Registrar movimiento de caja
+    # Nota: Si es 'contado' entra efectivo. Si es POS/Transferencia, también se registra como ingreso 
+    # pero quizás con otro tipo o nota para diferenciar en el arqueo.
+    # Por simplicidad, registramos todo como entrada, pero aclaramos en la nota.
+    note = f"Cobro pedido #{order_id} ({method})"
+    if tip_amount > 0:
+        note += f" (incl. propina ${tip_amount})"
+    
+    amount_to_register = total + tip_amount
+    
+    # Si queremos diferenciar tipos de ingreso en el futuro, podríamos usar 'ingreso_efectivo', 'ingreso_banco', etc.
+    # Por ahora usamos 'entrada' y la nota aclara.
+    cur.execute(
+        "INSERT INTO cash_movements (session_id, type, amount, note, actor, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        (session_id, 'entrada', amount_to_register, note, session.get('admin_user') or '', datetime.utcnow().isoformat())
+    )
+    
+    conn.commit()
+    conn.close()
+    
+    return jsonify({'order_id': order_id, 'payment_status': 'paid', 'payment_method': method, 'tip_amount': tip_amount})
 
 @app.route('/api/orders/<int:order_id>/events', methods=['POST'])
 def create_order_event(order_id):
@@ -666,7 +988,7 @@ def get_order_detail(order_id):
     cur = conn.cursor()
     cur.execute(
         """
-        SELECT id, tenant_slug, customer_name, customer_phone, order_type, table_number, address_json, status, total, payment_method, payment_status, created_at, order_notes
+        SELECT id, tenant_slug, customer_name, customer_phone, order_type, table_number, address_json, status, total, payment_method, payment_status, created_at, order_notes, tip_amount, shipping_cost
         FROM orders WHERE id = ?
         """,
         (order_id,)
@@ -686,7 +1008,7 @@ def get_order_detail(order_id):
     # Historial
     cur.execute(
         """
-        SELECT status, changed_at FROM order_status_history WHERE order_id = ? ORDER BY id ASC
+        SELECT status, changed_at, changed_by FROM order_status_history WHERE order_id = ? ORDER BY id ASC
         """,
         (order_id,)
     )
@@ -700,6 +1022,21 @@ def get_order_detail(order_id):
     conn.close()
     order = dict(order_row)
     items = [dict(r) for r in item_rows]
+
+    # Si no es admin, retornar versión sanitizada (seguridad)
+    if not is_authed():
+        sanitized_order = {
+            'id': order['id'],
+            'tenant_slug': order['tenant_slug'],
+            'status': order['status'],
+            'total': order['total'],
+            'created_at': order['created_at'],
+            'order_type': order['order_type'],
+            'table_number': order['table_number']
+        }
+        # Filtrar campos internos de items si es necesario (por ahora enviamos todo el item)
+        return jsonify({'order': sanitized_order, 'items': items})
+
     history = [dict(r) for r in hist_rows]
     events = [dict(r) for r in ev_rows]
     return jsonify({'order': order, 'items': items, 'history': history, 'events': events})
@@ -1077,7 +1414,7 @@ def _auto_archive_once():
               SELECT order_id, MAX(changed_at) AS last_change FROM order_status_history WHERE status = 'entregado' GROUP BY order_id
             ) h ON h.order_id = o.id
             LEFT JOIN archived_orders a ON a.order_id = o.id AND a.type = 'delivered'
-            WHERE a.order_id IS NULL AND h.last_change <= ?
+            WHERE a.order_id IS NULL AND h.last_change <= ? AND o.payment_status = 'paid'
             """,
             (cutoff,)
         )
@@ -1721,7 +2058,7 @@ def cash_session_get():
     entradas = int(mv[0] or 0)
     salidas = int(mv[1] or 0)
     conn.close()
-    theoretical_cash = int(sess['opening_amount']) + entradas - salidas + delivered_total
+    theoretical_cash = int(sess['opening_amount']) + delivered_total + entradas - salidas
     return jsonify({'active': True, 'session': sess, 'summary': {'delivered_count': delivered_count, 'delivered_total': delivered_total, 'entradas': entradas, 'salidas': salidas, 'theoretical_cash': theoretical_cash}})
 
 @app.route('/api/cash/open', methods=['POST'])
@@ -1772,7 +2109,7 @@ def cash_close():
     opened_at = str(row[1])
     opening_amount = int(row[2] or 0)
     base_join_del = (
-        "SELECT COALESCE(SUM(o.total),0) FROM orders o "
+        "SELECT COALESCE(SUM(o.total + COALESCE(o.tip_amount, 0)),0) FROM orders o "
         "JOIN (SELECT order_id, MAX(changed_at) AS last_change FROM order_status_history WHERE status = 'entregado' GROUP BY order_id) h ON h.order_id = o.id "
         "WHERE o.tenant_slug = ? AND o.status = 'entregado' AND h.last_change >= ? AND h.last_change <= ?"
     )
@@ -1782,7 +2119,7 @@ def cash_close():
     mv = cur.fetchone() or (0,0)
     entradas = int(mv[0] or 0)
     salidas = int(mv[1] or 0)
-    theoretical_cash = opening_amount + entradas - salidas + delivered_total
+    theoretical_cash = opening_amount + delivered_total + entradas - salidas
     closing_diff = closing_amount - theoretical_cash
     cur.execute("UPDATE cash_sessions SET closed_at = ?, closed_by = ?, closing_amount = ?, notes_close = ?, closing_diff = ? WHERE id = ?", (now, actor, closing_amount, notes_close, closing_diff, sid))
     conn.commit()
@@ -1973,7 +2310,7 @@ def cash_sessions_export_csv():
         opened_at = s.get('opened_at')
         closed_at = s.get('closed_at')
         cur.execute(
-            "SELECT COALESCE(SUM(o.total),0) FROM orders o "
+            "SELECT COALESCE(SUM(o.total + COALESCE(o.tip_amount, 0)),0) FROM orders o "
             "JOIN (SELECT order_id, MAX(changed_at) AS last_change FROM order_status_history WHERE status = 'entregado' GROUP BY order_id) h ON h.order_id = o.id "
             "WHERE o.tenant_slug = ? AND o.status = 'entregado' AND h.last_change >= ? AND h.last_change <= ?",
             (tenant_slug, opened_at, closed_at)
@@ -1998,12 +2335,12 @@ def list_products():
     conn = get_db()
     cur = conn.cursor()
     cur.execute(
-        "SELECT product_id, name, price, stock, active, COALESCE(details,'') as details, COALESCE(variants_json,'') as variants_json FROM products WHERE tenant_slug = ? ORDER BY name ASC",
+        "SELECT product_id, name, price, stock, active, COALESCE(details,'') as details, COALESCE(variants_json,'') as variants_json, COALESCE(last_modified, '') as last_modified, COALESCE(image_url, '') as image_url FROM products WHERE tenant_slug = ? ORDER BY name ASC",
         (tenant_slug,)
     )
     rows = cur.fetchall()
     conn.close()
-    items = [{'id': r[0], 'name': r[1], 'price': int(r[2] or 0), 'stock': int(r[3] or 0), 'active': bool(r[4]), 'details': r[5] or '', 'variants': r[6] or ''} for r in rows]
+    items = [{'id': r[0], 'name': r[1], 'price': int(r[2] or 0), 'stock': int(r[3] or 0), 'active': bool(r[4]), 'details': r[5] or '', 'variants': r[6] or '', 'last_modified': r[7] or '', 'image_url': r[8] or ''} for r in rows]
     return jsonify({'products': items, 'tenant_slug': tenant_slug})
 
 @app.route('/api/products/<product_id>', methods=['PATCH'])
@@ -2049,6 +2386,10 @@ def update_product(product_id):
         dt = str(payload.get('details') or '').strip()
         fields.append('details = ?')
         params.append(dt)
+    if 'image_url' in payload:
+        img = str(payload.get('image_url') or '').strip()
+        fields.append('image_url = ?')
+        params.append(img)
     if 'variants' in payload:
         try:
             import json as _json
@@ -2065,13 +2406,15 @@ def update_product(product_id):
             return jsonify({'error': 'variants inválido'}), 400
     if not fields:
         return jsonify({'error': 'sin cambios'}), 400
+    fields.append('last_modified = ?')
+    params.append(datetime.utcnow().isoformat())
     params.extend([tenant_slug, product_id])
     conn = get_db()
     cur = conn.cursor()
     cur.execute(f"UPDATE products SET {', '.join(fields)} WHERE tenant_slug = ? AND product_id = ?", params)
     conn.commit()
     conn.close()
-    return jsonify({'ok': True, 'product_id': product_id})
+    return jsonify({'ok': True, 'product_id': product_id, 'last_modified': params[len(fields)-1]})
 
 @app.route('/api/auth/csrf', methods=['GET'])
 def auth_csrf():
@@ -2203,6 +2546,7 @@ if __name__ == '__main__':
     init_db()
     seed_products_from_config()
     backfill_product_details_from_config()
+    backfill_product_images_from_config()
     seed_admin_users_from_env()
     start_background_tasks()
     try:

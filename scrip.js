@@ -1,5 +1,9 @@
 // Página actual disponible de forma global para guardas por página
 const PAGE = (document.body && document.body.dataset && document.body.dataset.page) || '';
+let statusActionInterval = null;
+let isPaymentMode = false;
+let celebrationShown = false;
+
 
 // Esperar a que el DOM esté completamente cargado
 let backToTopForceVisibleUntil = 0; // Visibilidad forzada tras clic en círculos
@@ -45,21 +49,26 @@ document.addEventListener('DOMContentLoaded', function() {
     overlay.className = 'overlay';
     document.body.appendChild(overlay);
 
-    // Inicializar toggles de modalidad Mesa/Dirección
+    // Inicializar toggles de modalidad Mesa/Dirección/Espera
     const orderTypeRadios = document.querySelectorAll('input[name="orderType"]');
     const mesaFields = document.getElementById('order-mesa-fields');
     const addressFields = document.getElementById('order-address-fields');
-    if (orderTypeRadios && mesaFields && addressFields) {
+    const esperaFields = document.getElementById('order-espera-fields');
+    if (orderTypeRadios && (mesaFields || addressFields || esperaFields)) {
         orderTypeRadios.forEach(radio => {
             radio.addEventListener('change', () => {
-                const isMesa = radio.value === 'mesa';
-                mesaFields.style.display = isMesa ? 'block' : 'none';
-                addressFields.style.display = isMesa ? 'none' : 'block';
+                const val = radio.value;
+                if (mesaFields) mesaFields.style.display = val === 'mesa' ? 'block' : 'none';
+                if (addressFields) addressFields.style.display = val === 'direccion' ? 'block' : 'none';
+                if (esperaFields) esperaFields.style.display = val === 'espera' ? 'block' : 'none';
             });
         });
         // Estado inicial
-        mesaFields.style.display = 'block';
-        addressFields.style.display = 'none';
+        const checked = document.querySelector('input[name="orderType"]:checked');
+        const val = checked ? checked.value : 'mesa';
+        if (mesaFields) mesaFields.style.display = val === 'mesa' ? 'block' : 'none';
+        if (addressFields) addressFields.style.display = val === 'direccion' ? 'block' : 'none';
+        if (esperaFields) esperaFields.style.display = val === 'espera' ? 'block' : 'none';
     }
 
     // Configuración por rubro/negocio (parametrizable desde HTML/JS)
@@ -111,7 +120,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (checkoutBtn) {
         const modeNow = CHECKOUT_MODE;
         if (modeNow === 'whatsapp') {
-            checkoutBtn.textContent = '📱 Enviar por WhatsApp';
+            checkoutBtn.textContent = '🍽️ Realizar pedido';
         } else if (modeNow === 'envio') {
             checkoutBtn.textContent = '🚚 Finalizar compra';
         } else if (modeNow === 'mesa') {
@@ -124,7 +133,7 @@ document.addEventListener('DOMContentLoaded', function() {
             CHECKOUT_MODE = getCheckoutMode();
             const modeLater = CHECKOUT_MODE;
             if (modeLater === 'whatsapp') {
-                checkoutBtn.textContent = '📱 Enviar por WhatsApp';
+                checkoutBtn.textContent = '🍽️ Realizar pedido';
             } else if (modeLater === 'envio') {
                 checkoutBtn.textContent = '🚚 Finalizar compra';
             } else if (modeLater === 'mesa') {
@@ -1282,9 +1291,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const mesaNumberEl = document.getElementById('mesa-number');
         const addressEl = document.getElementById('delivery-address');
         const contactPhoneEl = document.getElementById('contact-phone');
+        const esperaNameEl = document.getElementById('espera-name');
+        const esperaPhoneEl = document.getElementById('espera-phone');
+
         const mesaNumber = mesaNumberEl ? (mesaNumberEl.value || '').trim() : '';
         const address = addressEl ? (addressEl.value || '').trim() : '';
         const contactPhone = contactPhoneEl ? (contactPhoneEl.value || '').trim() : '';
+        const esperaName = esperaNameEl ? (esperaNameEl.value || '').trim() : '';
+        const esperaPhone = esperaPhoneEl ? (esperaPhoneEl.value || '').trim() : '';
+
         const orderNotesEl = document.getElementById('order-notes');
         const orderNotes = orderNotesEl ? (orderNotesEl.value || '').trim() : '';
 
@@ -1302,6 +1317,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
         }
+        if (orderType === 'espera') {
+            if (!esperaName) {
+                alert('Por favor, ingresa tu nombre.');
+                return;
+            }
+            if (!esperaPhone) {
+                alert('Por favor, ingresa tu teléfono.');
+                return;
+            }
+        }
         
         // Crear el mensaje de WhatsApp
         let mensaje = '¡Hola! 👋 Espero que estés muy bien.\n\n';
@@ -1314,6 +1339,10 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (orderType === 'direccion') {
             mensaje += `📍 Modalidad: Dirección\n`;
             mensaje += `   🏠 Dirección: ${address}\n\n`;
+        } else if (orderType === 'espera') {
+            mensaje += `📍 Modalidad: Espera en local\n`;
+            mensaje += `   👤 Nombre: ${esperaName}\n`;
+            mensaje += `   📞 Teléfono: ${esperaPhone}\n\n`;
         }
         
         // Agregar cada producto del carrito
@@ -1391,7 +1420,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 order_type: orderType,
                 table_number: orderType === 'mesa' ? mesaNumber : '',
                 address: orderType === 'direccion' ? { address } : {},
-                customer_phone: orderType === 'direccion' ? contactPhone : '',
+                customer_phone: orderType === 'direccion' ? contactPhone : (orderType === 'espera' ? esperaPhone : ''),
+                customer_name: orderType === 'espera' ? esperaName : '',
                 items: cart.map(it => ({ id: it.id, name: it.name, price: it.price, quantity: it.quantity, notes: it.notes || '' })),
                 order_notes: orderNotes
             };
@@ -1405,10 +1435,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (resp.ok) {
                     const data = await resp.json();
                     console.log('Pedido registrado en backend', data);
+                    // Guardar ID para consulta de estado
+                    if (data.order_id) {
+                        localStorage.setItem('last_order_id', data.order_id);
+                    }
                     try { announceCart(`Pedido #${data.order_id} registrado (Total: $${data.total}).`); } catch (_) {}
                 } else {
-                    console.warn('No se pudo registrar el pedido en backend');
-                    alert('No se pudo registrar el pedido en el sistema. Se continuará por WhatsApp.');
+                    const errText = await resp.text();
+                    console.warn('No se pudo registrar el pedido en backend', resp.status, errText);
+                    alert(`No se pudo registrar el pedido en el sistema (${resp.status}: ${errText}). Se continuará por WhatsApp.`);
                 }
             }).catch(err => console.warn('Error de red al registrar pedido', err));
         } catch (e) {
@@ -2796,172 +2831,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-        // Minimizar y transportar título de Platos destacados
-        if (PAGE === 'gastronomia') {
-            const featuredSection = document.getElementById('featured-dishes');
-            const featuredTitle = document.getElementById('featured-dishes-title') || (featuredSection ? featuredSection.querySelector('.section-title') : null);
-            const discountsWrapper = featuredSection ? featuredSection.querySelector('.discounts-wrapper') : null;
 
-            if (featuredSection && featuredTitle) {
-                let minimizeTimerId = null;
-                let alreadyMinimized = false;
-
-                const titleVisibilityObserver = new IntersectionObserver((entries) => {
-                    entries.forEach(entry => {
-                        if (alreadyMinimized) return;
-                        if (entry.isIntersecting) {
-                            clearTimeout(minimizeTimerId);
-                            minimizeTimerId = setTimeout(() => {
-                                if (alreadyMinimized) return;
-                                alreadyMinimized = true;
-
-                                featuredSection.classList.add('title-collapsing');
-
-                                featuredTitle.style.maxHeight = featuredTitle.offsetHeight + 'px';
-                                void featuredTitle.offsetHeight;
-                                featuredTitle.classList.add('fade-out');
-
-                                let badge = document.getElementById('featured-dishes-badge');
-                                if (!badge) {
-                                    badge = document.createElement('div');
-                                    badge.id = 'featured-dishes-badge';
-                                    badge.className = 'featured-title-badge';
-                                    badge.textContent = featuredTitle.textContent || 'Platos destacados';
-                                    featuredSection.appendChild(badge);
-                                    // Aplicar color y peso tipográfico original del título
-                                    try {
-                                        const computed = window.getComputedStyle(featuredTitle);
-                                        badge.style.color = (computed && computed.color) ? computed.color : '#4a6fa5';
-                                        badge.style.fontWeight = computed.fontWeight;
-                                    } catch (_) {}
-                                }
-                                badge.style.left = '16px';
-                                const baseTop = discountsWrapper ? discountsWrapper.offsetTop : (featuredTitle.offsetTop || 0);
-                                const initialOffset = 4; // Colocar el badge más pegado al borde superior de la sección
-                                badge.style.top = initialOffset + 'px';
-                                requestAnimationFrame(() => {
-                                    const badgeEl2 = document.getElementById('featured-dishes-badge');
-                                    if (badgeEl2) badgeEl2.classList.add('appear');
-                                });
-
-                                featuredTitle.addEventListener('transitionend', (ev) => {
-                                    if (ev.propertyName !== 'max-height') return;
-                                    featuredTitle.style.visibility = 'hidden';
-                                    requestAnimationFrame(() => {
-                                        featuredTitle.style.display = 'none';
-                                    });
-
-                                    const badgeEl = document.getElementById('featured-dishes-badge');
-                                    if (badgeEl) {
-                                        requestAnimationFrame(() => {
-                                            requestAnimationFrame(() => {
-                                                const wrapperTopNow = discountsWrapper ? discountsWrapper.offsetTop : (featuredTitle.offsetTop || 0);
-                                                const offsetNow = 4; // Mantener el badge pegado al borde superior
-                                                badgeEl.style.top = offsetNow + 'px';
-                                            });
-                                        });
-                                    }
-
-                                    featuredSection.classList.add('title-collapsed');
-                                    featuredSection.classList.remove('title-collapsing');
-                                }, { once: true });
-                            }, 5000);
-                        } else {
-                            clearTimeout(minimizeTimerId);
-                        }
-                    });
-                }, { threshold: 0.6 });
-
-                titleVisibilityObserver.observe(featuredTitle);
-            }
-        }
-
-        // Colapso suave del título del Menú Gastronomía y eliminación del hueco
-        const menuSection = document.getElementById('menu-gastronomia');
-        const menuTitle = menuSection ? menuSection.querySelector('.section-title') : null;
-        const menuGrid = menuSection ? menuSection.querySelector('.products-grid') : null;
-
-        if (menuSection && menuTitle) {
-            let menuMinimizeTimerId = null;
-            let menuAlreadyMinimized = false;
-
-            const menuTitleObserver = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (menuAlreadyMinimized) return;
-                    if (entry.isIntersecting) {
-                        clearTimeout(menuMinimizeTimerId);
-                        menuMinimizeTimerId = setTimeout(() => {
-                            if (menuAlreadyMinimized) return;
-                            menuAlreadyMinimized = true;
-
-                            // Marcar estado de colapso para animar padding-top a 0
-                            menuSection.classList.add('title-collapsing');
-
-                            // Colapsar título midiendo altura actual y animando max-height
-                            menuTitle.style.maxHeight = menuTitle.offsetHeight + 'px';
-                            void menuTitle.offsetHeight;
-                            menuTitle.classList.add('fade-out');
-
-                            // Crear badge minimizado si no existe y posicionarlo
-                            let menuBadge = document.getElementById('menu-gastronomia-badge');
-                            if (!menuBadge) {
-                                menuBadge = document.createElement('div');
-                                menuBadge.id = 'menu-gastronomia-badge';
-                                menuBadge.className = 'menu-title-badge';
-                                menuBadge.textContent = menuTitle.textContent || 'Menú principal';
-                                menuSection.appendChild(menuBadge);
-                                // Aplicar color y peso tipográfico original del título
-                                try {
-                                    const computed = window.getComputedStyle(menuTitle);
-                                    menuBadge.style.color = (computed && computed.color) ? computed.color : '#4a6fa5';
-                                    menuBadge.style.fontWeight = computed.fontWeight;
-                                } catch (_) {}
-                            }
-                            menuBadge.style.left = '16px';
-                            if (menuGrid) {
-                                const offset = 4; // Colocar el badge más pegado al borde superior
-                                menuBadge.style.top = offset + 'px';
-                            } else {
-                                menuBadge.style.top = '4px';
-                            }
-                            requestAnimationFrame(() => {
-                                const badgeEl2 = document.getElementById('menu-gastronomia-badge');
-                                if (badgeEl2) badgeEl2.classList.add('appear');
-                            });
-
-                            // Al terminar el colapso, ocultar visualmente y retirar del flujo
-                            menuTitle.addEventListener('transitionend', (ev) => {
-                                if (ev.propertyName !== 'max-height') return;
-                                menuTitle.style.visibility = 'hidden';
-                                requestAnimationFrame(() => {
-                                    menuTitle.style.display = 'none';
-                                });
-
-                                // Recalcular posición final del badge tras estabilizar el layout
-                                const badgeEl = document.getElementById('menu-gastronomia-badge');
-                                if (badgeEl) {
-                                    requestAnimationFrame(() => {
-                                        requestAnimationFrame(() => {
-                                            const wrapperTopNow = menuGrid ? menuGrid.offsetTop : (menuTitle.offsetTop || 0);
-                                            const offsetNow = 4; // Mantener el badge pegado al borde superior
-                                            badgeEl.style.top = offsetNow + 'px';
-                                        });
-                                    });
-                                }
-
-                                // Limpiar y marcar estado colapsado
-                                menuSection.classList.add('title-collapsed');
-                                menuSection.classList.remove('title-collapsing');
-                            }, { once: true });
-                        }, 5000);
-                    } else {
-                        clearTimeout(menuMinimizeTimerId);
-                    }
-                });
-            }, { threshold: 0.6 });
-
-            menuTitleObserver.observe(menuTitle);
-        }
 
     // Hacer funciones globales para acceso desde HTML
     window.toggleAutoPlay = toggleAutoPlay;
@@ -3277,9 +3147,49 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (btn) {
                         btn.setAttribute('data-price', String(priceVal));
                         btn.setAttribute('data-name', String(ov.name || ''));
+                        // Stock check for button
+                        if (typeof ov.stock !== 'undefined') {
+                            const sval = parseInt(ov.stock);
+                            if (isFinite(sval) && sval <= 0) { btn.setAttribute('disabled',''); } else { btn.removeAttribute('disabled'); }
+                        }
+                    }
+
+                    const info = card.querySelector('.product-info');
+                    if (info && typeof ov.stock !== 'undefined') {
+                        const sval = parseInt(ov.stock);
+                        if (isFinite(sval)) {
+                             let badge = card.querySelector('.stock-badge');
+                             const txt = sval <= 0 ? 'Sin stock' : (sval <= 5 ? 'Últimas unidades' : '');
+                             const cls = sval <= 0 ? 'stock-badge out' : (sval <= 5 ? 'stock-badge low' : '');
+                             
+                             if (txt) {
+                                 if (!badge) {
+                                     badge = document.createElement('span');
+                                 }
+                                 badge.className = cls;
+                                 badge.textContent = txt;
+                                 badge.style.display = '';
+
+                                 const priceEl = card.querySelector('.product-price');
+                                 const priceContainer = card.querySelector('.price-container');
+
+                                 if (priceContainer && priceContainer.parentElement === info) {
+                                     info.insertBefore(badge, priceContainer);
+                                 } else if (priceEl && priceEl.parentElement === info) {
+                                     info.insertBefore(badge, priceEl);
+                                 } else {
+                                     if (badge.parentElement !== info) info.appendChild(badge);
+                                 }
+                             } else if (badge) {
+                                 badge.style.display = 'none';
+                             }
+                        }
                     }
                 });
-            } catch (_) {}
+            } catch (_) {
+            } finally {
+                try { document.documentElement.classList.remove('hydrating'); } catch (e) {}
+            }
         }
         document.addEventListener('DOMContentLoaded', () => { applyOverridesToDocumentProducts(); });
     }
@@ -3837,3 +3747,509 @@ function initInterestFocusState() {
     // Evaluación inicial
     updateInterestFocusState();
 }
+
+// ==========================================
+// SISTEMA DE ESTADO DE PEDIDOS (GASTRONOMÍA)
+// ==========================================
+document.addEventListener('DOMContentLoaded', function() {
+    const statusBtn = document.getElementById('order-status-float');
+    const statusModal = document.getElementById('order-status-modal');
+    const closeBtn = document.querySelector('.close-status-modal');
+    const statusBody = document.getElementById('order-status-body');
+
+    if (!statusBtn || !statusModal) return;
+
+    let pollingInterval;
+    let currentConfig = {};
+
+    function startPolling() {
+        stopPolling();
+        // Actualizar datos cada 5 segundos
+        pollingInterval = setInterval(updateStatusSilently, 5000);
+        
+        // Alternar botón cada 5 segundos
+        statusActionInterval = setInterval(() => {
+            isPaymentMode = !isPaymentMode;
+            const btn = document.querySelector('.btn-whatsapp-status');
+            if (btn) {
+                if (isPaymentMode) {
+                    btn.innerHTML = '<i class="fas fa-credit-card"></i> Realizar pago';
+                    if (btn.dataset.payUrl) btn.href = btn.dataset.payUrl;
+                } else {
+                    btn.innerHTML = '<i class="fab fa-whatsapp"></i> Consultar por este pedido';
+                    if (btn.dataset.chatUrl) btn.href = btn.dataset.chatUrl;
+                }
+            }
+        }, 5000);
+    }
+
+    function stopPolling() {
+        if (pollingInterval) clearInterval(pollingInterval);
+        pollingInterval = null;
+        if (statusActionInterval) clearInterval(statusActionInterval);
+        statusActionInterval = null;
+        isPaymentMode = false; // Reset state
+    }
+
+    async function updateStatusSilently() {
+        const orderId = localStorage.getItem('last_order_id');
+        if (!orderId) return;
+
+        try {
+            // Reutilizamos getOrderData existente
+            const data = await getOrderData(orderId);
+            
+            if (data && data.order) {
+                // Si el modal está abierto, asumimos que el usuario vio el nuevo estado
+                localStorage.setItem('last_viewed_status', data.order.status);
+                hideNotificationBadge();
+
+                const fullOrder = {
+                    ...data.order,
+                    items: data.items || []
+                };
+                
+                // Guardar posición de scroll para evitar saltos
+                const scrollTop = statusBody.scrollTop;
+                renderStatus(fullOrder, currentConfig);
+                statusBody.scrollTop = scrollTop;
+            }
+        } catch (e) {
+            // Fallo silencioso en actualización background
+            console.debug('Silent update skipped:', e);
+        }
+    }
+
+    // Función para cerrar el modal
+    function closeStatusModal() {
+        stopPolling();
+        if (statusActionInterval) { clearInterval(statusActionInterval); statusActionInterval = null; }
+        statusModal.classList.remove('active');
+        statusModal.style.display = 'none';
+        statusModal.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+    }
+
+    // Eventos de apertura/cierre
+    statusBtn.addEventListener('click', function() {
+        statusModal.style.display = 'flex';
+        celebrationShown = false; // Reset celebration flag
+        // Forzar reflow para animación
+        statusModal.offsetHeight; 
+        statusModal.classList.add('active');
+        statusModal.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+        fetchOrderStatus();
+        startPolling();
+    });
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeStatusModal);
+    }
+
+    statusModal.addEventListener('click', function(e) {
+        if (e.target === statusModal) closeStatusModal();
+    });
+
+    // Cerrar con ESC
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && statusModal.classList.contains('active')) {
+            closeStatusModal();
+        }
+    });
+
+    // Función principal para consultar estado (UI Modal)
+    async function fetchOrderStatus() {
+        const orderId = localStorage.getItem('last_order_id');
+        
+        if (!orderId) {
+            renderStatusError('No tienes pedidos recientes registrados en este dispositivo.');
+            return;
+        }
+
+        renderLoading();
+
+        try {
+            // Determine base URL for config fetch
+            const origin = window.location.origin || '';
+            const base = /^file:/i.test(origin) ? 'http://127.0.0.1:8000' : origin;
+
+            // Fetch order data and config in parallel
+            const slug = window.BUSINESS_SLUG || 'gastronomia-local1';
+            const [orderData, configData] = await Promise.all([
+                getOrderData(orderId),
+                fetch(`${base}/api/config?slug=${slug}`).then(r => r.json()).catch(() => ({}))
+            ]);
+            
+            currentConfig = configData || {};
+
+            if (orderData && orderData.order) {
+                // Actualizar estado visto al abrir modal
+                localStorage.setItem('last_viewed_status', orderData.order.status);
+                hideNotificationBadge(); // Limpiar notificación
+
+                const fullOrder = {
+                    ...orderData.order,
+                    items: orderData.items || []
+                };
+                renderStatus(fullOrder, configData);
+            } else {
+                renderStatusError('Error en el formato de respuesta del pedido.');
+            }
+
+        } catch (error) {
+            console.error('Error fetching order status:', error);
+            // Si es 404, ya se manejó en getOrderData o aquí
+            if (error.message.includes('404')) {
+                renderStatusError('No se encontró el pedido #' + orderId);
+            } else {
+                renderStatusError('No se pudo conectar con el sistema de pedidos. Intenta nuevamente.');
+            }
+        }
+    }
+
+    // Nueva función auxiliar para obtener datos sin renderizar
+    async function getOrderData(orderId) {
+        const origin = window.location.origin || '';
+        const base = /^file:/i.test(origin) ? 'http://127.0.0.1:8000' : origin;
+        
+        const resp = await fetch(`${base}/api/orders/${orderId}`);
+        
+        if (!resp.ok) {
+            if (resp.status === 404) throw new Error('404 Not Found');
+            throw new Error('Error al consultar el servidor');
+        }
+        return await resp.json();
+    }
+
+    // Sistema de Notificaciones en Segundo Plano
+    function showNotificationBadge() {
+        // Evitar duplicados
+        if (statusBtn.querySelector('.notification-badge')) return;
+        
+        const badge = document.createElement('div');
+        badge.className = 'notification-badge';
+        badge.innerHTML = '<i class="fas fa-bell"></i>';
+        statusBtn.appendChild(badge);
+        
+        // Efecto visual (opcional, ya tiene animación CSS)
+        statusBtn.classList.add('has-notification');
+    }
+
+    function hideNotificationBadge() {
+        const badge = statusBtn.querySelector('.notification-badge');
+        if (badge) badge.remove();
+        statusBtn.classList.remove('has-notification');
+    }
+
+    async function checkBackgroundStatus() {
+        const orderId = localStorage.getItem('last_order_id');
+        if (!orderId) return;
+
+        try {
+            const data = await getOrderData(orderId);
+            if (data && data.order) {
+                const currentStatus = data.order.status;
+                const lastViewed = localStorage.getItem('last_viewed_status');
+
+                // Si el estado es diferente al último visto, mostrar notificación
+                // Ignorar si nunca se ha visto (primera carga) y el estado es 'pendiente' (opcional)
+                if (currentStatus !== lastViewed) {
+                    showNotificationBadge();
+                }
+            }
+        } catch (e) {
+            // Silencioso en background
+        }
+    }
+
+    // Iniciar polling (cada 30 segundos)
+    setInterval(checkBackgroundStatus, 30000);
+    // Chequeo inicial rápido (1 seg después de carga)
+    setTimeout(checkBackgroundStatus, 1000);
+
+    function renderLoading() {
+        if (!statusBody) return;
+        statusBody.innerHTML = `
+            <div class="status-loading">
+                <i class="fas fa-spinner fa-spin"></i> Verificando estado...
+            </div>
+        `;
+    }
+
+    function renderStatusError(msg) {
+        if (!statusBody) return;
+        statusBody.innerHTML = `
+            <div class="status-loading" style="color: var(--gastro-danger, #ef4444);">
+                <i class="fas fa-exclamation-circle"></i>
+                <p>${msg}</p>
+            </div>
+        `;
+    }
+
+    function triggerConfetti() {
+        if (document.getElementById('confetti-canvas')) return;
+
+        const canvas = document.createElement('canvas');
+        canvas.id = 'confetti-canvas';
+        canvas.style.position = 'fixed';
+        canvas.style.top = '0';
+        canvas.style.left = '0';
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        canvas.style.pointerEvents = 'none';
+        canvas.style.zIndex = '9999';
+        document.body.appendChild(canvas);
+
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const particles = [];
+        const colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4caf50', '#8bc34a', '#cddc39', '#ffeb3b', '#ffc107', '#ff9800', '#ff5722'];
+
+        for (let i = 0; i < 150; i++) {
+            particles.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height - canvas.height,
+                w: Math.random() * 10 + 5,
+                h: Math.random() * 10 + 5,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                speed: Math.random() * 5 + 2,
+                angle: Math.random() * 360,
+                spin: Math.random() * 15 - 7.5
+            });
+        }
+
+        let animationId;
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            let active = false;
+
+            particles.forEach(p => {
+                p.y += p.speed;
+                p.angle += p.spin;
+                
+                if (p.y < canvas.height) active = true;
+
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate(p.angle * Math.PI / 180);
+                ctx.fillStyle = p.color;
+                ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+                ctx.restore();
+            });
+
+            if (active) {
+                animationId = requestAnimationFrame(draw);
+            } else {
+                canvas.remove();
+            }
+        }
+
+        draw();
+
+        // Safety cleanup
+        setTimeout(() => {
+            if (document.body.contains(canvas)) {
+                cancelAnimationFrame(animationId);
+                canvas.remove();
+            }
+        }, 8000);
+    }
+
+    function renderStatus(order, config = {}) {
+        // Note: statusActionInterval is now managed globally in startPolling/stopPolling
+        if (!statusBody) return;
+        
+        if (order.status === 'entregado' && !celebrationShown) {
+            triggerConfetti();
+            celebrationShown = true;
+        }
+        
+        const statusMap = {
+            'pendiente': { label: 'Pendiente', class: 'pendiente', icon: 'fa-clock' },
+            'preparacion': { label: 'En preparación', class: 'preparacion', icon: 'fa-fire' },
+            'listo': { label: 'Listo para retirar', class: 'listo', icon: 'fa-shopping-bag' },
+            'en_camino': { label: 'En camino', class: 'en_camino', icon: 'fa-motorcycle' },
+            'entregado': { label: 'Entregado', class: 'entregado', icon: 'fa-smile-beam' },
+            'cancelado': { label: 'Cancelado', class: 'cancelado', icon: 'fa-times-circle' }
+        };
+
+        const s = statusMap[order.status] || { label: order.status, class: 'default', icon: 'fa-info-circle' };
+        const date = new Date(order.created_at).toLocaleString('es-AR', { 
+            hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit',
+            timeZone: 'America/Argentina/Buenos_Aires'
+        });
+
+        // Estimated Time Logic
+        let estimatedTimeHtml = '';
+        if (order.status !== 'entregado' && order.status !== 'cancelado') {
+            let minutes = 0;
+            const type = order.order_type || 'mesa';
+            
+            // Prioridad: manual config por ahora (hasta tener lógica auto backend)
+            if (type === 'mesa') minutes = config.time_mesa;
+            else if (type === 'espera') minutes = config.time_espera;
+            else if (type === 'direccion') minutes = config.time_delivery;
+
+            // Si está activado auto, podríamos mostrar un rango o texto diferente
+            // Por ahora mostramos el valor manual como base
+            
+            if (minutes > 0) {
+                 estimatedTimeHtml = `
+                    <div class="estimated-time" style="text-align: center; margin-top: -1rem; margin-bottom: 1.5rem; color: #6b7280; font-size: 0.9rem;">
+                        <i class="fas fa-hourglass-half"></i> Tiempo estimado: <strong>${minutes} min</strong>
+                    </div>
+                `;
+            }
+        }
+
+        // --- LÓGICA DE STEPPER (Línea de Tiempo) ---
+        // Detectar si es delivery (por tipo o por estado explícito)
+        // Intentamos usar order_type si viene del backend, o inferir si el estado actual es 'en_camino'
+        const isDelivery = (order.order_type === 'direccion') || (order.status === 'en_camino');
+
+        let steps = [];
+        if (isDelivery) {
+            steps = [
+                { key: 'pendiente', label: 'Recibido', icon: 'fa-clipboard-check' },
+                { key: 'preparacion', label: 'Cocina', icon: 'fa-fire' },
+                { key: 'listo', label: 'Listo', icon: 'fa-check' },
+                { key: 'en_camino', label: 'En camino', icon: 'fa-motorcycle' },
+                { key: 'entregado', label: 'Entregado', icon: 'fa-smile' }
+            ];
+        } else {
+            steps = [
+                { key: 'pendiente', label: 'Recibido', icon: 'fa-clipboard-check' },
+                { key: 'preparacion', label: 'Cocina', icon: 'fa-fire' },
+                { key: 'listo', label: 'Listo', icon: 'fa-check' },
+                { key: 'entregado', label: 'Entregado', icon: 'fa-smile' }
+            ];
+        }
+
+        // Mapear estado actual a índice de paso
+        let currentStepIndex = 0;
+        
+        if (isDelivery) {
+            // Lógica para 5 pasos (con En camino)
+            if (order.status === 'preparacion') currentStepIndex = 1;
+            else if (order.status === 'listo') currentStepIndex = 2;
+            else if (order.status === 'en_camino') currentStepIndex = 3;
+            else if (order.status === 'entregado') currentStepIndex = 4;
+            else if (order.status === 'cancelado') currentStepIndex = -1;
+        } else {
+            // Lógica estándar de 4 pasos
+            if (order.status === 'preparacion') currentStepIndex = 1;
+            else if (order.status === 'listo') currentStepIndex = 2;
+            // Si llega en_camino pero no es delivery (caso raro/fallback), lo mostramos como paso 2 (Listo) o 3 si fuera posible
+            // Para mantener consistencia, si no es delivery, en_camino se visualiza igual que listo (ya salió)
+            else if (order.status === 'en_camino') currentStepIndex = 2; 
+            else if (order.status === 'entregado') currentStepIndex = 3;
+            else if (order.status === 'cancelado') currentStepIndex = -1;
+        }
+
+        let stepperHtml = '';
+        if (currentStepIndex !== -1) {
+            stepperHtml = '<div class="status-stepper">';
+            steps.forEach((step, index) => {
+                let stepClass = 'step';
+                if (index < currentStepIndex) stepClass += ' completed';
+                else if (index === currentStepIndex) stepClass += ' active';
+                
+                // Icono: si está completo, usar check, si no, el del paso
+                const icon = (index < currentStepIndex) ? 'fa-check' : step.icon;
+
+                stepperHtml += `
+                    <div class="${stepClass}">
+                        <div class="step-circle">
+                            <i class="fas ${icon}"></i>
+                        </div>
+                        <div class="step-label">${step.label}</div>
+                    </div>
+                `;
+            });
+            stepperHtml += '</div>';
+        } else {
+            // Mensaje visual para cancelado
+            stepperHtml = `
+                <div class="status-stepper cancelled" style="justify-content: center;">
+                   <div class="step active">
+                        <div class="step-circle" style="border-color: var(--gastro-danger); color: var(--gastro-danger);">
+                            <i class="fas fa-times"></i>
+                        </div>
+                        <div class="step-label" style="color: var(--gastro-danger);">Pedido Cancelado</div>
+                   </div>
+                </div>
+            `;
+        }
+
+        // --- DETALLE DE ITEMS ---
+        let itemsHtml = '';
+        if (order.items && Array.isArray(order.items)) {
+            itemsHtml = '<div class="order-items-container">';
+            order.items.forEach(item => {
+                itemsHtml += `
+                    <div class="order-summary-item">
+                        <span class="item-name"><strong>${item.qty}x</strong> ${item.name}</span>
+                        <span class="item-price">$${item.unit_price}</span>
+                    </div>
+                `;
+            });
+            itemsHtml += '</div>';
+        }
+
+        // --- BOTÓN WHATSAPP ---
+        const whatsappNumber = '5492615893590'; 
+        const whatsappMsg = encodeURIComponent(`Hola, tengo una consulta sobre mi pedido #${order.id}.`);
+        const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${whatsappMsg}`;
+
+        const whatsappPaymentMsg = encodeURIComponent(`Hola, quiero realizar el pago del pedido #${order.id}.`);
+        const whatsappPaymentUrl = `https://wa.me/${whatsappNumber}?text=${whatsappPaymentMsg}`;
+
+        statusBody.innerHTML = `
+            <div class="order-status-card">
+                <!-- Header con Badge -->
+                <div style="text-align: center; margin-bottom: 1rem;">
+                    <div class="order-status-badge ${s.class}">
+                        <i class="fas ${s.icon}"></i> ${s.label}
+                    </div>
+                </div>
+
+                <!-- Stepper Visual -->
+                ${stepperHtml}
+
+                <div class="order-header" style="text-align: center; margin-bottom: 1.5rem; border-bottom: none; padding-bottom: 0;">
+                    <span class="order-id" style="display: block; font-size: 0.875rem; color: #6b7280;">Pedido #${order.id}</span>
+                    <span class="order-time" style="font-size: 0.75rem; color: #9ca3af;">${date}</span>
+                </div>
+
+                ${estimatedTimeHtml}
+
+                <div class="order-details">
+                    <h4 style="font-size: 1rem; margin-bottom: 1rem; color: var(--gastro-text-dark, #111827);">Detalle del pedido</h4>
+                    ${itemsHtml}
+                    <div class="order-summary-total">
+                        <span>Total</span>
+                        <span>$${order.total}</span>
+                    </div>
+                </div>
+
+                ${order.status === 'listo' ? `
+                    <div class="status-alert ready" style="margin-top: 1.5rem; padding: 1rem; background-color: #d1fae5; color: #065f46; border-radius: 0.5rem; text-align: center; font-weight: 600;">
+                        <i class="fas fa-bell"></i> ¡Tu pedido está listo! Por favor acércate al mostrador.
+                    </div>
+                ` : ''}
+
+                <!-- Botón de Ayuda WhatsApp -->
+                <a href="${isPaymentMode ? whatsappPaymentUrl : whatsappUrl}" 
+                   target="_blank" 
+                   class="btn-whatsapp-status"
+                   data-chat-url="${whatsappUrl}"
+                   data-pay-url="${whatsappPaymentUrl}">
+                    ${isPaymentMode ? '<i class="fas fa-credit-card"></i> Realizar pago' : '<i class="fab fa-whatsapp"></i> Consultar por este pedido'}
+                </a>
+            </div>
+        `;
+    }
+});

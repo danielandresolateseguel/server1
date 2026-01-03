@@ -347,6 +347,7 @@
                 <div class="order-type-switch">
                     <label><input type="radio" name="orderType" value="mesa" checked> Mesa</label>
                     <label><input type="radio" name="orderType" value="direccion"> Dirección</label>
+                    <label><input type="radio" name="orderType" value="espera"> Espera</label>
                 </div>
                 <div class="order-extra order-mesa" id="order-mesa-fields">
                     <label for="mesa-number">Número de mesa</label>
@@ -357,6 +358,12 @@
                     <input type="text" id="delivery-address" placeholder="Calle, altura, referencias">
                     <label for="contact-phone" style="margin-top:8px;">Teléfono de contacto</label>
                     <input type="tel" id="contact-phone" placeholder="Ej: +54 9 261 123-4567" inputmode="tel">
+                </div>
+                <div class="order-extra order-espera" id="order-espera-fields" style="display: none;">
+                    <label for="espera-name">Nombre</label>
+                    <input type="text" id="espera-name" placeholder="Tu nombre">
+                    <label for="espera-phone" style="margin-top:8px;">Teléfono</label>
+                    <input type="tel" id="espera-phone" placeholder="Ej: +54 9 261 123-4567" inputmode="tel">
                 </div>
                 <div class="order-extra" id="order-notes-box" style="margin-top:8px;">
                     <label for="order-notes">Detalle del pedido (opcional)</label>
@@ -565,71 +572,7 @@
       .stock-badge.low { background:#fff3cd; color:#7a5a00; }
       .stock-badge.out { background:#f8d7da; color:#842029; }
     </style>
-    <script>
-      (function(){
-        try {
-          var origin = window.location.origin || '';
-          if (/^file:/i.test(origin)) origin = 'http://127.0.0.1:8000';
-          var slug = 'gastronomia-local2';
-          var url = new URL('/api/products', origin);
-          url.searchParams.set('tenant_slug', slug);
-          fetch(url.toString(), { credentials: 'include' })
-            .then(function(r){ return r.json(); })
-            .then(function(d){
-              var items = Array.isArray(d.products) ? d.products : [];
-              var map = {};
-              items.forEach(function(p){ map[p.id] = p; });
-              var cards = document.querySelectorAll('.product-card');
-              cards.forEach(function(card){
-                var id = card.getAttribute('id') || '';
-                var btn = card.querySelector('.add-to-cart-btn');
-                if (!id && btn) id = btn.getAttribute('data-id') || '';
-                var p = map[id];
-                if (!p) return;
-                if (p.active === false) { card.style.display = 'none'; return; }
-                var h = card.querySelector('.product-info h3');
-                if (h) h.textContent = String(p.name || '');
-                var desc = card.querySelector('.product-description');
-                if (desc && typeof p.details === 'string') desc.textContent = p.details;
-                var pr = card.querySelector('.product-price');
-                var priceVal = isFinite(parseInt(p.price)) ? parseInt(p.price) : 0;
-                if (pr) pr.textContent = '$' + priceVal.toLocaleString('es-AR') + ' ARS';
-                if (btn) {
-                  btn.setAttribute('data-price', String(priceVal));
-                  btn.setAttribute('data-name', String(p.name || ''));
-                  if (typeof p.stock !== 'undefined') {
-                    var sval = parseInt(p.stock);
-                    if (isFinite(sval) && sval <= 0) btn.setAttribute('disabled',''); else btn.removeAttribute('disabled');
-                    var info = card.querySelector('.product-info');
-                    if (info) {
-                      var badge = card.querySelector('.stock-badge');
-                      var txt = (isFinite(sval) && sval <= 0) ? 'Sin stock' : ((isFinite(sval) && sval <= 5) ? 'Últimas unidades' : '');
-                      var cls = (isFinite(sval) && sval <= 0) ? 'stock-badge out' : ((isFinite(sval) && sval <= 5) ? 'stock-badge low' : '');
-                      if (txt) {
-                        if (!badge) {
-                          badge = document.createElement('span');
-                          badge.className = cls;
-                          badge.textContent = txt;
-                          var priceEl = card.querySelector('.product-price');
-                          if (priceEl && priceEl.parentElement === info) info.insertBefore(badge, priceEl); else info.appendChild(badge);
-                        } else {
-                          badge.className = cls;
-                          badge.textContent = txt;
-                          badge.style.display = '';
-                        }
-                      } else if (badge) {
-                        badge.style.display = 'none';
-                      }
-                    }
-                  }
-                }
-              });
-            })
-            .catch(function(){})
-            .finally(function(){ try{document.documentElement.classList.remove('hydrating');}catch(e){} });
-        } catch (_) {}
-      })();
-    </script>
+
     <script src="theme-loader.js" defer></script>
     <script type="module" src="scrip.js"></script>
     <script src="media-loader.js" defer></script>

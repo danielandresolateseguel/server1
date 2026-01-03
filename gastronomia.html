@@ -18,9 +18,9 @@
     <meta name="twitter:description" content="Menú de gastronomía: platos destacados, promociones y pedidos con carrito.">
     <meta name="twitter:image" content="Imagenes/lomo a lo pobre.webp">
     <link rel="icon" href="Imagenes/Epalogo.png" type="image/png">
-    <link rel="stylesheet" href="style.css?v=53">
+    <link rel="stylesheet" href="style.css?v=57">
     <link rel="stylesheet" href="image-optimizations.css">
-    <link rel="stylesheet" href="gastronomia.css?v=16">
+    <link rel="stylesheet" href="gastronomia.css?v=19">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="preload" as="image" href="Imagenes/asus-proart-p16.png">
     <link rel="preload" as="image" href="Imagenes/xbox.png">
@@ -647,15 +647,17 @@
       <div class="modal-content">
         <button class="close-modal" aria-label="Cerrar modal" title="Cerrar"><i class="fas fa-times" aria-hidden="true"></i></button>
         <div class="modal-body">
-          <div class="modal-media">
-            <img id="modal-product-image" alt="Imagen del producto">
+          <div class="modal-image" style="height: 200px; width: 100%; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border-radius: 8px; margin-bottom: 10px;">
+            <img id="modal-product-image" alt="Imagen del producto" style="max-height: 100%; max-width: 100%; object-fit: contain; width: auto; height: auto;">
           </div>
-          <div class="modal-info">
+          <div class="modal-details">
             <h3 id="modal-product-title"></h3>
             <p id="modal-product-description"></p>
             <ul id="modal-product-features"></ul>
-            <div class="modal-price" id="modal-product-price"></div>
-            <button id="modal-add-to-cart-btn" class="add-to-cart-btn">Añadir al carrito</button>
+            <div class="modal-price-section">
+                <div class="modal-price" id="modal-product-price"></div>
+            </div>
+            <button id="modal-add-to-cart-btn" class="modal-add-to-cart">Añadir al carrito</button>
           </div>
         </div>
       </div>
