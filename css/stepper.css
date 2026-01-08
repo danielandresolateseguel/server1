@@ -1,0 +1,162 @@
+/* --- STEPPER & BADGES --- */
+
+/* ESTADO DE PEDIDO - BADGES */
+.sector-gastronomia .order-status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.sector-gastronomia .order-status-badge.pending,
+.sector-gastronomia .order-status-badge.pendiente {
+  background-color: #fef3c7;
+  color: #d97706;
+}
+
+.sector-gastronomia .order-status-badge.confirmed,
+.sector-gastronomia .order-status-badge.confirmado {
+  background-color: #d1fae5;
+  color: #059669;
+}
+
+.sector-gastronomia .order-status-badge.preparacion {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.sector-gastronomia .order-status-badge.listo {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+.sector-gastronomia .order-status-badge.en_camino {
+  background-color: #f3e8ff;
+  color: #6b21a8;
+}
+
+.sector-gastronomia .order-status-badge.entregado {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.sector-gastronomia .order-status-badge.cancelado {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+/* NUEVO: ESTADO DE PEDIDO - STEPPER */
+.status-stepper {
+  display: flex;
+  justify-content: space-between;
+  margin: 1.5rem 0;
+  position: relative;
+  padding: 0 10px;
+}
+
+/* Line connecting steps */
+.status-stepper::before {
+  content: '';
+  position: absolute;
+  top: 15px;
+  left: 10px;
+  right: 10px;
+  height: 2px;
+  background: #e5e7eb;
+  z-index: 0;
+}
+
+.step {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.step-circle {
+  width: 32px;
+  height: 32px;
+  background: #fff;
+  border: 2px solid #e5e7eb;
+  border-radius: 50%;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  color: #9ca3af;
+  transition: all 0.3s ease;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.step-label {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+/* Active State */
+.step.active .step-circle {
+  border-color: var(--gastro-primary);
+  background: #fff;
+  color: var(--gastro-primary);
+  transform: scale(1.1);
+}
+.step.active .step-label {
+  color: var(--gastro-primary-dark);
+  font-weight: 700;
+}
+
+/* Completed State */
+.step.completed .step-circle {
+  border-color: var(--gastro-success);
+  background: var(--gastro-success);
+  color: #fff;
+}
+.step.completed .step-label {
+  color: var(--gastro-success);
+}
+
+/* Cancelled State override */
+.status-stepper.cancelled .step-circle {
+  border-color: #e5e7eb;
+  color: #d1d5db;
+}
+.status-stepper.cancelled .step.active .step-circle {
+  border-color: var(--gastro-danger);
+  color: var(--gastro-danger);
+}
+
+/* NUEVO: WHATSAPP BUTTON */
+.btn-whatsapp-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.875rem;
+  background-color: #25D366;
+  color: white;
+  text-align: center;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  transition: background-color 0.2s;
+  box-shadow: 0 2px 4px rgba(37, 211, 102, 0.2);
+}
+
+.btn-whatsapp-status:hover {
+  background-color: #128C7E;
+  color: white;
+}
+
+.btn-whatsapp-status i {
+  font-size: 1.25rem;
+}

@@ -556,6 +556,23 @@ header {
     margin-left: auto;
 }
 
+/* Navigation Bar */
+.site-nav {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    padding: 10px 0;
+}
+.site-nav a {
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1.1em;
+}
+.site-nav a:hover {
+    text-decoration: underline;
+}
+
 @media (max-width: 1024px) {
     .header-contact {
         gap: 8px;

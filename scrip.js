@@ -61,6 +61,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (mesaFields) mesaFields.style.display = val === 'mesa' ? 'block' : 'none';
                 if (addressFields) addressFields.style.display = val === 'direccion' ? 'block' : 'none';
                 if (esperaFields) esperaFields.style.display = val === 'espera' ? 'block' : 'none';
+                updateCartDisplay();
             });
         });
         // Estado inicial
@@ -95,7 +96,7 @@ document.addEventListener('DOMContentLoaded', function() {
     (function maybeLoadBusinessConfig() {
         const slug = getBusinessSlug();
         if (!slug || (window.BusinessConfig && window.BusinessConfig.__loaded)) return;
-        const url = `config/${slug}.json`;
+        const url = `/api/config?slug=${slug}`;
         fetch(url).then(res => {
             if (!res.ok) throw new Error('No config JSON found');
             return res.json();
@@ -103,6 +104,7 @@ document.addEventListener('DOMContentLoaded', function() {
             window.BusinessConfig = Object.assign({}, window.BusinessConfig || {}, json, { __loaded: true });
             document.dispatchEvent(new CustomEvent('businessconfig:ready'));
             console.info('BusinessConfig loaded from', url);
+            if (typeof updateCartDisplay === 'function') updateCartDisplay();
         }).catch(() => {
             // Silencio si no hay config, se usan fallbacks
         });
@@ -960,8 +962,33 @@ document.addEventListener('DOMContentLoaded', function() {
             cartItems.appendChild(cartItem);
             
             // Actualizar el precio total
-            totalPrice += item.price * item.quantity;
+        totalPrice += item.price * item.quantity;
         });
+
+        // Calcular costo de envío si es a domicilio
+        let shippingCost = 0;
+        let currentOrderType = 'mesa';
+        const checkedRadio = document.querySelector('input[name="orderType"]:checked');
+        if (checkedRadio) currentOrderType = checkedRadio.value;
+
+        if (currentOrderType === 'direccion' && window.BusinessConfig && window.BusinessConfig.shipping_cost) {
+            shippingCost = parseInt(window.BusinessConfig.shipping_cost) || 0;
+        }
+
+        // Mostrar costo de envío si corresponde
+        if (shippingCost > 0) {
+            const shippingRow = document.createElement('div');
+            shippingRow.className = 'cart-item shipping-row';
+            shippingRow.style.cssText = 'border-top: 1px dashed #eee; margin-top: 10px; padding-top: 10px; background: none;';
+            shippingRow.innerHTML = `
+                <div class="cart-item-info" style="width:100%; display:flex; justify-content:space-between; align-items:center;">
+                    <div class="cart-item-name" style="font-weight:bold; color: #666;">Costo de envío</div>
+                    <div class="cart-item-price">$${shippingCost.toLocaleString('es-AR')} ARS</div>
+                </div>
+            `;
+            cartItems.appendChild(shippingRow);
+            totalPrice += shippingCost;
+        }
         
         // Actualizar el precio total
          cartTotalPrice.textContent = '$' + parseInt(totalPrice).toLocaleString('es-AR') + ' ARS';
@@ -1357,7 +1384,16 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         // Agregar el total y sugerencia de propina si corresponde
-        const totalNumber = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        let shippingCost = 0;
+        if (orderType === 'direccion' && window.BusinessConfig && window.BusinessConfig.shipping_cost) {
+            shippingCost = parseInt(window.BusinessConfig.shipping_cost) || 0;
+        }
+
+        if (shippingCost > 0) {
+            mensaje += `🚚 Costo de envío: $${shippingCost.toLocaleString('es-AR')} ARS\n`;
+        }
+
+        const totalNumber = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0) + shippingCost;
         const totalText = '$' + parseInt(totalNumber).toLocaleString('es-AR') + ' ARS';
         // En comercio y general (plantilla base) no mostrar "(sin propina)" (comparación robusta por minúsculas)
         const currentCategory = (CATEGORY || (document.body && document.body.dataset && document.body.dataset.category) || '').toLowerCase();

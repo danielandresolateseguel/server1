@@ -1,0 +1,20 @@
+/* --- PRODUCT CARDS --- */
+
+/* Tarjetas de producto */
+body.sector-gastronomia .product-card {
+  background: var(--gastro-surface-card);
+  border: 1px solid var(--gastro-accent-18);
+  box-shadow: 0 10px 24px rgba(12,12,12,0.15), 0 2px 10px var(--gastro-accent-08);
+  border-radius: 14px;
+}
+body.sector-gastronomia .product-card .product-price {
+  color: #111111;
+}
+body.sector-gastronomia .product-card .add-to-cart-btn {
+  background: linear-gradient(180deg, var(--gastro-accent) 0%, var(--gastro-accent-dark) 100%);
+  color: #121212;
+  border: none;
+}
+body.sector-gastronomia .product-card .add-to-cart-btn:hover {
+  filter: brightness(1.06);
+}
