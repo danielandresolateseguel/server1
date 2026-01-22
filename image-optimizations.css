@@ -45,8 +45,8 @@
 
 /* Fase 3: Optimización de renderizado con content-visibility */
 .product-card {
-    content-visibility: auto;
-    contain-intrinsic-size: 300px 400px; /* Tamaño estimado para evitar layout shifts */
+    /* content-visibility: auto; removed to fix missing cards issue */
+    /* contain-intrinsic-size: 300px 400px; */
 }
 
 /* Soporte para navegadores que no soportan content-visibility */

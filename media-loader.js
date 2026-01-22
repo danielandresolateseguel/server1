@@ -8,10 +8,6 @@ document.addEventListener('DOMContentLoaded', function() {
         img.decoding = 'async';
         // Por defecto baja prioridad; se elevará cerca del fold
         img.setAttribute('fetchpriority', 'low');
-        const src = img.getAttribute('src');
-        if (src && !src.includes('placeholder')) {
-          img.setAttribute('srcset', src);
-        }
       } catch (e) {
         // silencioso
       }
@@ -159,9 +155,9 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.product-image img').forEach(img => {
       const src = img.getAttribute('src') || '';
       if (src.toLowerCase().endsWith('.webp')) {
-        img.setAttribute('src', 'Imagenes/asus-proart-p16.png');
-        img.setAttribute('srcset', 'Imagenes/asus-proart-p16.png');
-      }
+          img.setAttribute('src', 'Imagenes/asus-proart-p16.png');
+          img.setAttribute('srcset', 'Imagenes/asus-proart-p16.png');
+        }
     });
   }
 

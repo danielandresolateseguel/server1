@@ -176,40 +176,14 @@
 
         <section class="carousel-section">
             <div class="carousel-container">
-                <div class="carousel-slides">
-                    <div class="carousel-slide active">
-                        <img src="Imagenes/lomo a lo pobre.webp" alt="Sabor auténtico" width="1600" height="900">
-                        <div class="carousel-content">
-                            <h2>Sabor auténtico</h2>
-                            <p>Platos preparados con ingredientes frescos y seleccionados</p>
-                        </div>
-                    </div>
-                    <div class="carousel-slide">
-                        <img src="Imagenes/hambuerguesagour.jpg" alt="Promos del día" width="1600" height="900">
-                        <div class="carousel-content">
-                            <h2>Promos del día</h2>
-                            <p>Combinaciones imperdibles para compartir</p>
-                        </div>
-                    </div>
-                    <div class="carousel-slide">
-                        <img src="Imagenes/deliverymot.webp" alt="Retiro y entrega" width="1600" height="900">
-                        <div class="carousel-content">
-                            <h2>Retiro y entrega</h2>
-                            <p>Elegí retirar en local o recibir en tu domicilio</p>
-                        </div>
-                    </div>
-                </div>
+                <div class="carousel-slides"></div>
                 <button class="carousel-btn carousel-prev" onclick="previousSlide()" aria-label="Imagen anterior">
                     <i class="fas fa-chevron-left"></i>
                 </button>
                 <button class="carousel-btn carousel-next" onclick="nextSlide()" aria-label="Siguiente imagen">
                     <i class="fas fa-chevron-right"></i>
                 </button>
-                <div class="carousel-indicators">
-                    <button class="indicator active" onclick="goToSlide(0)" aria-label="Ir al slide 1"></button>
-                    <button class="indicator" onclick="goToSlide(1)" aria-label="Ir al slide 2"></button>
-                    <button class="indicator" onclick="goToSlide(2)" aria-label="Ir al slide 3"></button>
-                </div>
+                <div class="carousel-indicators"></div>
                 <div class="carousel-controls">
                     <div class="carousel-play-button" onclick="toggleAutoPlay()" aria-label="Pausar/Reanudar reproducción automática del carrusel" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){toggleAutoPlay();event.preventDefault();}" title="Click para pausar/reanudar reproducción automática">
                         <svg class="progress-ring" viewBox="0 0 36 36">
@@ -230,58 +204,6 @@
             <div class="discounts-wrapper">
                 <div class="discounts-container">
                     <div class="discounts-grid">
-                        <div class="product-card discount-card searchable-item" id="destacado1">
-                            <div class="product-image">
-                                <img src="Imagenes/napolitana.webp" alt="Pizza Napolitana" width="800" height="600" loading="lazy">
-                            </div>
-                            <div class="product-info">
-                                <h3>Pizza Napolitana</h3>
-                                <p class="product-description">Tomate, mozzarella y orégano seleccionados.</p>
-                                <div class="price-container">
-                                    <p class="product-price">$6,800 ARS</p>
-                                </div>
-                                <button class="add-to-cart-btn" data-id="dest1" data-name="Pizza Napolitana" data-price="6800">Añadir al carrito</button>
-                            </div>
-                        </div>
-                        <div class="product-card discount-card searchable-item" id="destacado2">
-                            <div class="product-image">
-                                <img src="Imagenes/milacpure.webp" alt="Milanesa con puré" width="800" height="600" loading="lazy">
-                            </div>
-                            <div class="product-info">
-                                <h3>Milanesa con puré</h3>
-                                <p class="product-description">Clásico casero con papas cremosas.</p>
-                                <div class="price-container">
-                                    <p class="product-price">$5,400 ARS</p>
-                                </div>
-                                <button class="add-to-cart-btn" data-id="dest2" data-name="Milanesa con puré" data-price="5400">Añadir al carrito</button>
-                            </div>
-                        </div>
-                        <div class="product-card discount-card searchable-item" id="destacado3">
-                            <div class="product-image">
-                                <img src="Imagenes/ensalada cesar.webp" alt="Ensalada César" width="800" height="600" loading="lazy" fetchpriority="high" decoding="async">
-                            </div>
-                            <div class="product-info">
-                                <h3>Ensalada César</h3>
-                                <p class="product-description">Lechuga fresca, pollo, crutones y aderezo.</p>
-                                <div class="price-container">
-                                    <p class="product-price">$4,930 ARS</p>
-                                </div>
-                                <button class="add-to-cart-btn" data-id="dest3" data-name="Ensalada César" data-price="4930">Añadir al carrito</button>
-                            </div>
-                        </div>
-                        <div class="product-card discount-card searchable-item" id="destacado4">
-                            <div class="product-image">
-                                <img src="Imagenes/raviolioles de ricota.jpg" alt="Ravioles de ricota" width="800" height="600" loading="lazy">
-                            </div>
-                            <div class="product-info">
-                                <h3>Ravioles de ricota</h3>
-                                <p class="product-description">Caseros, con salsa pomodoro y albahaca.</p>
-                                <div class="price-container">
-                                    <p class="product-price">$6,396 ARS</p>
-                                </div>
-                                <button class="add-to-cart-btn" data-id="dest4" data-name="Ravioles de ricota" data-price="6396">Añadir al carrito</button>
-                            </div>
-                        </div>
                     </div>
                 </div>
                 <button class="discounts-nav-btn prev" onclick="scrollDiscounts('left')" aria-label="Anterior">
@@ -399,91 +321,11 @@
         <section class="products searchable-section" id="menu-gastronomia">
             <h2 class="section-title">Menú principal</h2>
             <div class="products-grid">
-                <div class="product-card searchable-item" id="plato1" data-food-category="pizzas, comen-dos">
-                    <div class="product-image">
-                        <img src="Imagenes/PIZZA MARGARITA.webp" alt="Pizza Margarita" width="800" height="600" loading="lazy">
-                    </div>
-                    <div class="product-info">
-                        <h3>Pizza Margarita</h3>
-                        <p class="product-description">Mozzarella, tomate y albahaca fresca.</p>
-                        <p class="product-price">$6,500 ARS</p>
-                        <button class="add-to-cart-btn" data-id="plato1" data-name="Pizza Margarita" data-price="6500">Añadir al carrito</button>
-                    </div>
-                </div>
-                <div class="product-card searchable-item" id="plato2" data-food-category="sandwich, comen-dos">
-                    <div class="product-image">
-                        <img src="Imagenes/enpanadas.webp" alt="Empanadas" width="800" height="600" loading="lazy">
-                    </div>
-                    <div class="product-info">
-                        <h3>Empanadas (docena)</h3>
-                        <p class="product-description">Carne suave, cebolla y especias.</p>
-                        <p class="product-price">$8,000 ARS</p>
-                        <button class="add-to-cart-btn" data-id="plato2" data-name="Empanadas (docena)" data-price="8000">Añadir al carrito</button>
-                    </div>
-                </div>
-                <div class="product-card searchable-item" id="plato3" data-food-category="ensaladas">
-                    <div class="product-image">
-                        <img src="Imagenes/ensalada cesar.webp" alt="Ensalada César" width="800" height="600" loading="lazy" fetchpriority="high" decoding="async">
-                    </div>
-                    <div class="product-info">
-                        <h3>Ensalada César</h3>
-                        <p class="product-description">Lechuga, crutones, parmesano y aderezo clásico.</p>
-                        <p class="product-price">$5,200 ARS</p>
-                        <button class="add-to-cart-btn" data-id="plato3" data-name="Ensalada César" data-price="5200">Añadir al carrito</button>
-                    </div>
-                </div>
-                <div class="product-card searchable-item" id="plato4" data-food-category="bebidas">
-                    <div class="product-image">
-                        <img src="Imagenes/Limonadacasera.jpg" alt="Limonada Casera" width="800" height="600" loading="lazy">
-                    </div>
-                    <div class="product-info">
-                        <h3>Limonada Casera</h3>
-                        <p class="product-description">Refrescante, con limón, azúcar y menta.</p>
-                        <p class="product-price">$2,500 ARS</p>
-                        <button class="add-to-cart-btn" data-id="plato4" data-name="Limonada Casera" data-price="2500">Añadir al carrito</button>
-                    </div>
-                </div>
             </div>
         </section>
         <section class="products interest-products searchable-section">
             <h2 id="interest-products-index-title" class="section-title">Recomendados por interés</h2>
             <div class="products-grid">
-                <div class="product-card searchable-item" id="interest-product-2x1">
-                    <div class="interest-badge">2x1</div>
-                    <div class="product-image">
-                        <img src="Imagenes/PIZZA MARGARITA.webp" alt="Pizza Margarita 2x1" width="800" height="600" loading="lazy">
-                    </div>
-                    <div class="product-info">
-                        <h3>Pizza Margarita 2x1</h3>
-                        <p class="product-description">Promo 2x1 en pizzas Margarita; ideal para compartir.</p>
-                        <p class="product-price">$4,500 ARS</p>
-                        <button class="add-to-cart-btn" data-id="i1" data-name="Pizza Margarita 2x1" data-price="4500">Añadir al carrito</button>
-                    </div>
-                </div>
-                <div class="product-card searchable-item" id="interest-product-liquidaciones">
-                    <div class="interest-badge">Promoción</div>
-                    <div class="product-image">
-                        <img src="Imagenes/enpanadas.webp" alt="Empanadas de Carne (Promo)" width="800" height="600" loading="lazy">
-                    </div>
-                    <div class="product-info">
-                        <h3>Empanadas de Carne (Promo)</h3>
-                        <p class="product-description">Docena de empanadas a precio promocional.</p>
-                        <p class="product-price">$6,200 ARS</p>
-                        <button class="add-to-cart-btn" data-id="i2" data-name="Empanadas de Carne (Promo)" data-price="6200">Añadir al carrito</button>
-                    </div>
-                </div>
-                <div class="product-card searchable-item" id="interest-product-destacados">
-                    <div class="interest-badge">Especialidad</div>
-                    <div class="product-image">
-                        <img src="Imagenes/lomo a lo pobre.webp" alt="Lomo a lo Pobre (Especialidad)" width="800" height="600" loading="lazy">
-                    </div>
-                    <div class="product-info">
-                        <h3>Lomo a lo Pobre (Especialidad)</h3>
-                        <p class="product-description">Clásico de la casa con huevo, cebolla y papas.</p>
-                        <p class="product-price">$7,800 ARS</p>
-                        <button class="add-to-cart-btn" data-id="i3" data-name="Lomo a lo Pobre (Especialidad)" data-price="7800">Añadir al carrito</button>
-                    </div>
-                </div>
             </div>
         </section>
         <section class="restaurant-info" id="restaurant-info">
@@ -563,18 +405,30 @@
         <i class="fas fa-arrow-up" aria-hidden="true"></i>
     </button>
 
+    <!-- Botón flotante de estado de pedido -->
+    <button id="order-status-float" class="order-status-float" aria-label="Estado del pedido" title="Ver estado de mi pedido">
+        <i class="fas fa-receipt" aria-hidden="true"></i>
+    </button>
+
+    <!-- Modal de estado de pedido -->
+    <div id="order-status-modal" class="order-status-modal" style="display: none;" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="status-modal-title" tabindex="-1">
+        <div class="modal-content status-content">
+            <button class="close-status-modal" aria-label="Cerrar" title="Cerrar"><i class="fas fa-times" aria-hidden="true"></i></button>
+            <div class="status-header">
+                <h3 id="status-modal-title">Estado de tu pedido</h3>
+            </div>
+            <div class="status-body" id="order-status-body">
+                <div class="status-loading">
+                    <i class="fas fa-spinner fa-spin"></i> Cargando...
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>window.BUSINESS_SLUG = 'gastronomia-local2';</script>
-    <script>try{document.documentElement.classList.add('hydrating');}catch(e){}</script>
-    <style>
-      html.hydrating #menu-gastronomia .products-grid { visibility: hidden; }
-      html.hydrating .discounts-wrapper { visibility: hidden; }
-      .stock-badge { display:inline-block; padding:2px 6px; margin:4px 0; border-radius:4px; font-size:13px; }
-      .stock-badge.low { background:#fff3cd; color:#7a5a00; }
-      .stock-badge.out { background:#f8d7da; color:#842029; }
-    </style>
 
     <script src="theme-loader.js" defer></script>
-    <script type="module" src="scrip.js"></script>
+    <script type="module" src="js/app.js"></script>
     <script src="media-loader.js" defer></script>
     </body>
     </html>

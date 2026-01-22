@@ -8,6 +8,7 @@ from flask import Flask, request, jsonify, send_from_directory, session
 import secrets
 import unicodedata
 from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.utils import secure_filename
 import threading
 import time
 
@@ -247,6 +248,7 @@ def init_db():
             note TEXT,
             actor TEXT,
             created_at TEXT NOT NULL,
+            payment_method TEXT,
             FOREIGN KEY(session_id) REFERENCES cash_sessions(id)
         )
         """
@@ -260,6 +262,41 @@ def init_db():
             conn.commit()
     except Exception:
         pass
+    try:
+        cur.execute("PRAGMA table_info(cash_movements)")
+        cols_mov = [r[1] for r in cur.fetchall()]
+        if 'payment_method' not in cols_mov:
+            cur.execute("ALTER TABLE cash_movements ADD COLUMN payment_method TEXT")
+            conn.commit()
+    except Exception:
+        pass
+        
+    # Carrusel
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS carousel_slides (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tenant_slug TEXT NOT NULL,
+            image_url TEXT NOT NULL,
+            title TEXT,
+            text TEXT,
+            position INTEGER DEFAULT 0,
+            active INTEGER DEFAULT 1,
+            created_at TEXT
+        )
+        """
+    )
+    try:
+        cur.execute("PRAGMA table_info(carousel_slides)")
+        cols_car = [r[1] for r in cur.fetchall()]
+        if 'title_color' not in cols_car:
+            cur.execute("ALTER TABLE carousel_slides ADD COLUMN title_color TEXT")
+        if 'text_color' not in cols_car:
+            cur.execute("ALTER TABLE carousel_slides ADD COLUMN text_color TEXT")
+    except Exception:
+        pass
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_carousel_tenant ON carousel_slides(tenant_slug)")
+
     conn.commit()
     conn.close()
 
@@ -410,7 +447,8 @@ def seed_admin_users_from_env():
 
 # --- Aplicación Flask ---
 app = Flask(__name__, static_folder=BASE_DIR, static_url_path='')
-app.secret_key = os.environ.get('FLASK_SECRET_KEY') or os.urandom(32)
+# Usar clave fija para persistencia de sesiones en reinicios
+app.secret_key = os.environ.get('FLASK_SECRET_KEY') or 'super-secret-key-dev-fixed'
 app.config.update({
     'SESSION_COOKIE_HTTPONLY': True,
     'SESSION_COOKIE_SAMESITE': 'Lax',
@@ -611,7 +649,8 @@ def create_order():
         return jsonify({'error': 'Carrito vacío'}), 400
 
     total = compute_total(items)
-    created_at = datetime.utcnow().isoformat()
+    # Store as UTC ISO format with Z suffix for clarity
+    created_at = datetime.utcnow().isoformat() + 'Z'
     status = 'pendiente'
 
     conn = get_db()
@@ -847,6 +886,8 @@ def update_order_status(order_id):
             conn.close()
             return jsonify({'error': 'no hay sesión de caja abierta'}), 400
     cur.execute("UPDATE orders SET status = ? WHERE id = ?", (new_status, order_id))
+    if new_status == 'cancelado' and reason:
+        cur.execute("UPDATE orders SET order_notes = COALESCE(order_notes, '') || ? WHERE id = ?", (f" [Cancelado: {reason}]", order_id))
     conn.commit()
     # Registrar historial
     actor = session.get('admin_user') or ''
@@ -934,13 +975,17 @@ def pay_order(order_id):
     if tip_amount > 0:
         note += f" (incl. propina ${tip_amount})"
     
+    order_type_norm = (order_type or '').strip().lower()
+    if order_type_norm in ('delivery', 'espera'):
+        note += f" [Auto-Cobro {order_type_norm}]"
+
     amount_to_register = total + tip_amount
     
     # Si queremos diferenciar tipos de ingreso en el futuro, podríamos usar 'ingreso_efectivo', 'ingreso_banco', etc.
     # Por ahora usamos 'entrada' y la nota aclara.
     cur.execute(
-        "INSERT INTO cash_movements (session_id, type, amount, note, actor, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-        (session_id, 'entrada', amount_to_register, note, session.get('admin_user') or '', datetime.utcnow().isoformat())
+        "INSERT INTO cash_movements (session_id, type, amount, note, actor, created_at, payment_method) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (session_id, 'entrada', amount_to_register, note, session.get('admin_user') or '', datetime.utcnow().isoformat(), method)
     )
     
     conn.commit()
@@ -1040,6 +1085,85 @@ def get_order_detail(order_id):
     history = [dict(r) for r in hist_rows]
     events = [dict(r) for r in ev_rows]
     return jsonify({'order': order, 'items': items, 'history': history, 'events': events})
+
+
+@app.route('/api/orders/<int:order_id>', methods=['PUT'])
+def update_order_content(order_id):
+    if not is_authed():
+        return jsonify({'error': 'no autorizado'}), 401
+    
+    payload = request.get_json(silent=True) or {}
+    new_items = payload.get('items')
+    
+    if new_items is None:
+        return jsonify({'error': 'items requeridos'}), 400
+        
+    conn = get_db()
+    cur = conn.cursor()
+    
+    # Verificar existencia y estado
+    cur.execute("SELECT status, tenant_slug FROM orders WHERE id = ?", (order_id,))
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        return jsonify({'error': 'orden no encontrada'}), 404
+    
+    status, tenant_slug = row
+    if status in ('entregado', 'cancelado'):
+        conn.close()
+        return jsonify({'error': 'no se puede editar una orden finalizada'}), 400
+
+    # Calcular nuevo total
+    total = 0
+    valid_items = []
+    for it in new_items:
+        try:
+            qty = int(it.get('quantity', it.get('qty', 1)))
+            if qty <= 0: continue
+            price = int(it.get('price', 0))
+            total += price * qty
+            valid_items.append({
+                'id': it.get('id'), # Product ID
+                'name': it.get('name', 'Producto'),
+                'price': price,
+                'qty': qty,
+                'notes': it.get('notes', '')
+            })
+        except:
+            continue
+            
+    try:
+        # Actualizar Order Items (Estrategia: Borrar y Recrear para simplificar)
+        cur.execute("DELETE FROM order_items WHERE order_id = ?", (order_id,))
+        
+        for item in valid_items:
+            cur.execute(
+                """
+                INSERT INTO order_items (order_id, tenant_slug, product_id, name, qty, unit_price, notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (order_id, tenant_slug, item['id'], item['name'], item['qty'], item['price'], item['notes'])
+            )
+            
+        # Actualizar Total Orden
+        cur.execute("UPDATE orders SET total = ? WHERE id = ?", (total, order_id))
+        
+        # Registrar Evento
+        actor = session.get('admin_user') or 'admin'
+        cur.execute(
+            "INSERT INTO order_events (order_id, event_type, actor, amount_delta, payload_json, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (order_id, 'order_updated', actor, 0, __import__('json').dumps({'new_total': total, 'items_count': len(valid_items)}), datetime.utcnow().isoformat())
+        )
+        
+        conn.commit()
+        return jsonify({'ok': True, 'order_id': order_id, 'total': total, 'items': valid_items})
+        
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        conn.close()
+
 
 @app.route('/api/orders/export.csv', methods=['GET'])
 def export_orders_csv():
@@ -1881,7 +2005,6 @@ def tenant_prefs():
     tip_default_enabled = True
     ticket_format = 'full'
     try:
-        import json
         p = os.path.join(CONFIG_DIR, f'{slug}.json')
         if os.path.isfile(p):
             with open(p, 'r', encoding='utf-8') as f:
@@ -1901,6 +2024,107 @@ def tenant_prefs():
         'tip_percent': tip_percent,
         'tip_default_enabled': tip_default_enabled,
         'ticket_format': ticket_format
+    })
+
+@app.route('/api/tenant_header', methods=['GET'])
+def tenant_header():
+    slug = request.args.get('tenant_slug') or request.args.get('slug') or 'gastronomia-local1'
+    whatsapp = ''
+    instagram = ''
+    location = ''
+    location_label = ''
+    location_url = ''
+    opening_hours = {}
+    try:
+        p = os.path.join(CONFIG_DIR, f'{slug}.json')
+        if os.path.isfile(p):
+            with open(p, 'r', encoding='utf-8') as f:
+                j = json.load(f)
+            meta = j.get('meta') or {}
+            branding = meta.get('branding') or {}
+            contact = branding.get('contact') or {}
+            if 'whatsapp' in contact and contact.get('whatsapp') is not None:
+                whatsapp = str(contact.get('whatsapp'))
+            if 'instagram' in contact and contact.get('instagram') is not None:
+                instagram = str(contact.get('instagram'))
+            if 'location' in contact and contact.get('location') is not None:
+                location = str(contact.get('location'))
+            if 'location_label' in contact and contact.get('location_label') is not None:
+                location_label = str(contact.get('location_label'))
+            if 'location_url' in contact and contact.get('location_url') is not None:
+                location_url = str(contact.get('location_url'))
+            if 'opening_hours' in contact and contact.get('opening_hours') is not None:
+                oh = contact.get('opening_hours')
+                if isinstance(oh, dict):
+                    opening_hours = oh
+                else:
+                    try:
+                        opening_hours = json.loads(oh)
+                    except Exception:
+                        opening_hours = {}
+    except Exception:
+        pass
+    return jsonify({
+        'whatsapp': whatsapp,
+        'instagram': instagram,
+        'location': location,
+        'location_label': location_label,
+        'location_url': location_url,
+        'opening_hours': opening_hours
+    })
+
+@app.route('/api/tenant_header', methods=['PATCH'])
+def update_tenant_header():
+    if not is_authed():
+        return jsonify({'error': 'no autorizado'}), 401
+    if not check_csrf():
+        return jsonify({'error': 'csrf inválido'}), 403
+    slug = request.args.get('tenant_slug') or request.args.get('slug') or 'gastronomia-local1'
+    payload = request.get_json(silent=True) or {}
+    p = os.path.join(CONFIG_DIR, f'{slug}.json')
+    if not os.path.isfile(p):
+        return jsonify({'error': 'tenant no encontrado'}), 404
+    try:
+        with open(p, 'r', encoding='utf-8') as f:
+            j = json.load(f)
+        meta = j.get('meta') or {}
+        branding = meta.get('branding') or {}
+        contact = branding.get('contact') or {}
+        if 'whatsapp' in payload:
+            contact['whatsapp'] = str(payload.get('whatsapp') or '')
+        if 'instagram' in payload:
+            contact['instagram'] = str(payload.get('instagram') or '')
+        if 'location' in payload:
+            contact['location'] = str(payload.get('location') or '')
+        if 'location_label' in payload:
+            contact['location_label'] = str(payload.get('location_label') or '')
+        if 'location_url' in payload:
+            contact['location_url'] = str(payload.get('location_url') or '')
+        if 'opening_hours' in payload:
+            oh = payload.get('opening_hours')
+            if isinstance(oh, dict):
+                contact['opening_hours'] = oh
+            else:
+                try:
+                    contact['opening_hours'] = json.loads(oh)
+                except Exception:
+                    contact['opening_hours'] = {}
+        branding['contact'] = contact
+        meta['branding'] = branding
+        j['meta'] = meta
+        with open(p, 'w', encoding='utf-8') as f:
+            json.dump(j, f, ensure_ascii=False, indent=2)
+    except Exception:
+        return jsonify({'error': 'no se pudo guardar configuración'}), 500
+    return jsonify({
+        'ok': True,
+        'tenant_slug': slug,
+        'whatsapp': contact.get('whatsapp') or '',
+        'instagram': contact.get('instagram') or '',
+        'location': contact.get('location') or '',
+        'location_label': contact.get('location_label') or '',
+        'location_url': contact.get('location_url') or '',
+        'opening_hours': contact.get('opening_hours') or {}
     })
 
 @app.route('/api/archive/bulk', methods=['POST'])
@@ -2043,23 +2267,25 @@ def cash_session_get():
         return jsonify({'active': False})
     sess = dict(row)
     opened_at = sess['opened_at']
-    base_join_del = (
-        "SELECT COALESCE(SUM(o.total),0) FROM orders o "
+    cur.execute(
+        "SELECT COALESCE(SUM(o.total),0), COALESCE(SUM(COALESCE(o.tip_amount, 0)),0), COALESCE(COUNT(*),0), COALESCE(SUM(COALESCE(o.shipping_cost, 0)),0) FROM orders o "
         "JOIN (SELECT order_id, MAX(changed_at) AS last_change FROM order_status_history WHERE status = 'entregado' GROUP BY order_id) h ON h.order_id = o.id "
-        "WHERE o.tenant_slug = ? AND o.status = 'entregado' AND h.last_change >= ?"
+        "WHERE o.tenant_slug = ? AND o.status = 'entregado' AND h.last_change >= ?",
+        (tenant_slug, opened_at)
     )
-    params = [tenant_slug, opened_at]
-    cur.execute(base_join_del, params)
-    delivered_total = int(cur.fetchone()[0] or 0)
-    cur.execute(base_join_del.replace("COALESCE(SUM(o.total),0)", "COUNT(*)"), params)
-    delivered_count = int(cur.fetchone()[0] or 0)
+    agg = cur.fetchone() or (0, 0, 0, 0)
+    base_delivered_total = int(agg[0] or 0)
+    tip_total = int(agg[1] or 0)
+    delivered_total = base_delivered_total + tip_total
+    delivered_count = int(agg[2] or 0)
+    shipping_total = int(agg[3] or 0)
     cur.execute("SELECT COALESCE(SUM(CASE WHEN type='entrada' THEN amount ELSE 0 END),0) AS entradas, COALESCE(SUM(CASE WHEN type='salida' THEN amount ELSE 0 END),0) AS salidas FROM cash_movements WHERE session_id = ?", (sess['id'],))
     mv = cur.fetchone() or (0,0)
     entradas = int(mv[0] or 0)
     salidas = int(mv[1] or 0)
     conn.close()
-    theoretical_cash = int(sess['opening_amount']) + delivered_total + entradas - salidas
-    return jsonify({'active': True, 'session': sess, 'summary': {'delivered_count': delivered_count, 'delivered_total': delivered_total, 'entradas': entradas, 'salidas': salidas, 'theoretical_cash': theoretical_cash}})
+    theoretical_cash = int(sess['opening_amount']) + entradas - salidas
+    return jsonify({'active': True, 'session': sess, 'summary': {'delivered_count': delivered_count, 'delivered_total': delivered_total, 'base_delivered_total': base_delivered_total, 'tip_total': tip_total, 'shipping_total': shipping_total, 'entradas': entradas, 'salidas': salidas, 'theoretical_cash': theoretical_cash}})
 
 @app.route('/api/cash/open', methods=['POST'])
 def cash_open():
@@ -2108,23 +2334,27 @@ def cash_close():
     sid = int(row[0])
     opened_at = str(row[1])
     opening_amount = int(row[2] or 0)
-    base_join_del = (
-        "SELECT COALESCE(SUM(o.total + COALESCE(o.tip_amount, 0)),0) FROM orders o "
+    cur.execute(
+        "SELECT COALESCE(SUM(o.total),0), COALESCE(SUM(COALESCE(o.tip_amount, 0)),0), COALESCE(SUM(COALESCE(o.shipping_cost, 0)),0) FROM orders o "
         "JOIN (SELECT order_id, MAX(changed_at) AS last_change FROM order_status_history WHERE status = 'entregado' GROUP BY order_id) h ON h.order_id = o.id "
-        "WHERE o.tenant_slug = ? AND o.status = 'entregado' AND h.last_change >= ? AND h.last_change <= ?"
+        "WHERE o.tenant_slug = ? AND o.status = 'entregado' AND h.last_change >= ? AND h.last_change <= ?",
+        (tenant_slug, opened_at, now)
     )
-    cur.execute(base_join_del, (tenant_slug, opened_at, now))
-    delivered_total = int(cur.fetchone()[0] or 0)
+    row_totals = cur.fetchone() or (0, 0, 0)
+    base_delivered_total = int(row_totals[0] or 0)
+    tip_total = int(row_totals[1] or 0)
+    shipping_total = int(row_totals[2] or 0)
+    delivered_total = base_delivered_total + tip_total
     cur.execute("SELECT COALESCE(SUM(CASE WHEN type='entrada' THEN amount ELSE 0 END),0) AS entradas, COALESCE(SUM(CASE WHEN type='salida' THEN amount ELSE 0 END),0) AS salidas FROM cash_movements WHERE session_id = ?", (sid,))
     mv = cur.fetchone() or (0,0)
     entradas = int(mv[0] or 0)
     salidas = int(mv[1] or 0)
-    theoretical_cash = opening_amount + delivered_total + entradas - salidas
+    theoretical_cash = opening_amount + entradas - salidas
     closing_diff = closing_amount - theoretical_cash
     cur.execute("UPDATE cash_sessions SET closed_at = ?, closed_by = ?, closing_amount = ?, notes_close = ?, closing_diff = ? WHERE id = ?", (now, actor, closing_amount, notes_close, closing_diff, sid))
     conn.commit()
     conn.close()
-    return jsonify({'session_id': sid, 'tenant_slug': tenant_slug, 'opened_at': opened_at, 'closed_at': now, 'closing_amount': closing_amount, 'summary': {'opening_amount': opening_amount, 'entradas': entradas, 'salidas': salidas, 'delivered_total': delivered_total, 'theoretical_cash': theoretical_cash, 'closing_diff': closing_diff}})
+    return jsonify({'session_id': sid, 'tenant_slug': tenant_slug, 'opened_at': opened_at, 'closed_at': now, 'closing_amount': closing_amount, 'summary': {'opening_amount': opening_amount, 'entradas': entradas, 'salidas': salidas, 'delivered_total': delivered_total, 'base_delivered_total': base_delivered_total, 'tip_total': tip_total, 'shipping_total': shipping_total, 'theoretical_cash': theoretical_cash, 'closing_diff': closing_diff}})
 
 @app.route('/api/cash/movement', methods=['POST'])
 def cash_movement():
@@ -2151,7 +2381,7 @@ def cash_movement():
         conn.close()
         return jsonify({'error': 'no hay sesión de caja abierta'}), 400
     sid = int(row[0])
-    cur.execute("INSERT INTO cash_movements (session_id, type, amount, note, actor, created_at) VALUES (?, ?, ?, ?, ?, ?)", (sid, mtype, amount, note, actor, now))
+    cur.execute("INSERT INTO cash_movements (session_id, type, amount, note, actor, created_at, payment_method) VALUES (?, ?, ?, ?, ?, ?, ?)", (sid, mtype, amount, note, actor, now, (payload.get('payment_method') or '').strip()))
     conn.commit()
     conn.close()
     return jsonify({'session_id': sid, 'type': mtype, 'amount': amount, 'note': note, 'created_at': now})
@@ -2244,25 +2474,31 @@ def cash_sessions_list():
         opened_at = s.get('opened_at')
         closed_at = s.get('closed_at')
         cur.execute(
-            "SELECT COALESCE(SUM(o.total),0), COALESCE(COUNT(*),0) FROM orders o "
+            "SELECT COALESCE(SUM(o.total),0), COALESCE(SUM(COALESCE(o.tip_amount, 0)),0), COALESCE(COUNT(*),0), COALESCE(SUM(COALESCE(o.shipping_cost, 0)),0) FROM orders o "
             "JOIN (SELECT order_id, MAX(changed_at) AS last_change FROM order_status_history WHERE status = 'entregado' GROUP BY order_id) h ON h.order_id = o.id "
             "WHERE o.tenant_slug = ? AND o.status = 'entregado' AND h.last_change >= ? AND h.last_change <= ?",
             (tenant_slug, opened_at, closed_at)
         )
-        trow = cur.fetchone() or (0,0)
-        delivered_total = int(trow[0] or 0)
-        delivered_count = int(trow[1] or 0)
+        trow = cur.fetchone() or (0,0,0,0)
+        base_delivered_total = int(trow[0] or 0)
+        tip_total = int(trow[1] or 0)
+        delivered_total = base_delivered_total + tip_total
+        delivered_count = int(trow[2] or 0)
+        shipping_total = int(trow[3] or 0)
         cur.execute("SELECT COALESCE(SUM(CASE WHEN type='entrada' THEN amount ELSE 0 END),0), COALESCE(SUM(CASE WHEN type='salida' THEN amount ELSE 0 END),0) FROM cash_movements WHERE session_id = ?", (sid,))
         mrow = cur.fetchone() or (0,0)
         entradas = int(mrow[0] or 0)
         salidas = int(mrow[1] or 0)
-        theoretical_cash = int(s.get('opening_amount') or 0) + entradas - salidas + delivered_total
+        theoretical_cash = int(s.get('opening_amount') or 0) + entradas - salidas
         s['summary'] = {
             'delivered_total': delivered_total,
             'delivered_count': delivered_count,
             'entradas': entradas,
             'salidas': salidas,
             'theoretical_cash': theoretical_cash,
+            'base_delivered_total': base_delivered_total,
+            'tip_total': tip_total,
+            'shipping_total': shipping_total,
             'closing_diff': int(s.get('closing_diff') or 0)
         }
         sessions.append(s)
@@ -2303,26 +2539,30 @@ def cash_sessions_export_csv():
     import io, csv
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(['tenant_slug', 'opened_at', 'opened_by', 'opening_amount', 'notes_open', 'closed_at', 'closed_by', 'closing_amount', 'notes_close', 'delivered_total', 'entradas', 'salidas', 'theoretical_cash', 'closing_diff'])
+    writer.writerow(['tenant_slug', 'opened_at', 'opened_by', 'opening_amount', 'notes_open', 'closed_at', 'closed_by', 'closing_amount', 'notes_close', 'base_delivered_total', 'tip_total', 'shipping_total', 'delivered_total', 'entradas', 'salidas', 'theoretical_cash', 'closing_diff'])
     for r in rows:
         s = dict(r)
         sid = int(s['id'])
         opened_at = s.get('opened_at')
         closed_at = s.get('closed_at')
         cur.execute(
-            "SELECT COALESCE(SUM(o.total + COALESCE(o.tip_amount, 0)),0) FROM orders o "
+            "SELECT COALESCE(SUM(o.total),0), COALESCE(SUM(COALESCE(o.tip_amount, 0)),0), COALESCE(SUM(COALESCE(o.shipping_cost, 0)),0) FROM orders o "
             "JOIN (SELECT order_id, MAX(changed_at) AS last_change FROM order_status_history WHERE status = 'entregado' GROUP BY order_id) h ON h.order_id = o.id "
             "WHERE o.tenant_slug = ? AND o.status = 'entregado' AND h.last_change >= ? AND h.last_change <= ?",
             (tenant_slug, opened_at, closed_at)
         )
-        delivered_total = int((cur.fetchone() or (0,))[0] or 0)
+        trow = cur.fetchone() or (0,0,0)
+        base_delivered_total = int(trow[0] or 0)
+        tip_total = int(trow[1] or 0)
+        shipping_total = int(trow[2] or 0)
+        delivered_total = base_delivered_total + tip_total
         cur.execute("SELECT COALESCE(SUM(CASE WHEN type='entrada' THEN amount ELSE 0 END),0), COALESCE(SUM(CASE WHEN type='salida' THEN amount ELSE 0 END),0) FROM cash_movements WHERE session_id = ?", (sid,))
         mrow = cur.fetchone() or (0,0)
         entradas = int(mrow[0] or 0)
         salidas = int(mrow[1] or 0)
-        theoretical_cash = int(s.get('opening_amount') or 0) + entradas - salidas + delivered_total
+        theoretical_cash = int(s.get('opening_amount') or 0) + entradas - salidas
         writer.writerow([
-            s.get('tenant_slug'), s.get('opened_at'), s.get('opened_by'), int(s.get('opening_amount') or 0), s.get('notes_open'), s.get('closed_at'), s.get('closed_by'), int(s.get('closing_amount') or 0), s.get('notes_close'), delivered_total, entradas, salidas, theoretical_cash, int(s.get('closing_diff') or 0)
+            s.get('tenant_slug'), s.get('opened_at'), s.get('opened_by'), int(s.get('opening_amount') or 0), s.get('notes_open'), s.get('closed_at'), s.get('closed_by'), int(s.get('closing_amount') or 0), s.get('notes_close'), base_delivered_total, tip_total, shipping_total, delivered_total, entradas, salidas, theoretical_cash, int(s.get('closing_diff') or 0)
         ])
     conn.close()
     resp = make_response(output.getvalue())
@@ -2332,16 +2572,193 @@ def cash_sessions_export_csv():
 @app.route('/api/products', methods=['GET'])
 def list_products():
     tenant_slug = request.args.get('tenant_slug') or request.args.get('slug') or 'gastronomia-local1'
+    include_inactive = request.args.get('include_inactive') == 'true'
     conn = get_db()
     cur = conn.cursor()
-    cur.execute(
-        "SELECT product_id, name, price, stock, active, COALESCE(details,'') as details, COALESCE(variants_json,'') as variants_json, COALESCE(last_modified, '') as last_modified, COALESCE(image_url, '') as image_url FROM products WHERE tenant_slug = ? ORDER BY name ASC",
-        (tenant_slug,)
-    )
+    
+    query = "SELECT product_id, name, price, stock, active, COALESCE(details,'') as details, COALESCE(variants_json,'') as variants_json, COALESCE(last_modified, '') as last_modified, COALESCE(image_url, '') as image_url FROM products WHERE tenant_slug = ?"
+    params = [tenant_slug]
+    
+    if not include_inactive:
+        query += " AND active = 1"
+        
+    query += " ORDER BY name ASC"
+    
+    cur.execute(query, params)
     rows = cur.fetchall()
     conn.close()
     items = [{'id': r[0], 'name': r[1], 'price': int(r[2] or 0), 'stock': int(r[3] or 0), 'active': bool(r[4]), 'details': r[5] or '', 'variants': r[6] or '', 'last_modified': r[7] or '', 'image_url': r[8] or ''} for r in rows]
     return jsonify({'products': items, 'tenant_slug': tenant_slug})
+
+@app.route('/api/products', methods=['POST'])
+def create_product():
+    if not is_authed():
+        return jsonify({'error': 'no autorizado'}), 401
+    
+    data = request.get_json(silent=True) or {}
+    
+    # Guardar último payload de depuración
+    try:
+        with open('last_create_product_payload.json', 'w', encoding='utf-8') as _f:
+            _f.write(json.dumps(data, ensure_ascii=False, indent=2))
+    except Exception:
+        pass
+    
+    tenant_slug = data.get('tenant_slug')
+    product_id = data.get('id')
+    name = data.get('name')
+    
+    try:
+        price = int(data.get('price'))
+    except:
+        return jsonify({'error': 'Precio inválido'}), 400
+        
+    stock = int(data.get('stock', 0))
+    details = data.get('details', '')
+    image_url = data.get('image_url', '')
+    section = data.get('section', '')
+    interest_tag = data.get('interest_tag', '')
+    food_categories = data.get('food_categories') or []
+    
+    print(f"DEBUG CREATE PRODUCT: section={section}, food_categories={food_categories}")
+    
+    if (not section) and food_categories:
+        section = 'main'
+    
+    if not tenant_slug or not product_id or not name:
+        return jsonify({'error': 'Faltan campos obligatorios (tenant, id, name)'}), 400
+
+    # Store section and other metadata in variants_json
+    variants = {}
+    if section:
+        variants['section'] = section
+    if interest_tag:
+        variants['interest_tag'] = interest_tag
+    if isinstance(food_categories, list):
+        if food_categories:
+            variants['food_categories'] = food_categories
+    elif isinstance(food_categories, str):
+        cats = [c.strip() for c in food_categories.split(',') if c.strip()]
+        if cats:
+            variants['food_categories'] = cats
+    variants_json = json.dumps(variants)
+    
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        # Check if exists
+        cur.execute("SELECT active FROM products WHERE tenant_slug=? AND product_id=?", (tenant_slug, product_id))
+        row = cur.fetchone()
+        if row:
+            # Actualizar siempre que exista (activo o reactivado)
+            cur.execute("""
+                UPDATE products 
+                SET name=?, price=?, stock=?, active=1, details=?, variants_json=?, image_url=?, last_modified=?
+                WHERE tenant_slug=? AND product_id=?
+            """, (name, price, stock, details, variants_json, image_url, datetime.utcnow().isoformat(), tenant_slug, product_id))
+            conn.commit()
+            conn.close()
+            return jsonify({'ok': True, 'id': product_id, 'updated': True})
+        
+        # Si no existe, crear nuevo
+        cur.execute("""
+            INSERT INTO products (tenant_slug, product_id, name, price, stock, active, details, variants_json, image_url, last_modified)
+            VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
+        """, (tenant_slug, product_id, name, price, stock, details, variants_json, image_url, datetime.utcnow().isoformat()))
+        conn.commit()
+        conn.close()
+        return jsonify({'ok': True, 'id': product_id, 'created': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/products/<product_id>', methods=['DELETE'])
+def delete_product(product_id):
+    if not is_authed():
+        return jsonify({'error': 'no autorizado'}), 401
+    
+    tenant_slug = request.args.get('tenant_slug')
+    if not tenant_slug:
+        return jsonify({'error': 'Falta tenant_slug'}), 400
+        
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        
+        # Soft delete: set active = 0
+        cur.execute("""
+            UPDATE products 
+            SET active = 0, last_modified = ? 
+            WHERE tenant_slug = ? AND product_id = ?
+        """, (datetime.utcnow().isoformat(), tenant_slug, product_id))
+        
+        if cur.rowcount == 0:
+            conn.close()
+            return jsonify({'error': 'Producto no encontrado'}), 404
+            
+        conn.commit()
+        conn.close()
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/upload', methods=['POST'])
+def upload_file():
+    if not is_authed():
+        return jsonify({'error': 'no autorizado'}), 401
+        
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+        
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+        
+    if file:
+        filename = secure_filename(file.filename)
+        # Prepend timestamp to avoid collisions
+        ts = int(datetime.utcnow().timestamp())
+        filename = f"{ts}_{filename}"
+        
+        upload_dir = os.path.join(BASE_DIR, 'Imagenes', 'uploads')
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        filepath = os.path.join(upload_dir, filename)
+        file.save(filepath)
+        
+        # Return URL relative to web root
+        return jsonify({'url': f'Imagenes/uploads/{filename}'})
+    
+    return jsonify({'error': 'Upload failed'}), 500
+
+@app.route('/api/delete_file', methods=['DELETE'])
+def delete_file():
+    if not is_authed():
+        return jsonify({'error': 'no autorizado'}), 401
+    
+    path = request.args.get('path')
+    if not path:
+        payload = request.get_json(silent=True) or {}
+        path = payload.get('path')
+        
+    if not path:
+        return jsonify({'error': 'path requerido'}), 400
+        
+    path = str(path).strip()
+    
+    # Security check: ensure path starts with Imagenes/uploads/ and no backtracking
+    if '..' in path or not path.replace('\\', '/').startswith('Imagenes/uploads/'):
+        return jsonify({'error': 'ruta inválida o prohibida'}), 400
+        
+    full_path = os.path.join(BASE_DIR, path)
+    
+    if os.path.exists(full_path) and os.path.isfile(full_path):
+        try:
+            os.remove(full_path)
+            return jsonify({'ok': True})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    else:
+        return jsonify({'error': 'archivo no encontrado'}), 404
 
 @app.route('/api/products/<product_id>', methods=['PATCH'])
 def update_product(product_id):
@@ -2521,6 +2938,116 @@ def print_ticket(order_id):
 def routes_list():
     return jsonify({'routes': [{'rule': r.rule, 'methods': list(r.methods)} for r in app.url_map.iter_rules()]})
 
+# --- Endpoints Carrusel ---
+@app.route('/api/carousel', methods=['GET'])
+def list_carousel_slides():
+    tenant_slug = request.args.get('tenant_slug') or 'gastronomia-local1'
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT * FROM carousel_slides WHERE tenant_slug = ? ORDER BY position ASC, id ASC",
+        (tenant_slug,)
+    )
+    rows = cur.fetchall()
+    conn.close()
+    return jsonify({'slides': [dict(r) for r in rows]})
+
+@app.route('/api/carousel', methods=['POST'])
+def create_carousel_slide():
+    if not is_authed():
+        return jsonify({'error': 'no autorizado'}), 401
+    if not check_csrf():
+        return jsonify({'error': 'csrf inválido'}), 403
+    
+    tenant_slug = request.args.get('tenant_slug') or 'gastronomia-local1'
+    if session.get('tenant_slug') and session.get('tenant_slug') != tenant_slug:
+        return jsonify({'error': 'acceso denegado al tenant'}), 403
+        
+    payload = request.get_json(silent=True) or {}
+    image_url = payload.get('image_url')
+    if not image_url:
+        return jsonify({'error': 'image_url requerida'}), 400
+        
+    title = payload.get('title') or ''
+    text = payload.get('text') or ''
+    title_color = payload.get('title_color') or ''
+    text_color = payload.get('text_color') or ''
+    position = int(payload.get('position') or 0)
+    
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO carousel_slides (tenant_slug, image_url, title, text, position, active, created_at, title_color, text_color) VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?)",
+        (tenant_slug, image_url, title, text, position, datetime.utcnow().isoformat(), title_color, text_color)
+    )
+    new_id = cur.lastrowid
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True, 'id': new_id})
+
+@app.route('/api/carousel/<int:slide_id>', methods=['PATCH'])
+def update_carousel_slide(slide_id):
+    if not is_authed():
+        return jsonify({'error': 'no autorizado'}), 401
+    if not check_csrf():
+        return jsonify({'error': 'csrf inválido'}), 403
+        
+    payload = request.get_json(silent=True) or {}
+    fields = []
+    params = []
+    
+    if 'image_url' in payload:
+        fields.append('image_url = ?')
+        params.append(payload['image_url'])
+    if 'title' in payload:
+        fields.append('title = ?')
+        params.append(payload['title'])
+    if 'text' in payload:
+        fields.append('text = ?')
+        params.append(payload['text'])
+    if 'title_color' in payload:
+        fields.append('title_color = ?')
+        params.append(payload['title_color'])
+    if 'text_color' in payload:
+        fields.append('text_color = ?')
+        params.append(payload['text_color'])
+    if 'position' in payload:
+        try:
+            fields.append('position = ?')
+            params.append(int(payload['position']))
+        except: pass
+    if 'active' in payload:
+        try:
+            fields.append('active = ?')
+            params.append(1 if payload['active'] else 0)
+        except: pass
+        
+    if not fields:
+        return jsonify({'error': 'sin cambios'}), 400
+        
+    params.append(slide_id)
+    
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(f"UPDATE carousel_slides SET {', '.join(fields)} WHERE id = ?", params)
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True})
+
+@app.route('/api/carousel/<int:slide_id>', methods=['DELETE'])
+def delete_carousel_slide(slide_id):
+    if not is_authed():
+        return jsonify({'error': 'no autorizado'}), 401
+    if not check_csrf():
+        return jsonify({'error': 'csrf inválido'}), 403
+        
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM carousel_slides WHERE id = ?", (slide_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'ok': True})
+
 # Colocar el catch-all estático AL FINAL para no interceptar rutas /api/*
 @app.route('/<path:path>')
 def static_proxy(path):
@@ -2542,12 +3069,35 @@ def add_cache_headers(resp):
         pass
     return resp
 
+import sys
+import traceback
+
+def global_except_hook(exctype, value, tb):
+    with open('crash_log.txt', 'a') as f:
+        f.write('Global crash:\n')
+        traceback.print_exception(exctype, value, tb, file=f)
+    sys.__excepthook__(exctype, value, tb)
+
+sys.excepthook = global_except_hook
+
 if __name__ == '__main__':
+    def log_trace(msg):
+        try:
+            with open('debug_trace.txt', 'a') as f: f.write(msg + '\n')
+        except: pass
+
+    log_trace('Starting main...')
+    log_trace('Calling init_db...')
     init_db()
+    log_trace('Calling seed_products_from_config...')
     seed_products_from_config()
+    log_trace('Calling backfill_product_details_from_config...')
     backfill_product_details_from_config()
+    log_trace('Calling backfill_product_images_from_config...')
     backfill_product_images_from_config()
+    log_trace('Calling seed_admin_users_from_env...')
     seed_admin_users_from_env()
+    log_trace('Calling start_background_tasks...')
     start_background_tasks()
     try:
         print('Rutas registradas:')
@@ -2557,4 +3107,9 @@ if __name__ == '__main__':
         pass
     print(f"Servidor Flask ejecutándose en http://localhost:{PORT}/ (raíz: {BASE_DIR})")
     # Escuchar en IPv4 para máxima compatibilidad en Windows
-    app.run(host='0.0.0.0', port=PORT)
+    try:
+        log_trace('Starting app.run')
+        app.run(host='0.0.0.0', port=PORT, debug=False, use_reloader=False)
+        log_trace('app.run finished')
+    except Exception as e:
+        log_trace(f'app.run failed: {e}')

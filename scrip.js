@@ -30,6 +30,11 @@ document.addEventListener('DOMContentLoaded', function() {
     function refreshSearchableItems() {
         searchableItems = document.querySelectorAll('.searchable-item');
     }
+    
+    // Escuchar evento de productos cargados (desde ui.js)
+    document.addEventListener('productsLoaded', () => {
+        refreshSearchableItems();
+    });
     const cartAnnouncements = document.getElementById('cart-announcements');
     // Página actual para activar componentes específicos
     // PAGE ya definido arriba
@@ -264,8 +269,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const catAttr = (item.getAttribute('data-food-category') || '').toLowerCase();
             const categories = catAttr.split(',').map(c => c.trim());
             if (selectedCategory === 'todos') return true;
-            if (selectedCategory === 'bebidas-cocteles') return categories.includes('bebidas') || categories.includes('cocteles');
-            if (selectedCategory === 'al-plato') return !categories.includes('bebidas') && !categories.includes('cocteles');
+            
+            // Lógica simplificada: coincidencia directa
             return categories.includes(selectedCategory);
         }
 
@@ -318,6 +323,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Aplicar filtro inicial
             applyCategoryFilter();
+            
+            // Reaplicar filtro cuando lleguen productos dinámicos
+            document.addEventListener('productsLoaded', () => {
+                applyCategoryFilter();
+            });
         }
     }
 
