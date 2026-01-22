@@ -101,14 +101,15 @@
   flex-direction: column;
   max-height: 85vh;
   animation: slideUp 0.3s ease-out;
+  border: none !important; /* Remove white border */
 }
 
 /* Ensure modal body flows correctly */
 #product-modal .modal-body {
     display: flex;
     flex-direction: column;
-    gap: 15px;
-    padding: 20px;
+    gap: 0; /* Removed gap */
+    padding: 0 !important; /* Removed padding so image covers full width */
     overflow-y: auto;
 }
 
@@ -119,13 +120,13 @@
     align-items: center;
     justify-content: center;
     background: transparent;
-    border-radius: 12px;
+    border-radius: 0; /* Remove radius to flush with edges */
     padding: 0;
     width: 100%;
-    height: 250px; /* Slightly taller for better presentation */
+    height: 300px; /* Increased height for better visibility */
     flex-shrink: 0;
     overflow: hidden;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    box-shadow: none; /* Removed shadow inside modal */
 }
 
 #product-modal .modal-image img,
@@ -146,10 +147,12 @@
     transform: scale(1.05);
 }
 
-#product-modal .modal-details {
+#product-modal .modal-details,
+#product-modal .modal-info {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    padding: 20px; /* Added padding here for text content */
 }
 
 #product-modal .modal-details h3 {

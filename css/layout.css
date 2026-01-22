@@ -16,6 +16,18 @@ body.sector-gastronomia #menu-gastronomia .section-title {
   color: #f5f5f5;
 }
 
+body.sector-gastronomia.products-loading #menu-gastronomia .product-image img,
+body.sector-gastronomia.products-loading #featured-dishes .product-image img,
+body.sector-gastronomia.products-loading .interest-products .product-image img {
+  visibility: hidden;
+}
+
+body.sector-gastronomia.products-ready #menu-gastronomia .product-image img,
+body.sector-gastronomia.products-ready #featured-dishes .product-image img,
+body.sector-gastronomia.products-ready .interest-products .product-image img {
+  visibility: visible;
+}
+
 /* Recomendados por interés */
 body.sector-gastronomia .interest-products {
   background: var(--gastro-interest-bg, linear-gradient(90deg, rgba(18, 18, 18, 0.95) 0%, rgba(30, 30, 30, 0.88) 45%, rgba(62, 62, 62, 0.72) 100%));

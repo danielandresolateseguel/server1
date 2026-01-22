@@ -11,9 +11,35 @@
     "branding": {
       "name": "Gastronomía Local 1",
       "contact": {
-        "whatsapp": "+54 9 261 589-3590",
+        "whatsapp": "+54 9 261 589-3591",
         "instagram": "resto_local1",
-        "location": "Mendoza, Argentina"
+        "location": "https://maps.app.goo.gl/yiL4yPrTGaNHx6xc7",
+        "location_label": "Lomo Mania",
+        "location_url": "https://share.google/yV7FU6m1HzddvpdNm",
+        "opening_hours": {
+          "mon": [
+            [
+              "10:00",
+              "14:02"
+            ]
+          ],
+          "tue": [
+            [
+              "10:00",
+              "13:20"
+            ]
+          ],
+          "sat": [
+            [
+              "08:54",
+              "10:12"
+            ],
+            [
+              "20:00",
+              "00:00"
+            ]
+          ]
+        }
       }
     }
   },
@@ -59,7 +85,7 @@
     {
       "id": "plato2",
       "name": "Empanadas (docena)",
-      "price": 8000,
+      "price": 9204,
       "image": "Imagenes/enpanadas.webp",
       "categories": [
         "sandwich",

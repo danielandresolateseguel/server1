@@ -98,7 +98,59 @@
     .archived .copy-phone { background:#0f766e; color:#fff; }
     .archived .copy-phone:hover { background:#0b5e58; }
     .archived .view-detail { background:#1f2937; color:#fff; }
-    .archived .view-detail:hover { background:#111827; }
+    
+    /* New Order Modal Styles */
+    .kds-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 9999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(2px);
+    }
+    .kds-modal.active {
+      display: flex;
+    }
+    .kds-modal-content {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      width: 95%;
+      max-width: 900px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      animation: modalSlideUp 0.3s ease-out;
+    }
+    @keyframes modalSlideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    #new-order-products .product-card-mini {
+      border: 1px solid #eee;
+      border-radius: 8px;
+      padding: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: #fff;
+    }
+    #new-order-products .product-card-mini:hover {
+      border-color: var(--kds-accent);
+      background: #f0f7ff;
+    }
+    #new-order-cart-items .cart-item-mini {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+  .archived .view-detail:hover { background:#111827; }
 
     /* Product Edit Modal */
     #product-edit-modal .modal-body-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
@@ -369,6 +421,77 @@
       body.print-ticket .detail-items-table td:nth-child(2) { text-transform: uppercase; }
       body.print-ticket .pill, body.print-ticket .status-badge { display: none; }
     }
+
+    /* Table Management Styles */
+    #table-management {
+      display: none;
+      background: #fff;
+      border: 1px solid var(--kds-border);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 16px 0;
+      min-height: 600px;
+    }
+    .table-map-container {
+      position: relative;
+      width: 100%;
+      height: 600px;
+      background-color: #f0f3f8;
+      background-image: radial-gradient(#d1d5db 1px, transparent 1px);
+      background-size: 20px 20px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      overflow: auto;
+    }
+    .table-item {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      background: #fff;
+      border: 2px solid #aaa;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      user-select: none;
+      z-index: 10;
+    }
+    .table-item:hover {
+      transform: scale(1.05);
+      box-shadow: 0 8px 12px rgba(0,0,0,0.15);
+      z-index: 20;
+    }
+    .table-item.round { border-radius: 50%; }
+    .table-item.rect { border-radius: 8px; }
+    .table-item.bar { border-radius: 4px; border-width: 3px; }
+    
+    .table-item.status-free { border-color: #4caf50; background: #e8f5e9; }
+    .table-item.status-occupied { border-color: #f44336; background: #ffebee; }
+    .table-item.status-reserved { border-color: #ff9800; background: #fff3e0; }
+    .table-item.status-bill { border-color: #2196f3; background: #e3f2fd; }
+
+    .table-label { font-weight: 700; font-size: 14px; color: #333; pointer-events: none; }
+    .table-seats { font-size: 10px; color: #666; margin-top: 2px; pointer-events: none; }
+    
+    .table-item.selected {
+      box-shadow: 0 0 0 3px #2196F3, 0 8px 12px rgba(0,0,0,0.15);
+      z-index: 50;
+    }
+    
+    .tm-toolbar {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #eee;
+    }
+    .tm-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; width: 100%; }
+    .tm-legend { display: flex; gap: 16px; margin-left: auto; align-items: center; font-size: 12px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
   </style>
   </head>
 <body>
@@ -395,6 +518,9 @@
             <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
           </button>
         </div>
+        <button id="btn-new-order" style="background: #2e7d32; color: #fff; font-weight: 600; display: flex; align-items: center; gap: 6px; padding: 0 16px;">
+          <span style="font-size: 18px; line-height: 1;">+</span> Pedido
+        </button>
       </div>
     </div>
     <div class="subcontrols">
@@ -426,6 +552,8 @@
         </div>
       </details>
       <button id="analytics-open">Métricas</button>
+      <button id="tables-open" style="background:#673ab7; color:#fff;">Gestión Mesas</button>
+      <button id="carousel-open" style="background:#e91e63; color:#fff;">Carta Online</button>
     </div>
   </header>
 
@@ -439,6 +567,7 @@
     </div>
     <div class="top-actions">
       <span class="small" style="display:flex; align-items:center; gap:6px;">Caja
+        <span id="cash-status-label" class="small" style="padding:2px 6px; border-radius:12px; background:#b0bec5; color:#fff;">Sin datos</span>
         <button id="cash-eye-top" class="eye-btn" aria-label="Ocultar caja">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5zm0 12.5a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg>
         </button>
@@ -602,6 +731,7 @@
       <summary>Inventario</summary>
       <div class="actions" style="margin:8px 0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
         <div style="display:flex; align-items:center; gap:8px;">
+          <button id="inv-create-btn" style="background-color:#4caf50; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">+ Nuevo Producto</button>
           <button id="inv-reload">Recargar</button>
           <span id="inv-hint" class="small">Editar stock requiere login</span>
         </div>
@@ -622,6 +752,31 @@
         <tbody id="inventory-tbody"></tbody>
       </table>
       <div id="inventory-mobile" class="inventory-mobile"></div>
+    </details>
+    <details class="carousel" id="carousel-box">
+      <summary>Carta Online (Carrusel)</summary>
+      <div class="actions" style="margin:8px 0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button id="car-create-btn" style="background-color:#4caf50; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">+ Nuevo Slide</button>
+          <button id="car-reload">Recargar</button>
+          <button id="header-config-open" style="background-color:#2196F3; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">Cabecera</button>
+        </div>
+        <button id="close-carousel-box" style="background-color:#f44336; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">Cerrar lista</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Imagen</th>
+            <th>Título</th>
+            <th>Texto</th>
+            <th>Posición</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="carousel-tbody"></tbody>
+      </table>
+      <div id="carousel-mobile" class="carousel-mobile"></div>
     </details>
     <details class="archived" id="archived-box">
       <summary>Archivados</summary>
@@ -689,6 +844,65 @@
   </div>
   
   </section>
+
+  <!-- Table Management Section -->
+  <section id="table-management">
+    <div class="tm-toolbar">
+      <!-- Zone Controls -->
+      <div class="tm-row" style="background: #f5f7fb; padding: 8px; border-radius: 6px;">
+        <h2 style="margin:0; font-size:1.2rem; color:#425b76;">Salón:</h2>
+        <select id="tm-zone-select" style="padding:6px; min-width: 150px; border:1px solid #ccc; border-radius:4px; font-weight:600;"></select>
+        <button id="tm-edit-zone" title="Renombrar Salón" style="background:#fff; color:#333; border:1px solid #ccc; padding:6px;"><svg style="width:16px;height:16px;" viewBox="0 0 24 24"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
+        <button id="tm-add-zone" title="Nuevo Salón" style="background:#fff; color:#333; border:1px solid #ccc; padding:6px;">+ Nuevo</button>
+        <button id="tm-del-zone" title="Eliminar Salón" style="background:#fff; color:#d32f2f; border:1px solid #ccc; padding:6px;"><svg style="width:16px;height:16px;" viewBox="0 0 24 24"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
+      </div>
+
+      <!-- Table Controls -->
+      <div class="tm-row">
+        <div style="display:flex; gap:8px; align-items:center;">
+          <select id="tm-shape-select" style="padding:6px; border:1px solid #ccc; border-radius:4px;">
+            <option value="rect">Rectangular</option>
+            <option value="round">Redonda</option>
+            <option value="bar">Barra</option>
+          </select>
+          <select id="tm-size-select" style="padding:6px; border:1px solid #ccc; border-radius:4px;">
+            <option value="small">Pequeña (2p)</option>
+            <option value="medium" selected>Mediana (4p)</option>
+            <option value="large">Grande (6-8p)</option>
+            <option value="xlarge">Extra Grande</option>
+          </select>
+          <button id="tm-add-table" style="background:#fff; color:#333; border:1px solid #ccc;">+ Agregar</button>
+        </div>
+
+        <div style="height: 24px; width: 1px; background: #ddd; margin: 0 8px;"></div>
+
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button id="tm-rotate-btn" title="Rotar Seleccionada" disabled style="background:#fff; color:#333; border:1px solid #ccc; opacity: 0.5;">
+            <svg style="width:18px;height:18px;" viewBox="0 0 24 24"><path fill="currentColor" d="M16.48 2.52c3.27 1.55 5.61 4.72 5.97 8.48h1.5C23.44 4.84 18.29 0 12 0l-1 2h1l4.48.52zM12 5c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9h-2c0 3.86-3.14 7-7 7s-7-3.14-7-7 3.14-7 7-7V5zM7.52 21.48C4.25 19.94 1.91 16.76 1.55 13H.05C.56 19.16 5.71 24 12 24l1-2h-1l-4.48-.52z"/></svg>
+            Rotar
+          </button>
+          <button id="tm-del-btn" title="Eliminar Seleccionada" disabled style="background:#fff; color:#d32f2f; border:1px solid #ccc; opacity: 0.5;">
+            <svg style="width:18px;height:18px;" viewBox="0 0 24 24"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+            Eliminar
+          </button>
+        </div>
+
+        <div class="tm-legend">
+          <button id="tm-close-btn" style="background:#f44336; color:#fff; margin-right: 12px; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">Cerrar</button>
+          <button id="tm-save-layout" style="background:#2196F3; color:#fff; margin-right: 12px;">Guardar Distribución</button>
+          <div class="legend-item"><div class="legend-dot" style="background:#4caf50;"></div> Libre</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#f44336;"></div> Ocupada</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#ff9800;"></div> Reservada</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#2196f3;"></div> Cuenta</div>
+        </div>
+      </div>
+    </div>
+    
+    <div id="restaurant-map" class="table-map-container">
+      <!-- Tables will be rendered here by JS -->
+    </div>
+  </section>
+
   <div id="order-detail-modal" class="kds-modal" aria-hidden="true" role="dialog" aria-modal="true">
     <div class="kds-modal-overlay"></div>
       <div class="kds-modal-content">
@@ -785,7 +999,14 @@
             </div>
             <div class="edit-form-group">
               <label>URL Imagen</label>
-              <input type="text" id="edit-prod-image" placeholder="Ej: Imagenes/PIZZA.webp">
+              <div style="display:flex; gap:8px;">
+                <input type="text" id="edit-prod-image" placeholder="Ej: Imagenes/PIZZA.webp" style="flex:1;">
+                <button id="edit-prod-trigger-upload" type="button" style="background:#4a6fa5; color:white; border:none; padding:0 12px; border-radius:4px; cursor:pointer;">Subir</button>
+                <input type="file" id="edit-prod-file" accept="image/*" style="display:none;">
+              </div>
+              <div style="margin-top:4px;">
+                 <button id="edit-prod-delete-img-btn" type="button" style="background:#d9534f; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:12px; display:none;">Eliminar imagen actual</button>
+              </div>
             </div>
             <div class="edit-form-group">
               <label>Precio ($)</label>
@@ -794,6 +1015,19 @@
             <div class="edit-form-group">
               <label>Stock</label>
               <input type="number" id="edit-prod-stock" min="0">
+            </div>
+            <div class="edit-form-group">
+              <label>Categorías de filtro (menú principal)</label>
+              <select id="edit-prod-food-cats" multiple style="width:100%; padding:8px;">
+                <option value="sandwich">Sándwich</option>
+                <option value="pizzas">Pizzas</option>
+                <option value="comen-dos">Comen dos</option>
+                <option value="al-plato">Al plato</option>
+                <option value="bebidas">Bebidas</option>
+                <option value="cocteles">Cocteles</option>
+                <option value="postres">Postres</option>
+              </select>
+              <small>Usado para los filtros de la carta online.</small>
             </div>
             <div class="edit-form-group">
               <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
@@ -819,6 +1053,63 @@
       <div class="modal-footer" style="padding:16px 24px; border-top:1px solid #eee; display:flex; justify-content:flex-end; gap:12px;">
         <button class="cancel-btn" style="background:#f5f5f5; color:#333; box-shadow:none; border:1px solid #ddd;">Cancelar</button>
         <button class="save-btn" style="background:#4caf50;">Guardar Cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="carousel-modal" class="kds-modal" aria-hidden="true" style="display:none; position:fixed; inset:0; z-index:10000;">
+    <div class="kds-modal-overlay" style="position:absolute; inset:0; background:rgba(0,0,0,0.5);"></div>
+    <div class="kds-modal-content" role="dialog" aria-modal="true" style="position:relative; background:#fff; width:90%; max-width:600px; margin:40px auto; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.2); display:flex; flex-direction:column;">
+      <div class="modal-header" style="padding:16px 24px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="margin:0; font-size:18px; font-weight:700;">Editar Slide</h3>
+        <button class="close-modal" style="background:transparent; color:#666; font-size:24px; padding:0; box-shadow:none;">&times;</button>
+      </div>
+      <div class="modal-body" style="padding:24px; overflow-y:auto; flex:1;">
+        <div class="edit-form">
+            <input type="hidden" id="car-edit-id">
+            <div class="edit-form-group">
+              <label>Imagen URL</label>
+              <div style="display:flex; gap:8px;">
+                <input type="text" id="car-edit-image" placeholder="URL o subir imagen">
+                <input type="file" id="car-edit-file" accept="image/*" style="display:none;">
+                <button id="car-upload-btn" type="button" style="background:#4a6fa5; color:white; border:none; padding:0 12px; border-radius:4px; cursor:pointer;">Subir</button>
+              </div>
+            </div>
+            <div class="edit-form-group">
+              <label>Título</label>
+              <input type="text" id="car-edit-title" placeholder="Título del slide">
+            </div>
+            <div class="edit-form-group">
+              <label>Texto / Descripción</label>
+              <textarea id="car-edit-text" placeholder="Descripción breve"></textarea>
+            </div>
+            <div class="edit-form-group">
+              <label>Color de título</label>
+              <div style="display:flex; flex-direction:column; gap:4px;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <input type="color" id="car-edit-title-color-picker" value="#ffffff" style="width:40px; height:28px; padding:0; border:none; background:transparent;">
+                  <input type="text" id="car-edit-title-color" placeholder="ej: #FFFFFF o red">
+                </div>
+              </div>
+            </div>
+            <div class="edit-form-group">
+              <label>Color de texto / descripción</label>
+              <div style="display:flex; flex-direction:column; gap:4px;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <input type="color" id="car-edit-text-color-picker" value="#ffffff" style="width:40px; height:28px; padding:0; border:none; background:transparent;">
+                  <input type="text" id="car-edit-text-color" placeholder="ej: #DDDDDD o orange">
+                </div>
+              </div>
+            </div>
+            <div class="edit-form-group">
+              <label>Posición (Orden)</label>
+              <input type="number" id="car-edit-position" value="0">
+            </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="padding:16px 24px; border-top:1px solid #eee; display:flex; justify-content:flex-end; gap:12px;">
+        <button class="cancel-btn" style="background:#f5f5f5; color:#333; box-shadow:none; border:1px solid #ddd;">Cancelar</button>
+        <button class="save-btn" style="background:#4caf50;">Guardar</button>
       </div>
     </div>
   </div>
@@ -874,7 +1165,137 @@
     </div>
   </div>
 
+  <div id="header-config-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center;">
+    <div style="background:#fff; width:90%; max-width:400px; padding:20px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.2); max-height:90vh; overflow-y:auto;">
+      <h3 style="margin-top:0;">Cabecera de Carta Online</h3>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:12px; display:block; margin-bottom:4px;">WhatsApp (texto visible)</label>
+        <input type="text" id="header-whatsapp" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;" placeholder="+54 9 261 000-0000">
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:12px; display:block; margin-bottom:4px;">Instagram</label>
+        <input type="text" id="header-instagram" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;" placeholder="@usuario">
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:12px; display:block; margin-bottom:4px;">Título de ubicación</label>
+        <input type="text" id="header-location-label" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;" placeholder="Local 1">
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="font-size:12px; display:block; margin-bottom:4px;">Enlace de mapa (URL)</label>
+        <input type="text" id="header-location-url" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;" placeholder="https://maps.app.goo.gl/...">
+      </div>
+      <div style="margin-bottom:16px; border-top:1px solid #eee; padding-top:12px;">
+        <div id="header-hours-header" style="font-size:12px; font-weight:bold; margin-bottom:4px; cursor:pointer; display:flex; align-items:center; justify-content:space-between;">
+          <span>Horarios de apertura</span>
+          <span id="header-hours-toggle-label" style="font-size:11px; color:#2196F3;">Mostrar</span>
+        </div>
+        <div id="header-hours-panel" style="display:none; margin-top:4px;">
+          <table id="header-hours-table" style="width:100%; border-collapse:collapse; font-size:12px;">
+            <thead>
+              <tr>
+                <th style="text-align:left; padding:4px 4px;">Día</th>
+                <th style="text-align:left; padding:4px 4px;">Turno 1</th>
+                <th style="text-align:left; padding:4px 4px;">Turno 2</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr data-day="mon">
+                <td style="padding:4px 4px;">Lunes</td>
+                <td style="padding:4px 4px;">
+                  <input type="time" class="h-start1" style="width:45%;"> a
+                  <input type="time" class="h-end1" style="width:45%;">
+                </td>
+                <td style="padding:4px 4px;">
+                  <input type="time" class="h-start2" style="width:45%;"> a
+                  <input type="time" class="h-end2" style="width:45%;">
+                </td>
+              </tr>
+              <tr data-day="tue">
+                <td style="padding:4px 4px;">Martes</td>
+                <td style="padding:4px 4px;">
+                  <input type="time" class="h-start1" style="width:45%;"> a
+                  <input type="time" class="h-end1" style="width:45%;">
+                </td>
+                <td style="padding:4px 4px;">
+                  <input type="time" class="h-start2" style="width:45%;"> a
+                  <input type="time" class="h-end2" style="width:45%;">
+                </td>
+              </tr>
+              <tr data-day="wed">
+                <td style="padding:4px 4px;">Miércoles</td>
+                <td style="padding:4px 4px;">
+                  <input type="time" class="h-start1" style="width:45%;"> a
+                  <input type="time" class="h-end1" style="width:45%;">
+                </td>
+                <td style="padding:4px 4px;">
+                  <input type="time" class="h-start2" style="width:45%;"> a
+                  <input type="time" class="h-end2" style="width:45%;">
+                </td>
+              </tr>
+              <tr data-day="thu">
+                <td style="padding:4px 4px;">Jueves</td>
+                <td style="padding:4px 4px;">
+                  <input type="time" class="h-start1" style="width:45%;"> a
+                  <input type="time" class="h-end1" style="width:45%;">
+                </td>
+                <td style="padding:4px 4px;">
+                  <input type="time" class="h-start2" style="width:45%;"> a
+                  <input type="time" class="h-end2" style="width:45%;">
+                </td>
+              </tr>
+              <tr data-day="fri">
+                <td style="padding:4px 4px;">Viernes</td>
+                <td style="padding:4px 4px;">
+                  <input type="time" class="h-start1" style="width:45%;"> a
+                  <input type="time" class="h-end1" style="width:45%;">
+                </td>
+                <td style="padding:4px 4px;">
+                  <input type="time" class="h-start2" style="width:45%;"> a
+                  <input type="time" class="h-end2" style="width:45%;">
+                </td>
+              </tr>
+              <tr data-day="sat">
+                <td style="padding:4px 4px;">Sábado</td>
+                <td style="padding:4px 4px;">
+                  <input type="time" class="h-start1" style="width:45%;"> a
+                  <input type="time" class="h-end1" style="width:45%;">
+                </td>
+                <td style="padding:4px 4px;">
+                  <input type="time" class="h-start2" style="width:45%;"> a
+                  <input type="time" class="h-end2" style="width:45%;">
+                </td>
+              </tr>
+              <tr data-day="sun">
+                <td style="padding:4px 4px;">Domingo</td>
+                <td style="padding:4px 4px;">
+                  <input type="time" class="h-start1" style="width:45%;"> a
+                  <input type="time" class="h-end1" style="width:45%;">
+                </td>
+                <td style="padding:4px 4px;">
+                  <input type="time" class="h-start2" style="width:45%;"> a
+                  <input type="time" class="h-end2" style="width:45%;">
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="small" style="margin-top:6px; color:#666;">Se usa para mostrar solo “Abierto” o “Cerrado” en la cabecera.</div>
+        </div>
+      </div>
+      <div style="text-align:right; margin-top:20px; display:flex; justify-content:flex-end; gap:8px;">
+        <button type="button" id="header-save-btn" style="padding:8px 16px; background:#2196F3; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Guardar</button>
+        <button type="button" id="header-close-btn" style="padding:8px 16px; background:#9e9e9e; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
   <script>
+    // --- Global Config & Helpers ---
+    const API_BASE = (function(){
+      const origin = window.location.origin || '';
+      if (/^file:/i.test(origin)) return 'http://127.0.0.1:8000';
+      return origin;
+    })();
+
     const statusClasses = {
       pendiente: 'status-pendiente',
       preparacion: 'status-preparacion',
@@ -895,6 +1316,10 @@
     const prodEditStock = document.getElementById('edit-prod-stock');
     const prodEditActive = document.getElementById('edit-prod-active');
     const prodEditLastMod = document.getElementById('edit-prod-last-mod');
+    const prodEditFoodCats = document.getElementById('edit-prod-food-cats');
+    const prodEditTriggerUpload = document.getElementById('edit-prod-trigger-upload');
+    const prodEditFile = document.getElementById('edit-prod-file');
+    const prodEditDeleteImgBtn = document.getElementById('edit-prod-delete-img-btn');
     
     // Preview Elements
     const prevTitle = document.getElementById('preview-title');
@@ -917,6 +1342,32 @@
       prodEditStock.value = product.stock;
       prodEditActive.checked = !!product.active;
       prodEditLastMod.textContent = product.last_modified ? 'Última modificación: ' + formatARDate(product.last_modified) : 'Sin modificaciones recientes';
+
+      // Preseleccionar categorías de filtro desde variants_json
+      let existingCats = [];
+      if (prodEditFoodCats) {
+        try {
+          let v = {};
+          if (product.variants) {
+            if (typeof product.variants === 'string') {
+              v = JSON.parse(product.variants || '{}') || {};
+            } else {
+              v = product.variants || {};
+            }
+          }
+          const fc = v.food_categories;
+          if (Array.isArray(fc)) {
+            existingCats = fc;
+          } else if (typeof fc === 'string' && fc.trim()) {
+            existingCats = fc.split(',').map(c => c.trim());
+          }
+        } catch (e) {
+          existingCats = [];
+        }
+        Array.from(prodEditFoodCats.options || []).forEach(opt => {
+          opt.selected = existingCats.includes(opt.value);
+        });
+      }
 
       // Update Preview
       updatePreview();
@@ -956,6 +1407,110 @@
     if (prodEditPrice) prodEditPrice.addEventListener('input', updatePreview);
     if (prodEditImage) prodEditImage.addEventListener('input', updatePreview);
 
+    // Image Upload & Delete Handlers
+    if (prodEditTriggerUpload && prodEditFile) {
+        prodEditTriggerUpload.addEventListener('click', () => {
+            prodEditFile.click();
+        });
+
+        prodEditFile.addEventListener('change', async () => {
+            if (prodEditFile.files && prodEditFile.files[0]) {
+                const file = prodEditFile.files[0];
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                try {
+                    const baseSlug = tenantInput.value.trim() || defaultSlug();
+                    const slug = (currentTenantSlug && currentTenantSlug.trim()) || baseSlug;
+                    // Ensure csrfToken is available
+                    if (!csrfToken) await fetchCSRF();
+
+                    const url = new URL('/api/upload', API_BASE);
+                    url.searchParams.set('tenant_slug', slug); 
+
+                    const resp = await fetch(url.toString(), {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        const newPath = data.url; // Relative path returned by backend
+                        
+                        // Check if we should delete the old image (only if it was a local upload and different)
+                        const oldPath = prodEditImage.value.trim();
+                        if (oldPath && oldPath !== newPath && oldPath.replace(/\\/g, '/').startsWith('Imagenes/uploads/')) {
+                             // Call delete endpoint silently
+                             try {
+                                 const delUrl = new URL('/api/delete_file', API_BASE);
+                                 await fetch(delUrl.toString(), {
+                                     method: 'DELETE',
+                                     headers: {
+                                         'Content-Type': 'application/json',
+                                         'X-CSRF-Token': csrfToken
+                                     },
+                                     body: JSON.stringify({ path: oldPath })
+                                 });
+                             } catch (e) {
+                                 console.warn('Failed to delete old image:', e);
+                             }
+                        }
+
+                        prodEditImage.value = newPath;
+                        updatePreview();
+                        
+                        // Show delete button for the new image
+                        if (prodEditDeleteImgBtn) prodEditDeleteImgBtn.style.display = 'inline-block';
+                        
+                    } else {
+                        alert('Error al subir imagen');
+                    }
+                } catch (e) {
+                    console.error(e);
+                    alert('Error de conexión al subir imagen');
+                }
+                
+                // Reset file input
+                prodEditFile.value = '';
+            }
+        });
+    }
+
+    if (prodEditDeleteImgBtn) {
+        prodEditDeleteImgBtn.addEventListener('click', async () => {
+            if (!confirm('¿Estás seguro de que deseas eliminar la imagen actual del servidor?')) return;
+            
+            const path = prodEditImage.value.trim();
+            if (!path) return;
+            
+            try {
+                 if (!csrfToken) await fetchCSRF();
+                 const delUrl = new URL('/api/delete_file', API_BASE);
+                 const resp = await fetch(delUrl.toString(), {
+                     method: 'DELETE',
+                     headers: {
+                         'Content-Type': 'application/json',
+                         'X-CSRF-Token': csrfToken
+                     },
+                     body: JSON.stringify({ path: path })
+                 });
+                 
+                 if (resp.ok) {
+                     prodEditImage.value = '';
+                     updatePreview();
+                     prodEditDeleteImgBtn.style.display = 'none';
+                     alert('Imagen eliminada correctamente');
+                 } else {
+                     const err = await resp.json();
+                     alert('Error al eliminar: ' + (err.error || 'Error desconocido'));
+                 }
+            } catch (e) {
+                console.error(e);
+                alert('Error de conexión al eliminar imagen');
+            }
+        });
+    }
+
     // Modal Actions
     if (prodEditModal) {
       const closeBtn = prodEditModal.querySelector('.close-modal');
@@ -972,33 +1527,82 @@
         if (!currentEditingProduct) return;
         if (!isAuthed) { alert('Requiere sesión de administrador'); return; }
         
-        const slug = currentTenantSlug || (tenantInput.value.trim() || defaultSlug());
-        const url = new URL(`/api/products/${encodeURIComponent(currentEditingProduct.id)}`, API_BASE);
-        url.searchParams.set('tenant_slug', slug);
-        
-        const body = {
-          name: prodEditName.value.trim(),
-          details: prodEditDetails.value.trim(),
-          image_url: prodEditImage.value.trim(),
-          price: parseInt(prodEditPrice.value || '0', 10) || 0,
-          stock: parseInt(prodEditStock.value || '0', 10),
-          active: prodEditActive.checked
-        };
-
         try {
-          const resp = await wFetch(url.toString(), {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
-            body: JSON.stringify(body)
-          });
-          if (!resp.ok) throw new Error('No se pudo guardar');
-          const data = await resp.json();
-          alert('Guardado exitosamente');
-          closeProductEditModal();
-          // Refresh inventory to show changes
-          await renderInventory();
+            if (!csrfToken) {
+                await fetchCSRF();
+            }
+            const baseSlug = tenantInput.value.trim() || defaultSlug();
+            const slug = (currentTenantSlug && currentTenantSlug.trim()) || baseSlug;
+            const url = new URL(`/api/products/${currentEditingProduct.id}`, API_BASE);
+            url.searchParams.set('tenant_slug', slug);
+
+            const payload = {
+                name: prodEditName.value.trim(),
+                details: prodEditDetails.value.trim(),
+                image_url: prodEditImage.value.trim(),
+                price: parseInt(prodEditPrice.value || '0', 10) || 0,
+                stock: parseInt(prodEditStock.value || '0', 10),
+                active: prodEditActive.checked
+            };
+
+            // Construir objeto variants para guardar sección y categorías
+            let variants = {};
+            try {
+                if (currentEditingProduct.variants) {
+                    if (typeof currentEditingProduct.variants === 'string') {
+                        variants = JSON.parse(currentEditingProduct.variants || '{}') || {};
+                    } else {
+                        variants = currentEditingProduct.variants || {};
+                    }
+                }
+            } catch (e) {
+                variants = {};
+            }
+
+            // Recolectar categorías seleccionadas
+            let selectedCats = [];
+            if (prodEditFoodCats) {
+                const opts = prodEditFoodCats.options || [];
+                for (let i = 0; i < opts.length; i++) {
+                    if (opts[i].selected) {
+                        selectedCats.push(opts[i].value);
+                    }
+                }
+            }
+
+            if (selectedCats.length > 0) {
+                variants.food_categories = selectedCats;
+            } else {
+                // Si el usuario desmarca todo, quitamos el campo para no forzar filtros
+                if (variants && typeof variants === 'object' && 'food_categories' in variants) {
+                    delete variants.food_categories;
+                }
+            }
+
+            if (Object.keys(variants).length > 0) {
+                payload.variants = variants;
+            }
+
+            const resp = await wFetch(url.toString(), {
+                method: 'PATCH',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (resp.ok) {
+                alert('Producto actualizado exitosamente');
+                closeProductEditModal();
+                await renderInventory();
+            } else {
+                const err = await resp.json();
+                alert('Error al actualizar: ' + (err.error || 'Error desconocido'));
+            }
         } catch (e) {
-          alert('Error al guardar: ' + e.message);
+            console.error(e);
+            alert('Error de conexión al actualizar producto');
         }
       });
     }
@@ -1082,6 +1686,7 @@
     const dailyEyeBtn = document.getElementById('daily-eye');
     const cashEyeTop = document.getElementById('cash-eye-top');
     const historyEyeTop = document.getElementById('history-eye-top');
+    const cashStatusLabel = document.getElementById('cash-status-label');
     const metricsBoxEl = document.getElementById('metrics');
     const cashBoxEl = document.getElementById('cash-box');
     const cashHistoryEl = document.getElementById('cash-history');
@@ -1234,12 +1839,6 @@
       });
     });
     
-    // Usar el mismo origen (Flask en 8000) y derivar slug por defecto desde la URL
-    const API_BASE = (function(){
-      const origin = window.location.origin || '';
-      if (/^file:/i.test(origin)) return 'http://127.0.0.1:8000';
-      return origin;
-    })();
     function wFetch(url, opts){ const o = opts || {}; o.credentials = 'include'; return fetch(url, o); }
     let csrfToken = '';
     let isAuthed = false;
@@ -1513,6 +2112,64 @@
         body: JSON.stringify({ status, reason })
       });
       if (!resp.ok) throw new Error('Error al actualizar estado');
+
+      // Sync with Table Management
+      if (status === 'preparacion') {
+          try {
+             // Refresh currentOrders from API if needed or rely on window.currentOrders
+             // Best effort: look in currentOrders
+             let orders = window.currentOrders || [];
+             let order = orders.find(o => o.id == orderId);
+             
+             // If not found (maybe paginated?), try to use what we have or fetch?
+             // Fetching single order to be sure
+             if (!order) {
+                 try {
+                    const r = await fetch(new URL(`/api/orders?id=${orderId}`, API_BASE).toString());
+                    if (r.ok) {
+                        const detail = await r.json();
+                        if (detail && detail.orders && detail.orders.length > 0) order = detail.orders[0];
+                    }
+                 } catch(_) {}
+             }
+
+             if (order && (String(order.order_type||'').toLowerCase() === 'mesa') && order.table_number) {
+                 const stored = localStorage.getItem('kds_tables');
+                 if (stored) {
+                     const data = JSON.parse(stored);
+                     let found = false;
+                     if (data.zones) {
+                         const targetNum = String(order.table_number).trim().toLowerCase();
+                         data.zones.forEach(z => {
+                             // Try flexible matching
+                             const t = z.tables.find(tbl => {
+                                 const lbl = String(tbl.label || '').trim().toLowerCase();
+                                 // Exact match
+                                 if (lbl === targetNum) return true;
+                                 // "Mesa 2" vs "2"
+                                 if (lbl === `mesa ${targetNum}` || lbl === `mesa ${targetNum}`) return true;
+                                 if (targetNum === `mesa ${lbl}`) return true;
+                                 // "02" vs "2"
+                                 if (parseInt(lbl) === parseInt(targetNum)) return true;
+                                 return false;
+                             });
+                             
+                             if (t) {
+                                 t.status = 'occupied';
+                                 found = true;
+                             }
+                         });
+                     }
+                     if (found) {
+                         localStorage.setItem('kds_tables', JSON.stringify(data));
+                         window.dispatchEvent(new Event('kds-tables-changed'));
+                         try { if (typeof renderTables === 'function') renderTables(); } catch (_) {}
+                     }
+                 }
+             }
+          } catch(e) { console.error('Error auto-updating table status', e); }
+      }
+
       return resp.json();
     }
 
@@ -1893,7 +2550,13 @@
       });
     }
     // filterSelect.addEventListener('change', () => { if (refreshTimer) loadOrdersSafe(); });
-    tenantInput.addEventListener('change', async () => { await loadSlaThresholds(); await loadTenantPrefs(); if (refreshTimer) loadOrdersSafe(); });
+    tenantInput.addEventListener('change', async () => { 
+        await loadSlaThresholds(); 
+        await loadTenantPrefs(); 
+        if (refreshTimer) loadOrdersSafe(); 
+        try { await renderInventory(); } catch (_) {}
+        try { await renderArchived(); } catch (_) {}
+    });
     if (slaWarnInput && slaCritInput) {
       const clampInputs = () => {
         let w = parseInt(slaWarnInput.value || '15', 10);
@@ -1950,6 +2613,7 @@
 
     async function renderOrders(data) {
         const orders = data.orders || [];
+        window.currentOrders = orders; // Expose for Table Management
         // Filtro para mostrar activos: NO entregados/cancelados, O entregados pero MESA NO pagada
         // Y respetar filtros de configuración
         const active = orders.filter(o => {
@@ -2125,6 +2789,9 @@
               ${listoBtn}
               ${enCaminoBtn}
               ${entregadoBtn}
+              <button class="status-action" onclick="EditOrder.openWithFetch(${o.id}, '${o.table_number||''}')" style="background:#f3f4f6; color:#374151; width:auto; padding:0 8px; margin-right:4px;" title="Editar Items" aria-label="Editar">
+                <svg style="width:16px;height:16px;vertical-align:middle;" viewBox="0 0 24 24"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+              </button>
               <button class="status-action cancelado" data-status="cancelado" aria-label="Cancelado" data-tip="Cancelado">X</button>
             </div>
             <button class="ver-detalle">Ver</button>
@@ -2182,6 +2849,7 @@
               ${listoBtn}
                 ${enCaminoBtn}
                 ${entregadoBtn}
+                <button class="status-action" onclick="EditOrder.openWithFetch(${o.id}, '${o.table_number||''}')" style="background:#f3f4f6; color:#374151; width:auto; padding:0 10px;" title="Editar Items"><svg style="width:16px;height:16px;vertical-align:middle;" viewBox="0 0 24 24"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
                 <button class="status-action cancelado" data-status="cancelado" aria-label="Cancelado" data-tip="Cancelado">X</button>
               </div>
               <button class="ver-detalle" data-id="${o.id}">Ver</button>
@@ -2898,25 +3566,33 @@
       const atEndCan = canceledOffset + canceledLimit >= total;
       if (canNextBtn) canNextBtn.disabled = atEndCan;
     }
-    async function fetchProducts() {
-      const slug = currentTenantSlug || (tenantInput.value.trim() || defaultSlug());
+    // INITIAL DATA for gastronomia-local1.html, local2, local3, local4, local5
+    async function fetchProducts(includeInactive = false) {
+      const slug = tenantInput.value.trim() || defaultSlug();
       const url = new URL('/api/products', API_BASE);
       url.searchParams.set('tenant_slug', slug);
+      if (includeInactive) {
+        url.searchParams.set('include_inactive', 'true');
+      }
       const resp = await wFetch(url.toString());
-      if (!resp.ok) throw new Error('No se pudo cargar inventario');
+      if (!resp.ok) return [];
       const data = await resp.json();
-      return Array.isArray(data.products) ? data.products : [];
+      const arr = Array.isArray(data.products) ? data.products : [];
+      if (!includeInactive) {
+        return arr.filter(p => p.active !== 0 && p.active !== false);
+      }
+      return arr;
     }
     async function renderInventory() {
       if (!invTbody) return;
-      invTbody.innerHTML = '<tr><td colspan="6" class="small">Cargando...</td></tr>';
-      const items = await fetchProducts();
+      invTbody.innerHTML = '<tr><td colspan="7" class="small">Cargando...</td></tr>';
+      const items = await fetchProducts(true);
       invTbody.innerHTML = '';
       const imobile = document.getElementById('inventory-mobile');
       if (imobile) imobile.innerHTML = '';
       if (!items.length) {
         const tr = document.createElement('tr');
-        tr.innerHTML = '<td colspan="6" class="small">Sin productos</td>';
+        tr.innerHTML = '<td colspan="7" class="small">Sin productos</td>';
         invTbody.appendChild(tr);
         if (imobile) imobile.innerHTML = '<div class="small">Sin productos</div>';
         return;
@@ -2931,7 +3607,8 @@
           <td>${p.stock}</td>
           <td>${p.active ? '<span class="status-badge status-listo">Activo</span>' : '<span class="status-badge status-pendiente">Inactivo</span>'}</td>
           <td>
-            <button class="inv-edit" ${isAuthed ? '' : 'disabled'}>Editar</button>
+            <button class="inv-edit" ${isAuthed ? '' : 'disabled'} style="margin-right: 4px;">Editar</button>
+            <button class="inv-delete" ${isAuthed ? '' : 'disabled'} style="background:#c62828;">Eliminar</button>
             <div class="inv-modified small" style="font-size:0.7rem; color:#666; margin-top:4px;">${p.last_modified ? 'Mod: ' + formatARDate(p.last_modified) : ''}</div>
           </td>
         `;
@@ -2950,6 +3627,7 @@
             </div>
             <div class="actions">
               <button class="inv-edit" ${isAuthed ? '' : 'disabled'}>Editar</button>
+              <button class="inv-delete" ${isAuthed ? '' : 'disabled'} style="background:#c62828;">Eliminar</button>
               <div class="inv-modified small" style="font-size:0.7rem; color:#666; margin-top:4px;">${p.last_modified ? 'Mod: ' + formatARDate(p.last_modified) : ''}</div>
             </div>
           `;
@@ -2966,6 +3644,25 @@
               }
             });
           }
+          const delBtn = card.querySelector('.inv-delete');
+          if (delBtn) {
+            delBtn.addEventListener('click', async () => {
+                if (!isAuthed) { alert('Requiere sesión de administrador'); return; }
+                if (!confirm(`¿Estás seguro de eliminar el producto "${p.name}"?`)) return;
+                try {
+                    const slug = tenantInput.value.trim() || defaultSlug();
+                    const resp = await wFetch(`/api/products/${p.id}?tenant_slug=${slug}`, { method: 'DELETE' });
+                    if (resp.ok) {
+                        await renderInventory();
+                    } else {
+                        const j = await resp.json();
+                        alert('Error al eliminar: ' + (j.error || 'desconocido'));
+                    }
+                } catch(e) {
+                    alert('Error de conexión al eliminar');
+                }
+            });
+          }
         }
 
         const editBtn = tr.querySelector('.inv-edit');
@@ -2976,6 +3673,25 @@
               openProductEditModal(p);
             } else {
               alert('Error: Modal no cargado. Recargue la página.');
+            }
+          });
+        }
+        const delBtn = tr.querySelector('.inv-delete');
+        if (delBtn) {
+          delBtn.addEventListener('click', async () => {
+            if (!isAuthed) { alert('Requiere sesión de administrador'); return; }
+            if (!confirm(`¿Estás seguro de eliminar el producto "${p.name}"?`)) return;
+            try {
+                const slug = tenantInput.value.trim() || defaultSlug();
+                const resp = await wFetch(`/api/products/${p.id}?tenant_slug=${slug}`, { method: 'DELETE' });
+                if (resp.ok) {
+                    await renderInventory();
+                } else {
+                    const j = await resp.json();
+                    alert('Error al eliminar: ' + (j.error || 'desconocido'));
+                }
+            } catch(e) {
+                alert('Error de conexión al eliminar');
             }
           });
         }
@@ -3369,6 +4085,405 @@
       slaTimer = setInterval(update, 1000);
     }
 
+    // --- Carousel Logic ---
+    const carouselBox = document.getElementById('carousel-box');
+    const carouselTbody = document.getElementById('carousel-tbody');
+    const carouselMobile = document.getElementById('carousel-mobile');
+    const carouselModal = document.getElementById('carousel-modal');
+    const carEditId = document.getElementById('car-edit-id');
+    const carEditImage = document.getElementById('car-edit-image');
+    const carEditTitle = document.getElementById('car-edit-title');
+    const carEditText = document.getElementById('car-edit-text');
+    const carEditTitleColor = document.getElementById('car-edit-title-color');
+    const carEditTextColor = document.getElementById('car-edit-text-color');
+    const carEditTitleColorPicker = document.getElementById('car-edit-title-color-picker');
+    const carEditTextColorPicker = document.getElementById('car-edit-text-color-picker');
+    const carEditPosition = document.getElementById('car-edit-position');
+    
+    let currentCarouselSlides = [];
+
+    async function fetchCarousel() {
+      const slug = tenantInput.value.trim() || defaultSlug();
+      const url = new URL('/api/carousel', API_BASE);
+      url.searchParams.set('tenant_slug', slug);
+      try {
+        const resp = await wFetch(url.toString());
+        if (!resp.ok) return [];
+        const data = await resp.json();
+        return Array.isArray(data.slides) ? data.slides : [];
+      } catch(e) { console.error(e); return []; }
+    }
+
+    async function renderCarousel() {
+      if (!carouselTbody) return;
+      carouselTbody.innerHTML = '<tr><td colspan="6" class="small">Cargando...</td></tr>';
+      currentCarouselSlides = await fetchCarousel();
+      carouselTbody.innerHTML = '';
+      if (carouselMobile) carouselMobile.innerHTML = '';
+
+      if (currentCarouselSlides.length === 0) {
+        carouselTbody.innerHTML = '<tr><td colspan="6" class="small">Sin slides</td></tr>';
+        return;
+      }
+
+      const fragRows = document.createDocumentFragment();
+      const fragCards = document.createDocumentFragment();
+
+      currentCarouselSlides.forEach(slide => {
+        // Table Row
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${slide.id}</td>
+          <td><img src="${slide.image_url}" style="width:60px; height:40px; object-fit:cover; border-radius:4px;"></td>
+          <td>${slide.title || ''}</td>
+          <td>${(slide.text || '').slice(0, 50)}...</td>
+          <td>${slide.position}</td>
+          <td>
+            <div class="actions">
+              <button class="edit-slide" data-id="${slide.id}" style="background:#2196F3;">Editar</button>
+              <button class="delete-slide" data-id="${slide.id}" style="background:#f44336;">Eliminar</button>
+            </div>
+          </td>
+        `;
+        fragRows.appendChild(tr);
+
+        // Mobile Card
+        if (carouselMobile) {
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.innerHTML = `
+            <div class="card-content">
+               <img src="${slide.image_url}" style="width:100%; height:120px; object-fit:cover; border-radius:4px; margin-bottom:8px;">
+               <div class="title">${slide.title || '(Sin título)'}</div>
+               <div class="meta">Pos: ${slide.position}</div>
+               <p class="small">${slide.text || ''}</p>
+            </div>
+            <div class="actions">
+              <button class="edit-slide" data-id="${slide.id}" style="background:#2196F3;">Editar</button>
+              <button class="delete-slide" data-id="${slide.id}" style="background:#f44336;">Eliminar</button>
+            </div>
+          `;
+          fragCards.appendChild(card);
+        }
+      });
+
+      carouselTbody.appendChild(fragRows);
+      if (carouselMobile) carouselMobile.appendChild(fragCards);
+
+      // Event Listeners
+      const attachListeners = (container) => {
+        container.querySelectorAll('.edit-slide').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const id = parseInt(btn.dataset.id);
+            const slide = currentCarouselSlides.find(s => s.id === id);
+            if (slide) openCarouselModal(slide);
+          });
+        });
+        container.querySelectorAll('.delete-slide').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            if(!confirm('¿Eliminar slide?')) return;
+            const id = btn.dataset.id;
+            const resp = await wFetch(`/api/carousel/${id}`, {
+                method: 'DELETE',
+                headers: { 'X-CSRF-Token': csrfToken }
+            });
+            if(resp.ok) renderCarousel();
+            else alert('Error al eliminar');
+          });
+        });
+      };
+      attachListeners(carouselTbody);
+      if (carouselMobile) attachListeners(carouselMobile);
+    }
+
+    function openCarouselModal(slide = null) {
+      if(!carouselModal) return;
+      carEditId.value = slide ? slide.id : '';
+      carEditImage.value = slide ? slide.image_url : '';
+      carEditTitle.value = slide ? slide.title : '';
+      carEditText.value = slide ? slide.text : '';
+      carEditPosition.value = slide ? slide.position : 0;
+      if (carEditTitleColor) carEditTitleColor.value = slide && slide.title_color ? slide.title_color : '';
+      if (carEditTextColor) carEditTextColor.value = slide && slide.text_color ? slide.text_color : '';
+      if (carEditTitleColorPicker) {
+        const c = slide && slide.title_color ? slide.title_color : '#ffffff';
+        if (c && c[0] === '#' && (c.length === 7 || c.length === 4)) carEditTitleColorPicker.value = c;
+        else carEditTitleColorPicker.value = '#ffffff';
+      }
+      if (carEditTextColorPicker) {
+        const c2 = slide && slide.text_color ? slide.text_color : '#ffffff';
+        if (c2 && c2[0] === '#' && (c2.length === 7 || c2.length === 4)) carEditTextColorPicker.value = c2;
+        else carEditTextColorPicker.value = '#ffffff';
+      }
+      carouselModal.style.display = 'flex';
+      carouselModal.setAttribute('aria-hidden', 'false');
+    }
+
+    // Carousel Event Bindings
+    const btnOpenCarousel = document.getElementById('carousel-open');
+    if (btnOpenCarousel && carouselBox) {
+      btnOpenCarousel.addEventListener('click', () => {
+        carouselBox.open = !carouselBox.open;
+        if(carouselBox.open) renderCarousel();
+      });
+    }
+    const btnCarCreate = document.getElementById('car-create-btn');
+    if(btnCarCreate) btnCarCreate.addEventListener('click', () => openCarouselModal());
+    
+    const btnCarReload = document.getElementById('car-reload');
+    if(btnCarReload) btnCarReload.addEventListener('click', renderCarousel);
+
+    const headerConfigModal = document.getElementById('header-config-modal');
+    const btnHeaderConfigOpen = document.getElementById('header-config-open');
+    const headerWhatsappInput = document.getElementById('header-whatsapp');
+    const headerInstagramInput = document.getElementById('header-instagram');
+    const headerLocationLabelInput = document.getElementById('header-location-label');
+    const headerLocationUrlInput = document.getElementById('header-location-url');
+    const headerHoursTable = document.getElementById('header-hours-table');
+    const headerHoursHeader = document.getElementById('header-hours-header');
+    const headerHoursPanel = document.getElementById('header-hours-panel');
+    const headerHoursToggleLabel = document.getElementById('header-hours-toggle-label');
+    const headerSaveBtn = document.getElementById('header-save-btn');
+    const headerCloseBtn = document.getElementById('header-close-btn');
+
+    function clearHeaderHours() {
+      if (!headerHoursTable) return;
+      const rows = headerHoursTable.querySelectorAll('tbody tr');
+      rows.forEach(row => {
+        const inputs = row.querySelectorAll('input[type="time"]');
+        inputs.forEach(inp => { inp.value = ''; });
+      });
+    }
+
+    function setHeaderHoursPanel(open) {
+      if (!headerHoursPanel) return;
+      headerHoursPanel.style.display = open ? 'block' : 'none';
+      if (headerHoursToggleLabel) {
+        headerHoursToggleLabel.textContent = open ? 'Ocultar' : 'Mostrar';
+      }
+    }
+
+    if (headerHoursHeader && headerHoursPanel) {
+      headerHoursHeader.addEventListener('click', () => {
+        const isOpen = headerHoursPanel.style.display === 'block';
+        setHeaderHoursPanel(!isOpen);
+      });
+    }
+
+    function fillHeaderHours(hours) {
+      clearHeaderHours();
+      if (!hours || typeof hours !== 'object' || !headerHoursTable) return;
+      const days = ['mon','tue','wed','thu','fri','sat','sun'];
+      days.forEach(day => {
+        const row = headerHoursTable.querySelector('tr[data-day="' + day + '"]');
+        if (!row) return;
+        const intervals = Array.isArray(hours[day]) ? hours[day] : [];
+        const first = Array.isArray(intervals[0]) ? intervals[0] : [];
+        const second = Array.isArray(intervals[1]) ? intervals[1] : [];
+        const s1 = row.querySelector('.h-start1');
+        const e1 = row.querySelector('.h-end1');
+        const s2 = row.querySelector('.h-start2');
+        const e2 = row.querySelector('.h-end2');
+        if (s1) s1.value = first[0] || '';
+        if (e1) e1.value = first[1] || '';
+        if (s2) s2.value = second[0] || '';
+        if (e2) e2.value = second[1] || '';
+      });
+    }
+
+    function collectHeaderHours() {
+      if (!headerHoursTable) return {};
+      const days = ['mon','tue','wed','thu','fri','sat','sun'];
+      const result = {};
+      days.forEach(day => {
+        const row = headerHoursTable.querySelector('tr[data-day="' + day + '"]');
+        if (!row) return;
+        const s1 = row.querySelector('.h-start1');
+        const e1 = row.querySelector('.h-end1');
+        const s2 = row.querySelector('.h-start2');
+        const e2 = row.querySelector('.h-end2');
+        const intervals = [];
+        const v1s = s1 && s1.value ? s1.value : '';
+        const v1e = e1 && e1.value ? e1.value : '';
+        const v2s = s2 && s2.value ? s2.value : '';
+        const v2e = e2 && e2.value ? e2.value : '';
+        if (v1s && v1e) intervals.push([v1s, v1e]);
+        if (v2s && v2e) intervals.push([v2s, v2e]);
+        if (intervals.length) result[day] = intervals;
+      });
+      return result;
+    }
+
+    async function openHeaderConfigModal() {
+      if (!headerConfigModal) return;
+      headerConfigModal.style.display = 'flex';
+      try {
+        const slug = tenantInput.value.trim() || defaultSlug();
+        const url = new URL('/api/tenant_header', API_BASE);
+        url.searchParams.set('tenant_slug', slug);
+        const resp = await wFetch(url.toString());
+        if (!resp.ok) return;
+        const data = await resp.json();
+        if (headerWhatsappInput) headerWhatsappInput.value = data.whatsapp || '';
+        if (headerInstagramInput) headerInstagramInput.value = data.instagram || '';
+        if (headerLocationLabelInput) headerLocationLabelInput.value = (data.location_label || data.location || '');
+        if (headerLocationUrlInput) headerLocationUrlInput.value = data.location_url || '';
+        if (headerHoursTable) fillHeaderHours(data.opening_hours || {});
+        if (headerHoursPanel) {
+          const oh = data.opening_hours || {};
+          const hasHours = oh && typeof oh === 'object' && Object.keys(oh).length > 0;
+          setHeaderHoursPanel(hasHours);
+        }
+      } catch (_) {}
+    }
+
+    if (btnHeaderConfigOpen && headerConfigModal) {
+      btnHeaderConfigOpen.addEventListener('click', openHeaderConfigModal);
+    }
+
+    if (headerCloseBtn && headerConfigModal) {
+      headerCloseBtn.addEventListener('click', () => {
+        headerConfigModal.style.display = 'none';
+      });
+    }
+
+    if (headerSaveBtn && headerConfigModal) {
+      headerSaveBtn.addEventListener('click', async () => {
+        try {
+          if (!isAuthed) {
+            alert('Requiere sesión de administrador');
+            return;
+          }
+          if (!csrfToken) {
+            await fetchCSRF();
+          }
+          const slug = tenantInput.value.trim() || defaultSlug();
+          const url = new URL('/api/tenant_header', API_BASE);
+          url.searchParams.set('tenant_slug', slug);
+          const openingHours = collectHeaderHours();
+          const payload = {
+            whatsapp: headerWhatsappInput ? headerWhatsappInput.value.trim() : '',
+            instagram: headerInstagramInput ? headerInstagramInput.value.trim() : '',
+            location_label: headerLocationLabelInput ? headerLocationLabelInput.value.trim() : '',
+            location_url: headerLocationUrlInput ? headerLocationUrlInput.value.trim() : '',
+            opening_hours: openingHours
+          };
+          const resp = await wFetch(url.toString(), {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+            body: JSON.stringify(payload)
+          });
+          if (!resp.ok) {
+            let msg = 'No se pudo guardar cabecera';
+            try {
+              const j = await resp.json();
+              if (j && j.error) msg = j.error;
+            } catch (_) {}
+            alert(msg);
+            return;
+          }
+          headerConfigModal.style.display = 'none';
+          alert('Cabecera actualizada');
+        } catch (e) {
+          alert('Error al guardar cabecera');
+        }
+      });
+    }
+
+    const btnCloseCarouselBox = document.getElementById('close-carousel-box');
+    if(btnCloseCarouselBox && carouselBox) {
+        btnCloseCarouselBox.addEventListener('click', () => {
+            carouselBox.open = false;
+        });
+    }
+
+    // Modal Actions
+    if (carouselModal) {
+      const closeBtns = carouselModal.querySelectorAll('.close-modal, .cancel-btn');
+      closeBtns.forEach(b => b.addEventListener('click', () => {
+        carouselModal.style.display = 'none';
+        carouselModal.setAttribute('aria-hidden', 'true');
+      }));
+
+      const saveBtn = carouselModal.querySelector('.save-btn');
+      saveBtn.addEventListener('click', async () => {
+        const id = carEditId.value;
+        const payload = {
+          image_url: carEditImage.value.trim(),
+          title: carEditTitle.value.trim(),
+          text: carEditText.value.trim(),
+          title_color: carEditTitleColor ? carEditTitleColor.value.trim() : '',
+          text_color: carEditTextColor ? carEditTextColor.value.trim() : '',
+          position: parseInt(carEditPosition.value) || 0
+        };
+        
+        if (!payload.image_url) { alert('URL de imagen requerida'); return; }
+
+        const url = id ? `/api/carousel/${id}` : '/api/carousel';
+        const method = id ? 'PATCH' : 'POST';
+        const slug = tenantInput.value.trim() || defaultSlug();
+        const finalUrl = new URL(url, API_BASE);
+        if (!id) finalUrl.searchParams.set('tenant_slug', slug);
+        else finalUrl.searchParams.set('tenant_slug', slug); 
+
+        const resp = await wFetch(finalUrl.toString(), {
+          method: method,
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+          body: JSON.stringify(payload)
+        });
+
+        if (resp.ok) {
+          carouselModal.style.display = 'none';
+          carouselModal.setAttribute('aria-hidden', 'true');
+          renderCarousel();
+        } else {
+          alert('Error al guardar');
+        }
+      });
+
+      if (carEditTitleColorPicker && carEditTitleColor) {
+        carEditTitleColorPicker.addEventListener('input', () => {
+          carEditTitleColor.value = carEditTitleColorPicker.value;
+        });
+      }
+      if (carEditTextColorPicker && carEditTextColor) {
+        carEditTextColorPicker.addEventListener('input', () => {
+          carEditTextColor.value = carEditTextColorPicker.value;
+        });
+      }
+      
+      // Upload
+      const upBtn = document.getElementById('car-upload-btn');
+      const fileInput = document.getElementById('car-edit-file');
+      if(upBtn && fileInput) {
+        upBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', async () => {
+           if (fileInput.files.length === 0) return;
+           const file = fileInput.files[0];
+           const formData = new FormData();
+           formData.append('file', file);
+           
+           upBtn.textContent = 'Subiendo...';
+           upBtn.disabled = true;
+           try {
+             const resp = await wFetch('/api/upload', {
+               method: 'POST',
+               body: formData
+             });
+             if (resp.ok) {
+               const data = await resp.json();
+               carEditImage.value = data.url;
+             } else {
+               alert('Error al subir imagen');
+             }
+           } catch(e) { console.error(e); alert('Error de red'); }
+           upBtn.textContent = 'Subir';
+           upBtn.disabled = false;
+           fileInput.value = '';
+        });
+      }
+    }
+
     async function load() {
       if (isLoading) return;
       isLoading = true;
@@ -3751,14 +4866,14 @@
                 if (orderTotalEl) orderTotalEl.textContent = formatMoney(currentTotal);
             }
 
-            // Tip logic (only for tables)
-            if (isTable) {
-                if (tipRow) tipRow.style.display = 'flex';
-                if (tipToggle) tipToggle.checked = false; // Default off
-            } else {
-                if (tipRow) tipRow.style.display = 'none';
-                if (tipToggle) tipToggle.checked = false;
-            }
+            // Tip logic (available for all)
+            // if (isTable) {
+            if (tipRow) tipRow.style.display = 'flex';
+            if (tipToggle) tipToggle.checked = false; // Default off
+            // } else {
+            //    if (tipRow) tipRow.style.display = 'none';
+            //    if (tipToggle) tipToggle.checked = false;
+            // }
 
             updateCalcs();
         } else {
@@ -4171,6 +5286,15 @@
         const box = document.getElementById('cash-box');
         if (!box) return;
         const data = await fetchCashSession();
+        if (cashStatusLabel) {
+          if (data && data.active) {
+            cashStatusLabel.textContent = 'Caja abierta';
+            cashStatusLabel.style.background = '#2e7d32';
+          } else {
+            cashStatusLabel.textContent = 'Caja cerrada';
+            cashStatusLabel.style.background = '#b0bec5';
+          }
+        }
         if (!data || !data.active) {
           box.innerHTML = `
             <div class="cash-card">
@@ -4296,7 +5420,10 @@
               <div id="cash-close-dialog" role="dialog" aria-modal="true" style="background:#fff; margin:10vh auto; max-width:540px; padding:16px; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.2);">
               <div class="cash-title">Resumen de cierre</div>
                 <div class="small" id="cash-close-review-count">Contado: $0</div>
-                <div class="small" id="cash-close-review-sales">Total ventas: $0</div>
+                <div class="small" id="cash-close-review-sales-no-tip">Total sin propina: $0</div>
+                <div class="small" id="cash-close-review-sales-with-tip">Total con propina: $0</div>
+                <div class="small" id="cash-close-review-tip">Suma total de propina: $0</div>
+                <div class="small" id="cash-close-review-shipping">Costo de envío: $0</div>
                 <div class="small" id="cash-close-review-es">Entradas: $0 · Salidas: $0</div>
                 <div class="small" id="cash-close-review-theo">Teórico del sistema: $0</div>
                 <div class="small" id="cash-close-review-diff" style="font-weight:700;">Diferencia: $0</div>
@@ -4386,14 +5513,31 @@
         const reviewCount = document.getElementById('cash-close-review-count');
         const reviewTheo = document.getElementById('cash-close-review-theo');
         const reviewDiff = document.getElementById('cash-close-review-diff');
+        const reviewSalesNoTip = document.getElementById('cash-close-review-sales-no-tip');
+        const reviewSalesWithTip = document.getElementById('cash-close-review-sales-with-tip');
+        const reviewShipping = document.getElementById('cash-close-review-shipping');
+        const reviewEs = document.getElementById('cash-close-review-es');
+        const reviewTip = document.getElementById('cash-close-review-tip');
         async function showCloseReview() {
           const v = parseInt(amtInput && amtInput.value || '0', 10) || 0;
           try {
             const latest = await fetchCashSession();
-            const theo = Number(latest && latest.summary && latest.summary.theoretical_cash || 0);
+            const sum = latest && latest.summary ? latest.summary : {};
+            const theo = Number(sum.theoretical_cash || 0);
+            const sdelWithTip = Number(sum.delivered_total || 0);
+            const sdelNoTip = Number(sum.base_delivered_total || 0);
+            const sin = Number(sum.entradas || 0);
+            const sout = Number(sum.salidas || 0);
+            const stip = Number(sum.tip_total || 0);
+            const sship = Number(sum.shipping_total || 0);
             if (reviewCount) reviewCount.textContent = `Contado: ${formatMoney(v)}`;
             if (reviewTheo) reviewTheo.textContent = `Teórico del sistema: ${formatMoney(theo)}`;
             if (reviewDiff) reviewDiff.textContent = `Diferencia: ${formatMoney(v - theo)}`;
+            if (reviewSalesNoTip) reviewSalesNoTip.textContent = `Total sin propina: ${formatMoney(sdelNoTip)}`;
+            if (reviewSalesWithTip) reviewSalesWithTip.textContent = `Total con propina: ${formatMoney(sdelWithTip)}`;
+            if (reviewShipping) reviewShipping.textContent = `Costo de envío: ${formatMoney(sship)}`;
+            if (reviewEs) reviewEs.textContent = `Entradas: ${formatMoney(sin)} · Salidas: ${formatMoney(sout)}`;
+            if (reviewTip) reviewTip.textContent = `Suma total de propina: ${formatMoney(stip)}`;
             cashKeepModalOpen = true;
             isCashEditing = true;
             try {
@@ -4442,11 +5586,17 @@
             const res = await closeCash();
             if (res && res.summary) {
               const s = res.summary;
-              const salesEl = document.getElementById('cash-close-review-sales');
+              const salesNoTipEl = document.getElementById('cash-close-review-sales-no-tip');
+              const salesWithTipEl = document.getElementById('cash-close-review-sales-with-tip');
+              const shippingEl = document.getElementById('cash-close-review-shipping');
+              const tipEl = document.getElementById('cash-close-review-tip');
               const esEl = document.getElementById('cash-close-review-es');
               const theoEl = document.getElementById('cash-close-review-theo');
               const diffEl = document.getElementById('cash-close-review-diff');
-              if (salesEl) salesEl.textContent = `Total ventas: ${formatMoney(Number(s.delivered_total||0))}`;
+              if (salesNoTipEl) salesNoTipEl.textContent = `Total sin propina: ${formatMoney(Number(s.base_delivered_total||0))}`;
+              if (salesWithTipEl) salesWithTipEl.textContent = `Total con propina: ${formatMoney(Number(s.delivered_total||0))}`;
+              if (shippingEl) shippingEl.textContent = `Costo de envío: ${formatMoney(Number(s.shipping_total||0))}`;
+              if (tipEl) tipEl.textContent = `Suma total de propina: ${formatMoney(Number(s.tip_total||0))}`;
               if (esEl) esEl.textContent = `Entradas: ${formatMoney(Number(s.entradas||0))} · Salidas: ${formatMoney(Number(s.salidas||0))}`;
               if (theoEl) theoEl.textContent = `Teórico del sistema: ${formatMoney(Number(s.theoretical_cash||0))}`;
               const v = parseInt(document.getElementById('cash-close-amount').value||'0',10)||0;
@@ -4671,10 +5821,10 @@
           <td>$${sum.closing_diff||0}</td>
           <td>${s.closed_by||''}</td>
           <td>
-            <button class="hist-view" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}" data-sales="${sum.delivered_total||0}" data-in="${sum.entradas||0}" data-out="${sum.salidas||0}" data-theo="${sum.theoretical_cash||0}" data-diff="${sum.closing_diff||0}">
+            <button class="hist-view" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}" data-sales="${sum.delivered_total||0}" data-in="${sum.entradas||0}" data-out="${sum.salidas||0}" data-theo="${sum.theoretical_cash||0}" data-diff="${sum.closing_diff||0}" data-tip="${sum.tip_total||0}" data-base="${sum.base_delivered_total||0}" data-ship="${sum.shipping_total||0}">
               Ver
             </button>
-            <button class="hist-pdf" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}">
+            <button class="hist-pdf" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}" data-tip="${sum.tip_total||0}" data-base="${sum.base_delivered_total||0}" data-ship="${sum.shipping_total||0}">
               PDF
             </button>
           </td>
@@ -4697,8 +5847,8 @@
             <td>$${sum.closing_diff||0}</td>
             <td>${s.closed_by||''}</td>
             <td>
-              <button class="hist-view" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}" data-sales="${sum.delivered_total||0}" data-in="${sum.entradas||0}" data-out="${sum.salidas||0}" data-theo="${sum.theoretical_cash||0}" data-diff="${sum.closing_diff||0}">Ver</button>
-              <button class="hist-pdf" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}">PDF</button>
+              <button class="hist-view" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}" data-sales="${sum.delivered_total||0}" data-in="${sum.entradas||0}" data-out="${sum.salidas||0}" data-theo="${sum.theoretical_cash||0}" data-diff="${sum.closing_diff||0}" data-tip="${sum.tip_total||0}" data-base="${sum.base_delivered_total||0}" data-ship="${sum.shipping_total||0}">Ver</button>
+              <button class="hist-pdf" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}" data-tip="${sum.tip_total||0}" data-base="${sum.base_delivered_total||0}" data-ship="${sum.shipping_total||0}">PDF</button>
             </td>
           </tr>`;
         }
@@ -4721,8 +5871,8 @@
               <div class="item">Dif.: $${sum.closing_diff||0}</div>
             </div>
             <div class="hm-actions">
-              <button class="hist-view" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}" data-sales="${sum.delivered_total||0}" data-in="${sum.entradas||0}" data-out="${sum.salidas||0}" data-theo="${sum.theoretical_cash||0}" data-diff="${sum.closing_diff||0}">Ver</button>
-              <button class="hist-pdf" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}">PDF</button>
+              <button class="hist-view" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}" data-sales="${sum.delivered_total||0}" data-in="${sum.entradas||0}" data-out="${sum.salidas||0}" data-theo="${sum.theoretical_cash||0}" data-diff="${sum.closing_diff||0}" data-tip="${sum.tip_total||0}" data-base="${sum.base_delivered_total||0}" data-ship="${sum.shipping_total||0}">Ver</button>
+              <button class="hist-pdf" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}" data-tip="${sum.tip_total||0}" data-base="${sum.base_delivered_total||0}" data-ship="${sum.shipping_total||0}">PDF</button>
             </div>
           </div>
         `;
@@ -4745,8 +5895,8 @@
                 <div class="item">Dif.: $${sum.closing_diff||0}</div>
               </div>
               <div class="hm-actions">
-                <button class="hist-view" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}" data-sales="${sum.delivered_total||0}" data-in="${sum.entradas||0}" data-out="${sum.salidas||0}" data-theo="${sum.theoretical_cash||0}" data-diff="${sum.closing_diff||0}">Ver</button>
-                <button class="hist-pdf" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}">PDF</button>
+                <button class="hist-view" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}" data-sales="${sum.delivered_total||0}" data-in="${sum.entradas||0}" data-out="${sum.salidas||0}" data-theo="${sum.theoretical_cash||0}" data-diff="${sum.closing_diff||0}" data-tip="${sum.tip_total||0}" data-base="${sum.base_delivered_total||0}" data-ship="${sum.shipping_total||0}">Ver</button>
+                <button class="hist-pdf" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}" data-tip="${sum.tip_total||0}" data-base="${sum.base_delivered_total||0}" data-ship="${sum.shipping_total||0}">PDF</button>
               </div>
             </div>
           `;
@@ -4774,7 +5924,7 @@
           togglePrev.textContent = isHidden ? 'Ocultar anteriores' : `Mostrar anteriores (${prevRows.length})`;
         };
       }
-      const attach = async (sid, opened, closed, mode, noteOpen, noteClose, openAmtStr, closeAmtStr) => {
+      const attach = async (sid, opened, closed, mode, noteOpen, noteClose, openAmtStr, closeAmtStr, tipTotalStr, baseSalesStr, shippingTotalStr) => {
         try {
           const slug = tenantInput.value.trim() || defaultSlug();
           const urlOrd = new URL('/api/cash/session/orders', API_BASE);
@@ -4810,6 +5960,9 @@
             const sumOrders = orders.reduce((a,r)=>a + Number(r.total||0), 0);
             const openAmt = parseInt(openAmtStr||'0',10)||0;
             const closeAmt = parseInt(closeAmtStr||'0',10)||0;
+            const tipTotal = parseInt(tipTotalStr||'0',10)||0;
+            const shippingTotal = parseInt(shippingTotalStr||'0',10)||0;
+            const baseSales = parseInt(baseSalesStr||'0',10)||0;
             const systemTotal = openAmt + sumEntradas - sumSalidas; // Corregido: ya no sumamos sumOrders porque están en sumEntradas
             const diffTotal = closeAmt - systemTotal;
             
@@ -4823,9 +5976,10 @@
               <div class="small">Apertura: ${formatARDate(opened||'')} · Cierre: ${formatARDate(closed||'')}</div>
               <div class="small">Notas (apertura): ${noteOpen||''}</div>
               <div class="small">Notas (cierre): ${noteClose||''}</div>
-              <div class="small" style="font-weight:700; margin-top:8px;">Resumen</div>
+              <div class="small">Resumen</div>
               <div class="small">Apertura: ${formatMoney(openAmt)}</div>
               <div class="small">Ventas sesión: ${formatMoney(sumOrders)}</div>
+              <div class="small" style="color:#666;">(Sin propina: ${formatMoney(baseSales)} · Propinas: ${formatMoney(tipTotal)} · Envíos: ${formatMoney(shippingTotal)})</div>
               <div class="small">Ingresos: ${formatMoney(sumEntradas)} · Salidas: ${formatMoney(sumSalidas)}</div>
               <div class="small">Sistema: ${formatMoney(systemTotal)}</div>
               <div class="small">Contado: ${formatMoney(closeAmt)}</div>
@@ -4883,6 +6037,9 @@
             const sumOrders = orders.reduce((a,r)=>a + Number(r.total||0), 0);
             const openAmt = parseInt(openAmtStr||'0',10)||0;
             const closeAmt = parseInt(closeAmtStr||'0',10)||0;
+            const tipTotal = parseInt(tipTotalStr||'0',10)||0;
+            const shippingTotal = parseInt(shippingTotalStr||'0',10)||0;
+            const baseSales = parseInt(baseSalesStr||'0',10)||0;
             const systemTotal = openAmt + sumEntradas - sumSalidas;
             const diffTotal = closeAmt - systemTotal;
 
@@ -4901,6 +6058,7 @@
               <div class="section"><strong>Resumen</strong>
                 <div>Apertura: ${fmt(openAmt)}</div>
                 <div>Ventas sesión: ${fmt(sumOrders)}</div>
+                <div style="color:#666;">(Sin propina: ${fmt(baseSales)} · Propinas: ${fmt(tipTotal)} · Envíos: ${fmt(shippingTotal)})</div>
                 <div>Ingresos: ${fmt(sumEntradas)} · Salidas: ${fmt(sumSalidas)}</div>
                 <div>Sistema: ${fmt(systemTotal)}</div>
                 <div>Contado: ${fmt(closeAmt)}</div>
@@ -4937,7 +6095,10 @@
           b.getAttribute('data-note-open')||'',
           b.getAttribute('data-note-close')||'',
           b.getAttribute('data-open-amt')||'0',
-          b.getAttribute('data-close-amt')||'0'
+          b.getAttribute('data-close-amt')||'0',
+          b.getAttribute('data-tip')||'0',
+          b.getAttribute('data-base')||'0',
+          b.getAttribute('data-ship')||'0'
         ));
       });
       const pdfBtns = box.querySelectorAll('button.hist-pdf');
@@ -4950,7 +6111,10 @@
           b.getAttribute('data-note-open')||'',
           b.getAttribute('data-note-close')||'',
           b.getAttribute('data-open-amt')||'0',
-          b.getAttribute('data-close-amt')||'0'
+          b.getAttribute('data-close-amt')||'0',
+          b.getAttribute('data-tip')||'0',
+          b.getAttribute('data-base')||'0',
+          b.getAttribute('data-ship')||'0'
         ));
       });
     }
@@ -5127,6 +6291,1602 @@
     } else {
         initOrdersConfigUI();
     }
+    // --- NEW ORDER MODAL LOGIC ---
+    document.addEventListener('DOMContentLoaded', function() {
+      const modal = document.getElementById('create-order-modal');
+      const openBtn = document.getElementById('btn-new-order');
+      const closeBtn = modal ? modal.querySelector('.close-modal-btn') : null;
+      const overlay = modal ? modal.querySelector('.kds-modal-overlay') : null;
+      const tenantSelect = document.getElementById('new-order-tenant');
+      const searchInput = document.getElementById('new-order-search');
+      const productsGrid = document.getElementById('new-order-products');
+      const cartContainer = document.getElementById('new-order-cart');
+      const subtotalEl = document.getElementById('new-order-subtotal');
+      const totalEl = document.getElementById('new-order-total');
+      const confirmBtn = document.getElementById('btn-create-order-confirm');
+      const typeSelect = document.getElementById('new-order-type');
+      
+      // Fields
+      const fieldMesa = document.getElementById('field-mesa');
+      const fieldAddress = document.getElementById('field-address');
+      const fieldContact = document.getElementById('field-contact');
+      
+      let cart = [];
+      let products = [];
+      
+      // Init Tenants
+      const tenants = [
+        { slug: 'gastronomia-local1', name: 'Gastronomía Local 1' },
+        { slug: 'gastronomia-local2', name: 'Gastronomía Local 2' },
+        { slug: 'gastronomia-local3', name: 'Gastronomía Local 3' },
+        { slug: 'gastronomia-local4', name: 'Gastronomía Local 4' },
+        { slug: 'gastronomia-local5', name: 'Gastronomía Local 5' }
+      ];
+      
+      if (tenantSelect) {
+        // Initial sync
+        const current = (typeof tenantInput !== 'undefined' && tenantInput.value) ? tenantInput.value : 'gastronomia-local1';
+        const t = tenants.find(x => x.slug === current) || tenants[0];
+        tenantSelect.innerHTML = `<option value="${t.slug}">${t.name}</option>`;
+        tenantSelect.value = t.slug;
+        tenantSelect.disabled = true;
+      }
+      
+      // Events
+      if (openBtn) openBtn.addEventListener('click', () => {
+        if (!modal) return;
+        
+        // Sync with current tenant before opening
+        if (tenantSelect && typeof tenantInput !== 'undefined' && tenantInput.value) {
+             const current = tenantInput.value;
+             const t = tenants.find(x => x.slug === current) || tenants[0];
+             tenantSelect.innerHTML = `<option value="${t.slug}">${t.name}</option>`;
+             tenantSelect.value = t.slug;
+        }
+
+        modal.classList.add('active');
+        modal.style.display = 'flex'; // Ensure display flex
+        populateTableSelect(); // Load tables from storage
+        loadProducts();
+        renderCart();
+      });
+      
+      const closeModal = () => {
+        if (!modal) return;
+        modal.classList.remove('active');
+        modal.style.display = 'none';
+        cart = [];
+        renderCart();
+      };
+      
+      if (closeBtn) closeBtn.addEventListener('click', closeModal);
+      if (overlay) overlay.addEventListener('click', closeModal);
+      
+      if (typeSelect) typeSelect.addEventListener('change', () => {
+        const val = typeSelect.value;
+        if (fieldMesa) {
+            fieldMesa.style.display = (val === 'mesa') ? 'block' : 'none';
+            if (val === 'mesa') populateTableSelect();
+        }
+        if (fieldAddress) fieldAddress.style.display = (val === 'direccion') ? 'block' : 'none';
+        if (fieldContact) fieldContact.style.display = (val !== 'mesa') ? 'block' : 'none';
+      });
+      
+      if (tenantSelect) tenantSelect.addEventListener('change', loadProducts);
+      if (searchInput) searchInput.addEventListener('input', renderProducts);
+
+      function populateTableSelect() {
+        const tableSelect = document.getElementById('new-order-table');
+        if (!tableSelect || tableSelect.tagName !== 'SELECT') return;
+        
+        const currentVal = tableSelect.value;
+        tableSelect.innerHTML = '<option value="">Seleccionar Mesa...</option>';
+        
+        try {
+            const stored = localStorage.getItem('kds_tables');
+            if (!stored) {
+                 tableSelect.innerHTML += '<option value="" disabled>Sin mesas configuradas</option>';
+                 return;
+            }
+            
+            const data = JSON.parse(stored);
+            const zones = data.zones || [];
+            
+            if (zones.length === 0) {
+                 tableSelect.innerHTML += '<option value="" disabled>Sin mesas configuradas</option>';
+                 return;
+            }
+            
+            zones.forEach(zone => {
+                const group = document.createElement('optgroup');
+                group.label = zone.name;
+                
+                (zone.tables || []).forEach(table => {
+                    const opt = document.createElement('option');
+                    opt.value = table.label; 
+                    const statusMap = { 'free': 'Libre', 'occupied': 'Ocupada', 'reserved': 'Reservada', 'bill': 'Cuenta' };
+                    opt.textContent = `${table.label} (${statusMap[table.status] || table.status})`;
+                    group.appendChild(opt);
+                });
+                
+                tableSelect.appendChild(group);
+            });
+            
+            if (currentVal) {
+                // Check if value still exists
+                const options = Array.from(tableSelect.options).map(o => o.value);
+                if (options.includes(currentVal)) tableSelect.value = currentVal;
+            }
+            
+        } catch(e) { console.error('Error populating tables', e); }
+      }
+      
+      async function loadProducts() {
+        productsGrid.innerHTML = '<div class="small">Cargando...</div>';
+        try {
+          const allProducts = await fetchProducts(); // Uses existing function
+          const slug = tenantSelect.value;
+          
+          // Filter by tenant prefix logic
+          let prefix = '';
+          if (slug === 'gastronomia-local2') prefix = 'l2-';
+          else if (slug === 'gastronomia-local3') prefix = 'l3-';
+          else if (slug === 'gastronomia-local4') prefix = 'l4-';
+          else if (slug === 'gastronomia-local5') prefix = 'l5-';
+          
+          products = allProducts.filter(p => {
+             if (prefix) return p.id.startsWith(prefix);
+             // Local 1: Not starting with any other prefix
+             return !p.id.startsWith('l2-') && !p.id.startsWith('l3-') && !p.id.startsWith('l4-') && !p.id.startsWith('l5-');
+          });
+          
+          renderProducts();
+        } catch (e) {
+          productsGrid.innerHTML = '<div class="small error">Error al cargar productos</div>';
+        }
+      }
+      
+      function renderProducts() {
+        const term = searchInput ? searchInput.value.toLowerCase() : '';
+        const filtered = products.filter(p => {
+          return p.name.toLowerCase().includes(term) || p.id.toLowerCase().includes(term);
+        });
+        
+        productsGrid.innerHTML = '';
+        if (filtered.length === 0) {
+          productsGrid.innerHTML = '<div class="small" style="grid-column: 1/-1; text-align:center;">No se encontraron productos</div>';
+          return;
+        }
+        
+        filtered.forEach(p => {
+          const el = document.createElement('div');
+          el.className = 'product-card-simple';
+          el.style.cssText = 'border: 1px solid #eee; border-radius: 8px; padding: 10px; background: #fff; cursor: pointer; transition: all 0.2s; display:flex; flex-direction:column; justify-content:space-between; height: 100%;';
+          el.onmouseover = () => el.style.borderColor = '#bbb';
+          el.onmouseout = () => el.style.borderColor = '#eee';
+          el.innerHTML = `
+            <div>
+              <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px; line-height: 1.2;">${p.name}</div>
+              <div style="font-size: 11px; color: #888; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${p.details || ''}</div>
+            </div>
+            <div style="margin-top: 8px; font-weight: 700; color: #2e7d32; text-align: right;">$${p.price}</div>
+          `;
+          el.onclick = () => addToCart(p);
+          productsGrid.appendChild(el);
+        });
+      }
+      
+      function addToCart(p) {
+        const existing = cart.find(i => i.id === p.id);
+        if (existing) {
+          existing.qty++;
+        } else {
+          cart.push({ ...p, qty: 1 });
+        }
+        renderCart();
+      }
+      
+      window.updateCartQty = (id, delta) => {
+        const idx = cart.findIndex(i => i.id === id);
+        if (idx === -1) return;
+        const item = cart[idx];
+        item.qty += delta;
+        if (item.qty <= 0) cart.splice(idx, 1);
+        renderCart();
+      };
+      
+      function renderCart() {
+        if (!cartContainer) return;
+        cartContainer.innerHTML = '';
+        let total = 0;
+        
+        if (cart.length === 0) {
+          cartContainer.innerHTML = '<div class="small" style="text-align: center; padding: 20px; color: #999; font-style: italic;">Carrito vacío</div>';
+        } else {
+          cart.forEach(item => {
+            const rowTotal = item.price * item.qty;
+            total += rowTotal;
+            const row = document.createElement('div');
+            row.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 8px; background: #f9f9f9; border-radius: 6px; font-size: 13px;';
+            row.innerHTML = `
+              <div style="flex: 1; margin-right: 8px;">
+                <div style="font-weight: 600;">${item.name}</div>
+                <div style="color: #666;">$${item.price} x ${item.qty}</div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <button onclick="updateCartQty('${item.id}', -1)" style="width: 24px; height: 24px; padding: 0; display: flex; align-items: center; justify-content: center; background: #ddd; color: #333; border-radius: 4px;">-</button>
+                <span style="font-weight: 600; width: 16px; text-align: center;">${item.qty}</span>
+                <button onclick="updateCartQty('${item.id}', 1)" style="width: 24px; height: 24px; padding: 0; display: flex; align-items: center; justify-content: center; background: #ddd; color: #333; border-radius: 4px;">+</button>
+              </div>
+            `;
+            cartContainer.appendChild(row);
+          });
+        }
+        
+        if (subtotalEl) subtotalEl.textContent = '$' + total;
+        if (totalEl) totalEl.textContent = '$' + total;
+        
+        // Update confirm button state
+        if (confirmBtn) {
+           confirmBtn.disabled = cart.length === 0;
+           confirmBtn.style.opacity = cart.length === 0 ? '0.5' : '1';
+        }
+      }
+      
+      if (confirmBtn) confirmBtn.addEventListener('click', async () => {
+        if (cart.length === 0) return;
+        
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Enviando...';
+        
+        try {
+          const type = typeSelect.value;
+          const tenant = tenantSelect.value;
+          const total = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
+          
+          let address = '';
+          let table = '';
+          
+          if (type === 'mesa') {
+            table = document.getElementById('new-order-table').value;
+            if (!table) { alert('Ingrese número de mesa'); confirmBtn.disabled=false; confirmBtn.textContent='Confirmar Pedido'; return; }
+          } else if (type === 'direccion') {
+            address = document.getElementById('new-order-address').value;
+            if (!address) { alert('Ingrese dirección'); confirmBtn.disabled=false; confirmBtn.textContent='Confirmar Pedido'; return; }
+          }
+          
+          const name = document.getElementById('new-order-name').value || (type === 'mesa' ? table : 'Cliente Mostrador');
+          const phone = document.getElementById('new-order-phone').value || '';
+          const notes = document.getElementById('new-order-notes').value || '';
+          
+          const payload = {
+            tenant_slug: tenant,
+            order_type: type,
+            customer_name: name,
+            customer_phone: phone,
+            items: cart.map(i => ({
+              id: i.id,
+              name: i.name,
+              price: i.price,
+              quantity: i.qty,
+              details: i.details
+            })),
+            total: total,
+            status: 'pendiente',
+            notes: notes,
+            created_at: new Date().toISOString()
+          };
+          
+          if (type === 'mesa') payload.table_number = table;
+          if (type === 'direccion' || type === 'espera') payload.address = address || 'Retiro en local';
+          
+          const resp = await fetch('/api/orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          
+          if (resp.ok) {
+            // Update table status if applicable
+            if (type === 'mesa' && table) {
+                try {
+                    const stored = localStorage.getItem('kds_tables');
+                    if (stored) {
+                        const data = JSON.parse(stored);
+                        let found = false;
+                        if (data.zones) {
+                            data.zones.forEach(z => {
+                                const t = z.tables.find(tbl => tbl.label === table);
+                                if (t) {
+                                    t.status = 'occupied';
+                                    found = true;
+                                }
+                            });
+                        }
+                        
+                        if (found) {
+                            localStorage.setItem('kds_tables', JSON.stringify(data));
+                        }
+                    }
+                } catch(e) { console.error('Error updating table status', e); }
+            }
+
+            closeModal();
+            alert('Pedido creado exitosamente');
+            if (typeof load === 'function') load(); // Reload orders
+          } else {
+            const err = await resp.json().catch(()=>({}));
+            alert('Error al crear pedido: ' + (err.error || 'Desconocido'));
+          }
+        } catch (e) {
+          alert('Error de conexión');
+        } finally {
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = 'Confirmar Pedido';
+        }
+      });
+      
+    });
   </script>
+<!-- Create Order Modal -->
+<div id="create-order-modal" class="kds-modal">
+  <div class="kds-modal-overlay"></div>
+  <div class="kds-modal-content" style="width: 95vw; max-width: 1000px; height: 90vh; display: flex; flex-direction: column; padding: 0;">
+    <div style="padding: 16px; border-bottom: 1px solid var(--kds-border); display: flex; justify-content: space-between; align-items: center; background: #fff;">
+      <h2 style="margin: 0; font-size: 1.25rem; color: #333;">Nuevo Pedido</h2>
+      <button class="close-modal-btn" style="background: transparent; border: none; font-size: 24px; color: #666; cursor: pointer; padding: 0; width: auto; box-shadow: none;">&times;</button>
+    </div>
+    
+    <div style="flex: 1; display: flex; overflow: hidden; height: 100%;">
+      <!-- Product Selection (Left) -->
+      <div style="flex: 1; display: flex; flex-direction: column; border-right: 1px solid var(--kds-border); background: #f9fafb;">
+        <div style="padding: 12px; border-bottom: 1px solid var(--kds-border); background: #fff;">
+          <input type="text" id="new-order-search" placeholder="Buscar productos..." style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ddd; font-size: 14px;">
+        </div>
+        <div id="new-order-products" style="flex: 1; overflow-y: auto; padding: 12px; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; align-content: start;">
+          <!-- Products will be injected here -->
+        </div>
+      </div>
+
+      <!-- Order Details (Right) -->
+      <div style="width: 320px; min-width: 320px; display: flex; flex-direction: column; background: #fff; border-left: 1px solid var(--kds-border); box-shadow: -2px 0 10px rgba(0,0,0,0.05); z-index: 2;">
+        <div style="padding: 16px; overflow-y: auto; flex: 1;">
+          <!-- Customer Info -->
+          <div style="display: grid; gap: 12px; margin-bottom: 20px;">
+            <div>
+              <label style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #888; margin-bottom: 4px;">Local</label>
+              <select id="new-order-tenant" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; background: #f9f9f9; font-size: 13px;">
+                <!-- Tenant options populated by JS -->
+              </select>
+            </div>
+            <div>
+              <label style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #888; margin-bottom: 4px;">Tipo</label>
+              <select id="new-order-type" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px;">
+                <option value="mesa">Mesa</option>
+                <option value="direccion">Delivery</option>
+                <option value="espera">Retiro / Para llevar</option>
+              </select>
+            </div>
+            
+            <div id="field-mesa" class="order-type-field">
+              <label style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #888; margin-bottom: 4px;">Nº Mesa</label>
+              <select id="new-order-table" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; background: #fff;">
+                <option value="">Seleccionar Mesa...</option>
+              </select>
+            </div>
+
+            <div id="field-address" class="order-type-field" style="display: none;">
+              <label style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #888; margin-bottom: 4px;">Dirección</label>
+              <input type="text" id="new-order-address" placeholder="Calle y número" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
+            </div>
+
+            <div id="field-contact" class="order-type-field" style="display: none;">
+               <label style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #888; margin-bottom: 4px;">Nombre Cliente</label>
+               <input type="text" id="new-order-name" placeholder="Nombre" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
+               <label style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #888; margin-bottom: 4px; margin-top: 8px;">Teléfono</label>
+               <input type="text" id="new-order-phone" placeholder="WhatsApp" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
+            </div>
+            
+            <div>
+               <label style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #888; margin-bottom: 4px;">Notas</label>
+               <textarea id="new-order-notes" placeholder="Notas del pedido..." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; min-height: 60px; resize: vertical;"></textarea>
+            </div>
+          </div>
+
+          <!-- Cart Items -->
+          <h3 style="font-size: 14px; margin: 0 0 10px 0; border-bottom: 1px solid #eee; padding-bottom: 6px; color: #333;">Items</h3>
+          <div id="new-order-cart" style="display: flex; flex-direction: column; gap: 8px;">
+            <!-- Cart items here -->
+            <div class="small" style="text-align: center; padding: 20px; color: #999; font-style: italic;">Carrito vacío</div>
+          </div>
+        </div>
+
+        <!-- Footer / Totals -->
+        <div style="padding: 16px; border-top: 1px solid var(--kds-border); background: #f5f7fb;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 14px; color: #666;">
+            <span>Subtotal:</span>
+            <span id="new-order-subtotal">$0</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 16px; font-weight: 800; font-size: 1.25rem; color: #333;">
+            <span>Total:</span>
+            <span id="new-order-total">$0</span>
+          </div>
+          <button id="btn-create-order-confirm" style="width: 100%; padding: 12px; font-weight: 600; font-size: 16px; background: #2e7d32; color: #fff; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 2px 6px rgba(46,125,50,0.3);">Confirmar Pedido</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  // --- Table Management Logic ---
+  (function() {
+    const tmSection = document.getElementById('table-management');
+    const tmBtn = document.getElementById('tables-open');
+    const mapContainer = document.getElementById('restaurant-map');
+    
+    // Controls
+    const addTableBtn = document.getElementById('tm-add-table');
+    const saveLayoutBtn = document.getElementById('tm-save-layout');
+    const shapeSelect = document.getElementById('tm-shape-select');
+    const sizeSelect = document.getElementById('tm-size-select');
+    const rotateBtn = document.getElementById('tm-rotate-btn');
+    const delBtn = document.getElementById('tm-del-btn');
+    
+    // Zone Controls
+    const zoneSelect = document.getElementById('tm-zone-select');
+    const addZoneBtn = document.getElementById('tm-add-zone');
+    const editZoneBtn = document.getElementById('tm-edit-zone');
+    const delZoneBtn = document.getElementById('tm-del-zone');
+    
+    // State
+    let data = {
+      zones: [
+        { id: 1, name: 'Salón Principal', tables: [] }
+      ]
+    };
+    let currentZoneId = 1;
+    let selectedTableId = null;
+
+    function initTableManagement() {
+      if (!tmBtn || !tmSection) return;
+
+      loadData();
+      
+      // Listen for external updates
+      window.addEventListener('kds-tables-changed', () => {
+        loadData();
+        renderTables();
+      });
+
+      // Navigation
+      tmBtn.addEventListener('click', () => {
+        document.querySelectorAll('section.grid, #analytics').forEach(el => el.style.display = 'none');
+        document.body.classList.remove('show-analytics');
+        tmSection.style.display = 'block';
+        renderZones();
+        renderTables();
+      });
+      
+      const closeTmMgr = () => {
+        tmSection.style.display = 'none';
+        const grid = document.querySelector('section.grid');
+        if (grid) grid.style.display = '';
+      };
+
+      const closeBtn = document.getElementById('tm-close-btn');
+      if (closeBtn) closeBtn.addEventListener('click', closeTmMgr);
+
+      const otherNavs = ['analytics-open', 'orders-config-btn'];
+      otherNavs.forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.addEventListener('click', closeTmMgr);
+      });
+      
+      // Zone Events
+      zoneSelect.addEventListener('change', (e) => {
+        currentZoneId = parseInt(e.target.value);
+        selectedTableId = null;
+        updateToolbarState();
+        renderTables();
+      });
+
+      addZoneBtn.addEventListener('click', () => {
+        const name = prompt('Nombre del nuevo salón:', 'Patio');
+        if (name) {
+          const newId = data.zones.length > 0 ? Math.max(...data.zones.map(z => z.id)) + 1 : 1;
+          data.zones.push({ id: newId, name: name, tables: [] });
+          currentZoneId = newId;
+          saveData();
+          renderZones();
+          renderTables();
+        }
+      });
+
+      editZoneBtn.addEventListener('click', () => {
+        const zone = data.zones.find(z => z.id === currentZoneId);
+        if (zone) {
+          const newName = prompt('Nuevo nombre del salón:', zone.name);
+          if (newName) {
+            zone.name = newName;
+            saveData();
+            renderZones();
+          }
+        }
+      });
+
+      delZoneBtn.addEventListener('click', () => {
+        if (data.zones.length <= 1) {
+          alert('Debe existir al menos un salón.');
+          return;
+        }
+        if (confirm('¿Estás seguro de eliminar este salón y todas sus mesas?')) {
+          data.zones = data.zones.filter(z => z.id !== currentZoneId);
+          currentZoneId = data.zones[0].id;
+          selectedTableId = null;
+          saveData();
+          renderZones();
+          renderTables();
+        }
+      });
+
+      // Table Events
+      addTableBtn.addEventListener('click', () => {
+        const zone = data.zones.find(z => z.id === currentZoneId);
+        if (!zone) return;
+        
+        const newId = Date.now(); // Simple unique ID
+        const shape = shapeSelect.value;
+        const size = sizeSelect.value;
+        
+        // Smart Naming Logic (Fill gaps)
+        const prefix = shape === 'bar' ? 'Barra' : 'Mesa';
+        let nextNum = 1;
+        
+        // Extract numbers from existing labels of the same type
+        const existingNums = zone.tables
+          .map(t => {
+            const match = t.label.match(new RegExp(`^${prefix}\\s+(\\d+)$`));
+            return match ? parseInt(match[1]) : null;
+          })
+          .filter(n => n !== null)
+          .sort((a, b) => a - b);
+
+        // Find first gap
+        for (const num of existingNums) {
+          if (num === nextNum) {
+            nextNum++;
+          } else if (num > nextNum) {
+            break; // Found a gap
+          }
+        }
+        
+        const defaultLabel = `${prefix} ${nextNum}`;
+        const label = prompt('Nombre de la mesa:', defaultLabel);
+        
+        if (!label) return; // User cancelled
+
+        zone.tables.push({
+          id: newId,
+          label: label,
+          type: shape,
+          size: size,
+          x: 50,
+          y: 50,
+          status: 'free',
+          rotation: 0
+        });
+        
+        selectedTableId = newId;
+        renderTables();
+        saveData();
+      });
+
+      rotateBtn.addEventListener('click', () => {
+        if (!selectedTableId) return;
+        const zone = data.zones.find(z => z.id === currentZoneId);
+        const table = zone.tables.find(t => t.id === selectedTableId);
+        if (table) {
+          table.rotation = (table.rotation || 0) + 90;
+          if (table.rotation >= 360) table.rotation = 0;
+          renderTables();
+          saveData();
+        }
+      });
+
+      delBtn.addEventListener('click', () => {
+        if (!selectedTableId) return;
+        if (confirm('¿Eliminar esta mesa?')) {
+          const zone = data.zones.find(z => z.id === currentZoneId);
+          zone.tables = zone.tables.filter(t => t.id !== selectedTableId);
+          selectedTableId = null;
+          renderTables();
+          saveData();
+        }
+      });
+
+      saveLayoutBtn.addEventListener('click', () => {
+        saveData();
+        alert('Distribución guardada');
+      });
+      
+      // Click outside to deselect
+      mapContainer.addEventListener('click', (e) => {
+        if (e.target === mapContainer) {
+          selectedTableId = null;
+          renderTables();
+        }
+      });
+
+      // Global Drag Handlers (moved out of render loop to prevent memory leaks and bugs)
+      window.addEventListener('mousemove', (e) => {
+        if (!dragState.active || !dragState.el) return;
+        
+        const dx = e.clientX - dragState.startX;
+        const dy = e.clientY - dragState.startY;
+        
+        if (Math.abs(dx) > 2 || Math.abs(dy) > 2) dragState.hasMoved = true;
+        
+        // Update model
+        if (dragState.table) {
+          dragState.table.x = dragState.initialLeft + dx;
+          dragState.table.y = dragState.initialTop + dy;
+          
+          // Update DOM
+          dragState.el.style.left = dragState.table.x + 'px';
+          dragState.el.style.top = dragState.table.y + 'px';
+        }
+      });
+
+      window.addEventListener('mouseup', () => {
+        if (dragState.active) {
+          // Set flag if moved so click handler knows to ignore
+          if (dragState.hasMoved && dragState.el) {
+             dragState.el.dataset.wasDragging = 'true';
+             saveData();
+          }
+
+          dragState.active = false;
+          if (dragState.el) dragState.el.style.zIndex = '';
+          
+          dragState.el = null;
+          dragState.table = null;
+        }
+      });
+    }
+
+    function loadData() {
+      const stored = localStorage.getItem('kds_tables');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            // Migration from flat array to zones
+            data.zones[0].tables = parsed;
+          } else if (parsed.zones) {
+            data = parsed;
+            // Ensure valid currentZoneId
+            if (!data.zones.find(z => z.id === currentZoneId)) {
+              currentZoneId = data.zones[0]?.id || 1;
+            }
+          }
+        } catch(e) {}
+      }
+    }
+
+    function saveData() {
+      localStorage.setItem('kds_tables', JSON.stringify(data));
+      updateToolbarState();
+    }
+
+    function renderZones() {
+      zoneSelect.innerHTML = '';
+      data.zones.forEach(z => {
+        const opt = document.createElement('option');
+        opt.value = z.id;
+        opt.textContent = z.name;
+        if (z.id === currentZoneId) opt.selected = true;
+        zoneSelect.appendChild(opt);
+      });
+    }
+
+    function updateToolbarState() {
+      if (selectedTableId) {
+        rotateBtn.disabled = false;
+        delBtn.disabled = false;
+        rotateBtn.style.opacity = '1';
+        delBtn.style.opacity = '1';
+      } else {
+        rotateBtn.disabled = true;
+        delBtn.disabled = true;
+        rotateBtn.style.opacity = '0.5';
+        delBtn.style.opacity = '0.5';
+      }
+    }
+
+    // Drag State
+    let dragState = {
+      active: false,
+      el: null,
+      table: null,
+      startX: 0,
+      startY: 0,
+      initialLeft: 0,
+      initialTop: 0,
+      hasMoved: false
+    };
+
+    function renderOrderInModal(detail, container) {
+         container.innerHTML = '';
+         const o = detail.order;
+         if (!o) {
+             container.innerHTML = '<div class="small error">Datos de pedido no válidos</div>';
+             return;
+         }
+         
+         const typeRaw = String(o.order_type || '').trim().toLowerCase();
+         const isMesa = (typeRaw === 'mesa');
+         const isEspera = (typeRaw === 'espera');
+         const isDireccion = (typeRaw === 'direccion');
+         const isPaid = (String(o.payment_status || '').toLowerCase() === 'paid');
+         
+         const destLabel = (typeof destinoLabelFor === 'function') ? destinoLabelFor(o) : (o.table_number || o.order_type);
+         
+         const phoneRaw = ((isDireccion || isEspera) && o.customer_phone) ? String(o.customer_phone) : '';
+         const phoneDigits = phoneRaw.replace(/\D/g, '');
+         const waUrl = phoneDigits ? `https://wa.me/${phoneDigits}` : '';
+         
+         const statusClass = (typeof statusClasses !== 'undefined' && statusClasses[o.status]) ? statusClasses[o.status] : 'status-pendiente';
+         const statusLabelText = (isMesa && o.status === 'en_camino') ? 'mesa' : o.status;
+         
+         // Buttons logic
+         let pDisabled = '', lDisabled = '', eDisabled = '', cDisabled = '';
+         const s = o.status;
+         
+         if (isMesa || isEspera) {
+             const isPrepOrLater = ['preparacion', 'listo', 'en_camino', 'entregado'].includes(s);
+             const isListoOrLater = ['listo', 'en_camino', 'entregado'].includes(s);
+             if (!isPrepOrLater) lDisabled = 'disabled style="opacity:0.3;cursor:not-allowed;"';
+             if (!isListoOrLater) eDisabled = 'disabled style="opacity:0.3;cursor:not-allowed;"';
+             if (isEspera && !isPaid) eDisabled = 'disabled style="opacity:0.3;cursor:not-allowed;" title="Debe cobrar antes de entregar"';
+         } else {
+             const isPrepOrLater = ['preparacion', 'listo', 'en_camino', 'entregado'].includes(s);
+             const isListoOrLater = ['listo', 'en_camino', 'entregado'].includes(s);
+             const isEnCaminoOrLater = ['en_camino', 'entregado'].includes(s);
+             if (!isPrepOrLater) lDisabled = 'disabled style="opacity:0.3;cursor:not-allowed;"';
+             if (!isListoOrLater) cDisabled = 'disabled style="opacity:0.3;cursor:not-allowed;"';
+             if (!isEnCaminoOrLater) eDisabled = 'disabled style="opacity:0.3;cursor:not-allowed;"';
+         }
+
+         let enCaminoBtn = '';
+         const payBtn = isPaid 
+             ? `<button class="status-action mesa paid" disabled style="opacity:0.3;cursor:default;" aria-label="Pagado" data-tip="Pagado">$</button>`
+             : `<button class="status-action mesa" data-action="pay" aria-label="Cobrar" data-tip="Cobrar">$</button>`;
+
+         if (isMesa || isEspera) {
+             enCaminoBtn = payBtn;
+         } else {
+             enCaminoBtn = `<button class="status-action en_camino" data-status="en_camino" aria-label="En camino" data-tip="En camino" ${cDisabled}>C</button>${payBtn}`;
+         }
+         
+         const entregadoBtn = `<button class="status-action entregado" data-status="entregado" aria-label="Entregado" data-tip="Entregado" ${eDisabled}>E</button>`;
+         const prepBtn = `<button class="status-action preparacion" data-status="preparacion" aria-label="Preparación" data-tip="Preparación" ${pDisabled}>P</button>`;
+         const listoBtn = `<button class="status-action listo" data-status="listo" aria-label="Listo" data-tip="Listo" ${lDisabled}>L</button>`;
+         
+         const card = document.createElement('div');
+         card.className = 'card';
+         
+         const itemsHtml = (detail.items || []).map(it => 
+             `<div class="small" style="display:flex; justify-content:space-between;"><span>${it.qty} x ${it.name}</span><span>$${it.qty*it.unit_price}</span></div>`
+         ).join('');
+
+         card.innerHTML = `
+            <div class="card-content">
+              <div class="title">Pedido #${o.id} · Destino: ${(isMesa || isEspera)?`<span class='pill pill-mesa'>${destLabel}</span>`:destLabel}</div>
+              <div class="meta">${new Date(o.created_at).toLocaleString()} · ${o.order_type}</div>
+              <div class="meta">${phoneRaw ? `Tel: ${phoneRaw}` : ''} ${waUrl ? `<a href='${waUrl}' target='_blank' rel='noopener'>WhatsApp</a>`:''}</div>
+              <div class="grid">
+                <div>Total: $${o.total}</div>
+                ${(isDireccion && o.shipping_cost) ? `<div class="total-tip" style="color:#666;">Envío: ${o.shipping_cost}</div>` : ''}
+              </div>
+              <div class="items-preview" style="margin-top:10px; border-top:1px solid #eee; padding-top:5px;">
+                  ${itemsHtml}
+              </div>
+            </div>
+            <div class="state-line"><span class="status-badge ${statusClass}">${statusLabelText}</span>${(typeof renderSLA === 'function')?renderSLA(o):''}</div>
+            <div class="actions">
+              <div class="status-quick">
+                ${prepBtn}
+                ${listoBtn}
+                ${enCaminoBtn}
+                ${entregadoBtn}
+                <button class="status-action" onclick="EditOrder.open({id:${o.id}, table_number:'${o.table_number||''}'}, ${JSON.stringify(detail.items || []).replace(/"/g, '&quot;')})" style="background:#f3f4f6; color:#374151; width:auto; padding:0 10px;" title="Editar Items"><svg style="width:16px;height:16px;vertical-align:middle;" viewBox="0 0 24 24"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
+                <button class="status-action cancelado" data-status="cancelado" aria-label="Cancelado" data-tip="Cancelado">X</button>
+              </div>
+            </div>
+         `;
+         
+         container.appendChild(card);
+         
+         const quickBtns = Array.from(card.querySelectorAll('.status-action'));
+         quickBtns.forEach(qb => {
+            qb.addEventListener('click', async (e) => {
+                 e.stopPropagation(); 
+                 const action = qb.getAttribute('data-action');
+                 if (action === 'pay') {
+                      if (qb.classList.contains('paid')) return;
+                      if (typeof askPaymentMethod === 'function' && typeof payOrder === 'function') {
+                          const methodData = await askPaymentMethod(o.total, (o.order_type || '').toLowerCase() === 'mesa');
+                          if (!methodData) return;
+                          try {
+                              await payOrder(o.id, methodData);
+                              o.payment_status = 'paid';
+                              qb.classList.add('paid');
+                              qb.disabled = true;
+                              qb.style.opacity = '0.3';
+                              qb.style.cursor = 'default';
+                              const parent = qb.closest('.status-quick');
+                              if (parent) {
+                                  const entBtn = parent.querySelector('.entregado');
+                                  if (entBtn) {
+                                      entBtn.disabled = false;
+                                      entBtn.style.opacity = '';
+                                      entBtn.style.cursor = '';
+                                  }
+                              }
+                          } catch(err) { alert(err.message); }
+                      }
+                      return;
+                 }
+                 
+                 const newStatus = qb.getAttribute('data-status');
+                 if (!newStatus) return;
+                 
+                 if (newStatus === 'entregado') {
+                      if (typeof askConfirm === 'function') {
+                          if (!await askConfirm('¿Confirma entrega?')) return;
+                      }
+                 } else if (newStatus !== 'entregado') {
+                      if (typeof askConfirm === 'function') {
+                          if (!await askConfirm(`¿Cambiar estado a ${newStatus}?`)) return;
+                      }
+                 }
+                 
+                 let reason = '';
+                 if (newStatus === 'cancelado') {
+                      reason = prompt('Motivo de cancelación:') || '';
+                 }
+                 
+                 if (typeof updateStatus === 'function') {
+                     try {
+                         await updateStatus(o.id, newStatus, reason);
+                         const modal = document.getElementById('table-detail-modal');
+                         if(modal) {
+                            modal.style.display = 'none';
+                            modal.classList.remove('active');
+                         }
+                         if (typeof renderTables === 'function') renderTables();
+                     } catch(err) {
+                         alert('Error al actualizar: ' + err.message);
+                     }
+                 }
+            });
+         });
+    }
+
+    function openTableDetails(table) {
+        const modal = document.getElementById('table-detail-modal');
+        const title = document.getElementById('tdm-title');
+        const container = document.getElementById('tdm-order-container');
+        const closeBtn = document.getElementById('tdm-close');
+        const overlay = modal.querySelector('.kds-modal-overlay');
+        const btns = modal.querySelectorAll('.btn-status');
+        
+        if(!modal) return;
+        
+        title.textContent = `Detalle: ${table.label}`;
+        modal.classList.add('active');
+        modal.style.display = 'flex';
+        
+        const close = () => {
+            modal.style.display = 'none';
+            modal.classList.remove('active');
+        };
+        
+        closeBtn.onclick = close;
+        if(overlay) overlay.onclick = close;
+        // Fallback for click outside content if overlay doesn't catch it
+        modal.onclick = (e) => { if(e.target === modal) close(); };
+        
+        btns.forEach(btn => {
+            btn.onclick = () => {
+                table.status = btn.dataset.status;
+                saveData();
+                renderTables();
+                close();
+            };
+        });
+        
+        container.innerHTML = '<div class="small" style="text-align: center; color: #888; padding: 20px;">Buscando pedido...</div>';
+        
+        const activeOrders = window.currentOrders || [];
+        const order = activeOrders.find(o => {
+            if ((o.order_type || '').toLowerCase() !== 'mesa') return false;
+            // Permitir ver pedidos entregados si la mesa sigue ocupada/cuenta (opcional, pero por ahora mantenemos filtro activo)
+            // Si queremos mostrar la cuenta pendiente, deberíamos incluir 'entregado' si payment_status != 'paid'
+            // Pero el usuario dice "Sin pedido activo", asumamos que busca pedidos en curso (pendiente/preparacion/listo)
+            if (o.status === 'cancelado') return false;
+            if (o.status === 'entregado' && (o.payment_status||'').toLowerCase() === 'paid') return false; 
+
+            const tNum = String(o.table_number || '').trim().toLowerCase();
+            const tLbl = String(table.label || '').trim().toLowerCase();
+            
+            if (!tNum) return false;
+            
+            // Exact match
+            if (tNum === tLbl) return true;
+            
+            // "Mesa 1" vs "1"
+            if (tLbl.includes(tNum) || tNum.includes(tLbl)) {
+                 // Verificar si son el mismo número
+                 const n1 = parseInt(tNum.replace(/\D/g, ''));
+                 const n2 = parseInt(tLbl.replace(/\D/g, ''));
+                 if (!isNaN(n1) && !isNaN(n2) && n1 === n2) return true;
+            }
+            
+            return false;
+        });
+        
+        if (order) {
+            if (typeof fetchOrderDetail === 'function') {
+                fetchOrderDetail(order.id).then(detail => {
+                     renderOrderInModal(detail, container);
+                }).catch(() => {
+                    container.innerHTML = '<div class="small error">Error al cargar pedido</div>';
+                });
+            } else {
+                 container.innerHTML = '<div class="small">Detalles no disponibles</div>';
+            }
+        } else {
+            container.innerHTML = '<div class="small" style="text-align: center; padding: 20px; color: #666;">Sin pedido activo</div>';
+        }
+    }
+
+    function renderTables() {
+      if (!mapContainer) return;
+      mapContainer.innerHTML = '';
+      
+      const zone = data.zones.find(z => z.id === currentZoneId);
+      if (!zone) return;
+
+      zone.tables.forEach(table => {
+        const el = document.createElement('div');
+        el.className = `table-item ${table.type} status-${table.status}`;
+        if (table.id === selectedTableId) el.classList.add('selected');
+        
+        el.style.left = table.x + 'px';
+        el.style.top = table.y + 'px';
+        el.style.transform = `rotate(${table.rotation || 0}deg)`;
+        
+        // Dimensions
+        let w = 100, h = 80;
+        const sizeMultiplier = { small: 0.7, medium: 1, large: 1.3, xlarge: 1.6 };
+        const mult = sizeMultiplier[table.size || 'medium'] || 1;
+        
+        if (table.type === 'round') { w = 80 * mult; h = 80 * mult; }
+        else if (table.type === 'bar') { w = 160 * mult; h = 60 * mult; }
+        else { w = 100 * mult; h = 80 * mult; }
+        
+        el.style.width = w + 'px';
+        el.style.height = h + 'px';
+        
+        // Rotate text back so it's readable? No, usually text rotates with table in maps.
+        el.innerHTML = `
+          <div class="table-label" style="font-size:${14*mult}px">${table.label}</div>
+          <div class="table-seats" style="font-size:${10*mult}px">${table.status.toUpperCase()}</div>
+        `;
+        
+        el.addEventListener('mousedown', (e) => {
+          if (e.button !== 0) return;
+          e.stopPropagation(); // Prevent map click
+          
+          // Update Selection without re-rendering
+          selectedTableId = table.id;
+          document.querySelectorAll('.table-item').forEach(item => item.classList.remove('selected'));
+          el.classList.add('selected');
+          updateToolbarState();
+
+          // Init Drag
+          dragState.active = true;
+          dragState.el = el;
+          dragState.table = table;
+          dragState.startX = e.clientX;
+          dragState.startY = e.clientY;
+          dragState.initialLeft = table.x;
+          dragState.initialTop = table.y;
+          dragState.hasMoved = false;
+          
+          el.style.zIndex = 100;
+        });
+
+        // Click for status toggle (only if not moved)
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (dragState.hasMoved) return; // Use the global state's hasMoved from the just-finished drag?
+          // Actually, if we just finished dragging, mouseup happened. 
+          // Click fires after mouseup.
+          // But hasMoved is reset on mousedown.
+          // Wait, if I drag, mouseup sets active=false.
+          // Then click fires.
+          // I need to persist 'hasMoved' briefly or check it differently.
+          // OR, since mouseup handles the end of drag, I can check if it WAS moving.
+          
+          // Better: If we moved significantly, we shouldn't toggle.
+          // The global mouseup handler clears dragState, so we lose hasMoved.
+          // Let's rely on a flag on the element or capture it in the closure?
+          // The issue is 'click' event propagation.
+          
+          // Let's use a small hack: on mouseup, if it moved, set a temporary flag on the element.
+        });
+        
+        // Revised Click Handler
+        el.onclick = (e) => {
+          e.stopPropagation();
+          // If we just dragged, don't toggle.
+          // We can check if the position changed significantly from mousedown start?
+          // But we don't have access to mousedown start here easily unless we store it on the element.
+          
+          // Let's use the 'dragState.hasMoved' but we need to ensure it's not cleared before click fires.
+          // Click fires immediately after mouseup.
+          // Let's clear dragState in a setTimeout in mouseup? No, risky.
+          
+          // Alternative: Status toggling only happens on double click? Or right click?
+          // User asked for drag fix. Let's keep single click but make sure drag doesn't trigger it.
+          
+          // I'll add a 'wasDragging' flag to the element in mouseup if moved.
+          if (el.dataset.wasDragging === 'true') {
+            delete el.dataset.wasDragging;
+            return;
+          }
+
+          openTableDetails(table);
+        };
+
+        mapContainer.appendChild(el);
+      });
+      
+      updateToolbarState();
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initTableManagement);
+    } else {
+      initTableManagement();
+    }
+  })();
+</script>
+<!-- Table Details Modal -->
+<div id="table-detail-modal" class="kds-modal" style="display: none; align-items: center; justify-content: center; z-index: 2000;" aria-hidden="true" role="dialog">
+  <div class="kds-modal-overlay"></div>
+  <div class="kds-modal-content" style="width: 90%; max-width: 500px; display: flex; flex-direction: column; padding: 0;">
+    <div class="kds-modal-header" style="padding: 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+      <h2 id="tdm-title" style="margin: 0; font-size: 1.2rem;">Detalle de Mesa</h2>
+      <button id="tdm-close" style="background: #ef4444; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: bold;">CERRAR</button>
+    </div>
+    <div class="kds-modal-body" style="padding: 15px; overflow-y: auto;">
+      
+      <!-- Order Content -->
+      <div id="tdm-order-container">
+        <div class="small" style="text-align: center; color: #888; padding: 20px;">Cargando información...</div>
+      </div>
+
+      <!-- Status Controls -->
+      <div class="tm-status-controls" style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">
+        <h3 style="font-size: 14px; margin-bottom: 10px; color: #555;">Cambiar Estado:</h3>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+           <button class="btn-status" data-status="free" style="flex: 1; padding: 10px; border: none; border-radius: 6px; cursor: pointer; background: #e8f5e9; color: #2e7d32; font-weight: 600;">Libre</button>
+           <button class="btn-status" data-status="occupied" style="flex: 1; padding: 10px; border: none; border-radius: 6px; cursor: pointer; background: #ffebee; color: #c62828; font-weight: 600;">Ocupada</button>
+           <button class="btn-status" data-status="reserved" style="flex: 1; padding: 10px; border: none; border-radius: 6px; cursor: pointer; background: #fff3e0; color: #ef6c00; font-weight: 600;">Reservada</button>
+           <button class="btn-status" data-status="bill" style="flex: 1; padding: 10px; border: none; border-radius: 6px; cursor: pointer; background: #e3f2fd; color: #1565c0; font-weight: 600;">Cuenta</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+<!-- Edit Order Modal -->
+<div id="edit-order-modal" class="kds-modal" style="display: none; z-index: 2100;">
+  <div class="kds-modal-overlay"></div>
+  <div class="kds-modal-content" style="width: 95vw; max-width: 800px; height: 85vh; display: flex; flex-direction: column; padding: 0;">
+    <div class="kds-modal-header" style="padding: 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+        <h2 style="margin: 0;">Editar Pedido #<span id="eom-id"></span></h2>
+        <button id="eom-close" style="background:none; border:none; font-size:24px; cursor:pointer;">&times;</button>
+    </div>
+    <div class="kds-modal-body" style="flex: 1; display: flex; overflow: hidden;">
+        <!-- Products Column -->
+        <div style="flex: 1; display: flex; flex-direction: column; border-right: 1px solid #eee; padding: 10px;">
+            <input type="text" id="eom-search" placeholder="Buscar productos..." style="padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 10px; width: 100%; box-sizing: border-box;">
+            <div id="eom-products" style="flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; align-content: start;"></div>
+        </div>
+        <!-- Cart Column -->
+        <div style="width: 350px; display: flex; flex-direction: column; padding: 10px; background: #f9fafb;">
+            <h3 style="margin: 0 0 10px 0; font-size: 1rem;">Items del Pedido</h3>
+            <div id="eom-items" style="flex: 1; overflow-y: auto; gap: 8px; display: flex; flex-direction: column;"></div>
+            <div style="border-top: 1px solid #ddd; padding-top: 10px; margin-top: 10px;">
+                <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 1.2rem; margin-bottom: 10px;">
+                    <span>Total:</span>
+                    <span id="eom-total">$0</span>
+                </div>
+                <button id="eom-save" style="width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+  </div>
+</div>
+
+<div id="product-create-modal" class="kds-modal" style="display:none;">
+  <div class="kds-modal-content" style="max-width: 800px; display: flex; flex-direction: column;">
+    <div class="kds-modal-header">
+      <h2>Nuevo Producto</h2>
+      <span class="close-create-modal" style="cursor:pointer; font-size:24px;">&times;</span>
+    </div>
+    <div class="kds-modal-body" style="display: flex; gap: 20px;">
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 10px;">
+        <div>
+          <label>ID Producto (único)</label>
+          <input type="text" id="create-prod-id" placeholder="Ej: pizza-napolitana" style="width:100%; padding:8px;">
+        </div>
+        <div>
+          <label>Nombre del Producto</label>
+          <input type="text" id="create-prod-name" placeholder="Ej: Pizza Napolitana" style="width:100%; padding:8px;">
+        </div>
+        <div>
+          <label>Descripción / Detalles</label>
+          <textarea id="create-prod-details" rows="3" placeholder="Ingredientes, detalles..." style="width:100%; padding:8px;"></textarea>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <div style="flex:1;">
+            <label>Precio</label>
+            <input type="number" id="create-prod-price" placeholder="0" style="width:100%; padding:8px;">
+          </div>
+          <div style="flex:1;">
+            <label>Stock</label>
+            <input type="number" id="create-prod-stock" placeholder="0" style="width:100%; padding:8px;">
+          </div>
+        </div>
+        <div>
+          <label>Sección en Carta Online</label>
+          <select id="create-prod-section" style="width:100%; padding:8px;">
+            <option value="">-- Sin asignar --</option>
+            <option value="featured">Platos destacados</option>
+            <option value="main">Menú principal</option>
+            <option value="interest">Recomendados por interés</option>
+          </select>
+        </div>
+        <div>
+          <label>Categorías de filtro (menú principal)</label>
+          <select id="create-prod-food-cats" multiple style="width:100%; padding:8px;">
+            <option value="sandwich">Sándwich</option>
+            <option value="pizzas">Pizzas</option>
+            <option value="comen-dos">Comen dos</option>
+            <option value="al-plato">Al plato</option>
+            <option value="bebidas">Bebidas</option>
+            <option value="cocteles">Cocteles</option>
+            <option value="postres">Postres</option>
+          </select>
+          <small>Usado para los filtros de la carta online.</small>
+        </div>
+        <div>
+          <label>Etiqueta de interés (opcional)</label>
+          <select id="create-prod-interest" style="width:100%; padding:8px;">
+            <option value="">Sin etiqueta</option>
+            <option value="2x1">2x1</option>
+            <option value="promocion">Promoción</option>
+            <option value="oferta">Oferta</option>
+            <option value="especialidad">Especialidad</option>
+          </select>
+        </div>
+        <div>
+          <label>Imagen del Producto</label>
+          <input type="file" id="create-prod-file" accept="image/*" style="width:100%; padding:8px;">
+          <input type="hidden" id="create-prod-image-url">
+          <small id="create-prod-upload-status" style="color:blue;"></small>
+        </div>
+      </div>
+      
+      <!-- Preview Column -->
+      <div style="width: 300px; background: #f9f9f9; padding: 15px; border-radius: 8px; border: 1px solid #ddd;">
+        <h3 style="margin-top:0;">Vista Previa</h3>
+        <div class="product-card" style="border:1px solid #eee; background:white; border-radius:8px; overflow:hidden;">
+            <div class="product-image" style="height:200px; background:#eee; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+                <img id="create-preview-img" src="" style="width:100%; height:100%; object-fit:cover; display:none;">
+                <span id="create-preview-img-placeholder" style="color:#999;">Sin imagen</span>
+            </div>
+            <div class="product-info" style="padding:15px;">
+                <h3 id="create-preview-title" style="margin:0 0 10px 0; font-size:1.1rem;">Título Producto</h3>
+                <p id="create-preview-desc" style="color:#666; font-size:0.9rem; margin-bottom:10px;">Descripción del producto...</p>
+                <p id="create-preview-price" style="font-weight:bold; color:#2e7d32; font-size:1.1rem;">$0 ARS</p>
+                <button class="add-to-cart-btn" style="width:100%; background:#ff9800; color:white; border:none; padding:8px; border-radius:4px; margin-top:10px;">Añadir al carrito</button>
+            </div>
+        </div>
+      </div>
+    </div>
+    <div class="kds-modal-footer" style="padding-top: 15px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 10px;">
+      <button class="cancel-create-btn" style="padding: 8px 16px; background: #eee; border: none; border-radius: 4px; cursor: pointer;">Cancelar</button>
+      <button id="do-create-product" style="padding: 8px 16px; background: #4caf50; color: white; border: none; border-radius: 4px; cursor: pointer;">Crear Producto</button>
+    </div>
+  </div>
+</div>
+
+<script>
+window.EditOrder = {
+    currentOrder: null,
+    items: [],
+    
+    init: function() {
+        this.modal = document.getElementById('edit-order-modal');
+        this.closeBtn = document.getElementById('eom-close');
+        this.search = document.getElementById('eom-search');
+        this.productsContainer = document.getElementById('eom-products');
+        this.itemsContainer = document.getElementById('eom-items');
+        this.totalEl = document.getElementById('eom-total');
+        this.saveBtn = document.getElementById('eom-save');
+        
+        if(this.closeBtn) this.closeBtn.onclick = () => this.close();
+        const overlay = this.modal.querySelector('.kds-modal-overlay');
+        if(overlay) overlay.onclick = () => this.close();
+        if(this.search) this.search.oninput = (e) => this.renderProducts(e.target.value);
+        if(this.saveBtn) this.saveBtn.onclick = () => this.save();
+    },
+    
+    openWithFetch: async function(orderId, tableNumber) {
+        if (!this.modal) this.init();
+        try {
+            const detail = await fetchOrderDetail(orderId);
+            this.open({id: orderId, table_number: tableNumber}, detail.items || []);
+        } catch(e) {
+            console.error(e);
+            alert('Error al cargar items del pedido');
+        }
+    },
+
+    open: function(order, initialItems) {
+        if (!this.modal) this.init();
+        
+        this.currentOrder = order;
+        // Clone items
+        this.items = initialItems.map(i => ({
+            id: i.product_id || i.id, 
+            name: i.name,
+            price: parseFloat(i.unit_price || i.price),
+            qty: parseInt(i.qty || i.quantity || 1),
+            notes: i.notes || ''
+        }));
+        
+        const idEl = document.getElementById('eom-id');
+        if(idEl) idEl.textContent = order.id;
+        
+        this.modal.style.display = 'flex';
+        this.modal.classList.add('active');
+        
+        this.renderProducts('');
+        this.renderItems();
+    },
+    
+    close: function() {
+        if (!this.modal) return;
+        this.modal.style.display = 'none';
+        this.modal.classList.remove('active');
+        this.currentOrder = null;
+        this.items = [];
+    },
+    
+    renderProducts: function(term) {
+        if (!this.productsContainer) return;
+        const t = term.toLowerCase();
+        // Use global products array if available
+        const allProducts = window.products || []; 
+        const filtered = allProducts.filter(p => p.name.toLowerCase().includes(t) || p.id.toLowerCase().includes(t));
+        
+        this.productsContainer.innerHTML = filtered.map(p => `
+            <div onclick="EditOrder.addItem('${p.id}')" style="border:1px solid #eee; padding:8px; border-radius:6px; cursor:pointer; background:white; font-size:0.9rem; display:flex; flex-direction:column; justify-content:space-between;">
+                <div style="font-weight:600; margin-bottom:4px; font-size:0.85rem;">${p.name}</div>
+                <div style="color:#2e7d32; font-weight:bold;">$${p.price}</div>
+            </div>
+        `).join('');
+    },
+    
+    addItem: function(prodId) {
+        const prod = (window.products || []).find(p => p.id === prodId);
+        if (!prod) return;
+        
+        const existing = this.items.find(i => i.id === prod.id);
+        if (existing) {
+            existing.qty++;
+        } else {
+            this.items.push({
+                id: prod.id,
+                name: prod.name,
+                price: parseFloat(prod.price),
+                qty: 1,
+                notes: ''
+            });
+        }
+        this.renderItems();
+    },
+    
+    updateQty: function(idx, delta) {
+        const item = this.items[idx];
+        item.qty += delta;
+        if (item.qty <= 0) {
+            this.items.splice(idx, 1);
+        }
+        this.renderItems();
+    },
+    
+    renderItems: function() {
+        if (!this.itemsContainer) return;
+        let total = 0;
+        this.itemsContainer.innerHTML = this.items.map((item, idx) => {
+            total += item.price * item.qty;
+            return `
+                <div style="background:white; padding:8px; border-radius:6px; border:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+                    <div style="flex:1;">
+                        <div style="font-weight:600; font-size:0.9rem;">${item.name}</div>
+                        <div style="font-size:0.8rem; color:#666;">$${item.price} x ${item.qty}</div>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <button onclick="EditOrder.updateQty(${idx}, -1)" style="width:24px; height:24px; background:#eee; border:none; border-radius:4px; cursor:pointer;">-</button>
+                        <span style="width:20px; text-align:center; font-size:0.9rem;">${item.qty}</span>
+                        <button onclick="EditOrder.updateQty(${idx}, 1)" style="width:24px; height:24px; background:#eee; border:none; border-radius:4px; cursor:pointer;">+</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        if (this.totalEl) this.totalEl.textContent = '$' + total;
+    },
+    
+    save: async function() {
+        if (!this.currentOrder) return;
+        this.saveBtn.textContent = 'Guardando...';
+        this.saveBtn.disabled = true;
+        
+        try {
+            const resp = await wFetch('/api/orders/' + this.currentOrder.id, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: this.items })
+            });
+            
+            if (resp.ok) {
+                // Refresh logic
+                alert('Pedido actualizado correctamente');
+                this.close();
+                
+                // Close parent modal (Table Detail)
+                const parentModal = document.getElementById('table-detail-modal');
+                if (parentModal) {
+                    parentModal.style.display = 'none';
+                    parentModal.classList.remove('active');
+                }
+                
+                // Reload global data
+                if (typeof load === 'function') load();
+            } else {
+                const err = await resp.json();
+                alert('Error al actualizar: ' + (err.error || 'Desconocido'));
+            }
+        } catch (e) {
+            alert('Error de conexión al guardar');
+            console.error(e);
+        } finally {
+            if (this.saveBtn) {
+                this.saveBtn.textContent = 'Guardar Cambios';
+                this.saveBtn.disabled = false;
+            }
+        }
+    }
+};
+
+async function loadGlobalProducts() {
+    try {
+        if (typeof wFetch !== 'function') return;
+        const tenantInput = document.getElementById('tenant-input');
+        const slug = (tenantInput && tenantInput.value.trim()) || defaultSlug();
+        const url = new URL('/api/products', API_BASE);
+        url.searchParams.set('tenant_slug', slug);
+        const resp = await wFetch(url.toString());
+        if (resp.ok) {
+            const data = await resp.json();
+            window.products = data.products || [];
+        }
+    } catch(e) { console.error(e); }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+     EditOrder.init();
+     loadGlobalProducts();
+});
+</script>
+<script>
+(function() {
+  const createModal = document.getElementById('product-create-modal');
+  const createBtn = document.getElementById('inv-create-btn');
+  const closeCreateBtn = document.querySelector('.close-create-modal');
+  const cancelCreateBtn = document.querySelector('.cancel-create-btn');
+  const doCreateBtn = document.getElementById('do-create-product');
+  
+  const pId = document.getElementById('create-prod-id');
+  const pName = document.getElementById('create-prod-name');
+  const pDetails = document.getElementById('create-prod-details');
+  const pPrice = document.getElementById('create-prod-price');
+  const pStock = document.getElementById('create-prod-stock');
+  const pSection = document.getElementById('create-prod-section');
+  const pInterest = document.getElementById('create-prod-interest');
+  const pFoodCats = document.getElementById('create-prod-food-cats');
+  const pFile = document.getElementById('create-prod-file');
+  const pImgUrl = document.getElementById('create-prod-image-url');
+  
+  const previewTitle = document.getElementById('create-preview-title');
+  const previewDesc = document.getElementById('create-preview-desc');
+  const previewPrice = document.getElementById('create-preview-price');
+  const previewImg = document.getElementById('create-preview-img');
+  const previewPlaceholder = document.getElementById('create-preview-img-placeholder');
+
+  if (createBtn) {
+    createBtn.addEventListener('click', () => {
+      pId.value = '';
+      pName.value = '';
+      pDetails.value = '';
+      pPrice.value = '';
+      pStock.value = '';
+      pSection.value = '';
+      if (pInterest) pInterest.value = '';
+      if (pFoodCats) Array.from(pFoodCats.options || []).forEach(o => { o.selected = false; });
+      pFile.value = '';
+      pImgUrl.value = '';
+      previewImg.style.display = 'none';
+      previewPlaceholder.style.display = 'block';
+      updatePreview();
+      
+      if (document.getElementById('create-prod-upload-status')) {
+        document.getElementById('create-prod-upload-status').textContent = '';
+      }
+      
+      createModal.style.display = 'block';
+    });
+  }
+
+  function closeModal() {
+    if (createModal) createModal.style.display = 'none';
+  }
+
+  if (closeCreateBtn) closeCreateBtn.addEventListener('click', closeModal);
+  if (cancelCreateBtn) cancelCreateBtn.addEventListener('click', closeModal);
+
+  function updatePreview() {
+    previewTitle.textContent = pName.value || 'Título Producto';
+    previewDesc.textContent = pDetails.value || 'Descripción del producto...';
+    previewPrice.textContent = '$' + (pPrice.value || '0') + ' ARS';
+  }
+
+  [pName, pDetails, pPrice].forEach(el => {
+    if (el) el.addEventListener('input', updatePreview);
+  });
+
+  if (pFile) {
+    pFile.addEventListener('change', async () => {
+      const file = pFile.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        previewImg.src = e.target.result;
+        previewImg.style.display = 'block';
+        previewPlaceholder.style.display = 'none';
+      };
+      reader.readAsDataURL(file);
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const statusEl = document.getElementById('create-prod-upload-status');
+      if (statusEl) statusEl.textContent = 'Subiendo imagen...';
+      
+      try {
+        const resp = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData
+        });
+        if (resp.ok) {
+           const json = await resp.json();
+           pImgUrl.value = json.url;
+           if (statusEl) statusEl.textContent = 'Imagen lista';
+        } else {
+           if (statusEl) statusEl.textContent = 'Error al subir imagen';
+        }
+      } catch (e) {
+        if (statusEl) statusEl.textContent = 'Error de conexión';
+      }
+    });
+  }
+
+  if (doCreateBtn) {
+    doCreateBtn.addEventListener('click', async () => {
+      const id = pId.value.trim();
+      const name = pName.value.trim();
+      const price = parseInt(pPrice.value) || 0;
+      const stock = parseInt(pStock.value) || 0;
+      const tenantSelect = document.getElementById('tenant-select');
+      const tenant = tenantSelect ? tenantSelect.value : (window.BUSINESS_SLUG || 'gastronomia-local1');
+      
+      // Recolección robusta de categorías seleccionadas
+      let selectedCats = [];
+      if (pFoodCats) {
+         for (let i = 0; i < pFoodCats.options.length; i++) {
+             if (pFoodCats.options[i].selected) {
+                 selectedCats.push(pFoodCats.options[i].value);
+             }
+         }
+      }
+
+      // Advertencia si es Menú Principal pero no hay filtros
+      if (pSection.value === 'main' && selectedCats.length === 0) {
+          if (!confirm("ADVERTENCIA: No has seleccionado ninguna 'Categoría de filtro' (ej: Pizzas, Sándwich). El producto aparecerá en la carta pero NO responderá a los botones de filtro. ¿Deseas continuar sin filtros?")) {
+              return;
+          }
+      } else if (pSection.value === 'main') {
+          // DEBUG TEMPORAL: Confirmar categorías
+          if (!confirm("DEBUG: Se guardarán las siguientes categorías: " + selectedCats.join(', ') + ". ¿Continuar?")) {
+              return;
+          }
+      }
+      
+      if (!id || !name || price < 0) {
+        alert('Por favor complete ID, Nombre y Precio válido.');
+        return;
+      }
+      
+      const payload = {
+        tenant_slug: tenant,
+        id: id,
+        name: name,
+        details: pDetails.value,
+        price: price,
+        stock: stock,
+        section: pSection.value,
+        interest_tag: pInterest ? pInterest.value : '',
+        food_categories: selectedCats,
+        image_url: pImgUrl.value
+      };
+      
+      doCreateBtn.disabled = true;
+      doCreateBtn.textContent = 'Guardando...';
+      
+      try {
+        const resp = await fetch('/api/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        
+        if (resp.ok) {
+          alert('Producto creado correctamente');
+          closeModal();
+          // Reload inventory
+          const reloadBtn = document.getElementById('inv-reload');
+          if (reloadBtn) reloadBtn.click();
+        } else {
+          const err = await resp.json();
+          alert('Error: ' + (err.error || 'Desconocido'));
+        }
+      } catch (e) {
+        alert('Error de conexión');
+      } finally {
+        doCreateBtn.disabled = false;
+        doCreateBtn.textContent = 'Crear Producto';
+      }
+    });
+  }
+})();
+</script>
 </body>
 </html>
