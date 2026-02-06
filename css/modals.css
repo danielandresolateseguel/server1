@@ -1,0 +1,276 @@
+/* --- MODALS --- */
+
+/* --- ORDER STATUS FLOATING BUTTON & MODAL --- */
+
+.order-status-float {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  width: 56px;
+  height: 56px;
+  background-color: var(--gastro-accent);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  z-index: 1500; /* High z-index to be visible */
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 1.5rem;
+  /* Ensure it's visible */
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Adjust position on mobile if needed */
+@media (max-width: 768px) {
+  .order-status-float {
+    bottom: 20px;
+    left: 15px;
+    width: 48px;
+    height: 48px;
+    font-size: 1.25rem;
+  }
+}
+
+.order-status-float:hover {
+  transform: scale(1.1) translateY(-2px);
+  background-color: var(--gastro-accent-dark);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+}
+
+.order-status-float .notification-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background-color: #ef4444;
+  color: white;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  border: 2px solid white;
+  animation: pulse-red 2s infinite;
+}
+
+@keyframes pulse-red {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+/* MODAL STYLES - INCREASED SPECIFICITY TO FIX LAYOUT ISSUES */
+.order-status-modal,
+#product-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  z-index: 3000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.order-status-modal.active,
+#product-modal.active {
+  display: flex;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.modal-content.status-content,
+#product-modal .modal-content {
+  background: white;
+  width: 100%;
+  max-width: 500px;
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  max-height: 85vh;
+  animation: slideUp 0.3s ease-out;
+  border: none !important; /* Remove white border */
+}
+
+/* Ensure modal body flows correctly */
+#product-modal .modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0; /* Removed gap */
+    padding: 0 !important; /* Removed padding so image covers full width */
+    overflow-y: auto;
+}
+
+/* Constrain image size strictly */
+#product-modal .modal-image,
+#product-modal .modal-media {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border-radius: 0; /* Remove radius to flush with edges */
+    padding: 0;
+    width: 100%;
+    height: 300px; /* Increased height for better visibility */
+    flex-shrink: 0;
+    overflow: hidden;
+    box-shadow: none; /* Removed shadow inside modal */
+}
+
+#product-modal .modal-image img,
+#product-modal .modal-media img {
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    object-fit: cover;
+    border-radius: 0;
+    margin: 0;
+    display: block;
+    box-shadow: none;
+    transition: transform 0.5s ease;
+}
+
+#product-modal .modal-image:hover img,
+#product-modal .modal-media:hover img {
+    transform: scale(1.05);
+}
+
+#product-modal .modal-details,
+#product-modal .modal-info {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 20px; /* Added padding here for text content */
+}
+
+#product-modal .modal-details h3 {
+    color: #2c3e50;
+    font-size: 1.5rem;
+    margin: 0;
+    font-weight: 600;
+}
+
+#product-modal .modal-price-section {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: var(--gastro-accent, #ff6a00);
+}
+
+#product-modal .modal-add-to-cart {
+    background-color: var(--gastro-accent, #ff6a00);
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.2s;
+    width: 100%;
+}
+
+#product-modal .modal-add-to-cart:hover {
+    background-color: var(--gastro-accent-dark, #c85000);
+}
+
+.status-header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #f3f4f6;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #fff;
+}
+
+.status-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #111827;
+  text-align: center;
+}
+
+.status-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.close-status-modal {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  left: auto;
+  z-index: 10;
+  background: transparent;
+  border: none;
+  font-size: 1.25rem;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+}
+
+.close-status-modal:hover {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+/* Loading & Error States */
+.status-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  color: #6b7280;
+  text-align: center;
+  gap: 1rem;
+}
+
+.status-loading i {
+  font-size: 2rem;
+  color: var(--gastro-accent);
+}
+
+.order-items-container {
+  background-color: #f9fafb;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 1rem;
+  border: 1px solid #f3f4f6;
+}
+
+.order-summary-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: #4b5563;
+}
+
+.order-summary-item:last-child {
+  margin-bottom: 0;
+}
+
+.order-summary-item .item-name strong {
+  color: #111827;
+}

@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Menú gastronómico independiente con carrito y checkout por WhatsApp (Mesa/Dirección).">
+    <link rel="canonical" href="http://localhost:8000/gastronomia-independiente.html">
+    <title>Gastronomía Independiente</title>
+    <meta name="robots" content="index,follow">
+    <meta name="theme-color" content="#ff6a00">
+    <meta property="og:title" content="Gastronomía Independiente">
+    <meta property="og:description" content="Menú gastronómico independiente con carrito y checkout por WhatsApp (Mesa/Dirección).">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="http://localhost:8000/gastronomia-independiente.html">
+    <meta property="og:image" content="Imagenes/PIZZAMARGARITA.webp">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Gastronomía Independiente">
+    <meta name="twitter:description" content="Menú gastronómico independiente con carrito y checkout por WhatsApp (Mesa/Dirección).">
+    <meta name="twitter:image" content="Imagenes/PIZZAMARGARITA.webp">
+    <link rel="icon" href="Imagenes/Epalogo.png" type="image/png">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="image-optimizations.css">
+    <link rel="stylesheet" href="gastronomia.css">
+    <link rel="stylesheet" href="gastronomia-independiente.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="preload" as="image" href="Imagenes/lomo%20a%20lo%20pobre.webp">
+    <link rel="preload" as="image" href="Imagenes/hambuerguesagour.jpg">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Restaurant",
+      "name": "Gastronomía Independiente",
+      "url": "http://localhost:8000/gastronomia-independiente.html",
+      "image": [
+        "Imagenes/PIZZAMARGARITA.webp",
+        "Imagenes/enpanadas.webp",
+        "Imagenes/Epalogo.png"
+      ],
+      "telephone": "+5492615893590",
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Mendoza",
+        "addressCountry": "AR"
+      },
+      "sameAs": [
+        "https://www.instagram.com/resto_independiente",
+        "https://wa.me/5492615893590"
+      ],
+      "servesCuisine": ["pizzas", "sandwich", "ensaladas", "bebidas"]
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      "itemListElement": [
+        {
+          "@type": "Product",
+          "name": "Pizza Napolitana",
+          "image": "Imagenes/napolitana.webp",
+          "description": "Tomate, mozzarella y orégano seleccionados.",
+          "offers": {
+            "@type": "Offer",
+            "price": "6800",
+            "priceCurrency": "ARS",
+            "availability": "https://schema.org/InStock"
+          }
+        },
+        {
+          "@type": "Product",
+          "name": "Milanesa con puré",
+          "image": "Imagenes/milacpure.webp",
+          "description": "Clásico casero con papas cremosas.",
+          "offers": {
+            "@type": "Offer",
+            "price": "5400",
+            "priceCurrency": "ARS",
+            "availability": "https://schema.org/InStock"
+          }
+        },
+        {
+          "@type": "Product",
+          "name": "Ensalada César",
+          "image": "Imagenes/ensaladacesar.webp",
+          "description": "Lechuga fresca, pollo, crutones y aderezo.",
+          "offers": {
+            "@type": "Offer",
+            "price": "4930",
+            "priceCurrency": "ARS",
+            "availability": "https://schema.org/InStock"
+          }
+        },
+        {
+          "@type": "Product",
+          "name": "Ravioles de ricota",
+          "image": "Imagenes/raviolioles%20de%20ricota.jpg",
+          "description": "Caseros, con salsa pomodoro y albahaca.",
+          "offers": {
+            "@type": "Offer",
+            "price": "6396",
+            "priceCurrency": "ARS",
+            "availability": "https://schema.org/InStock"
+          }
+        }
+      ]
+    }
+    </script>
+    
+</head>
+<body class="sector-gastronomia" data-category="gastronomia" data-vendor="gastronomia" data-slug="gastronomia-independiente" data-page="gastronomia" data-theme="independiente">
+    <header>
+        <div class="header-top">
+            <h1 class="site-logo">
+                <a href="#" class="site-logo-link" aria-label="Inicio">
+                    <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Epa!" loading="eager" fetchpriority="high" decoding="async" style="min-width: 48px; min-height: 48px; border-radius: 50%;">
+                </a>
+            </h1>
+            <div class="header-contact">
+                <a href="https://wa.me/5492615893590" target="_blank" class="contact-item-compact" data-tooltip="+54 9 261 589-3590">
+                    <i class="fab fa-whatsapp"></i>
+                    <span>+54 9 261 589-3590</span>
+                </a>
+                <a href="https://www.instagram.com" target="_blank" class="contact-item-compact" data-tooltip="Instagram">
+                    <i class="fab fa-instagram"></i>
+                    <span>Instagram</span>
+                </a>
+                <a href="https://maps.google.com/?q=Mendoza,+Argentina" target="_blank" class="contact-item-compact" data-tooltip="Mendoza, Argentina">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span>Mendoza, Argentina</span>
+                </a>
+            </div>
+            <div class="cart-icon">
+                <i class="fas fa-shopping-cart"></i>
+                <span id="cart-count">0</span>
+            </div>
+        </div>
+
+        <div class="header-bottom">
+            <div class="search-container">
+                <form id="search-form">
+                    <input type="text" id="search-input" placeholder="Buscar en el menú..." autocomplete="off">
+                    <button type="submit">Buscar</button>
+                    <button type="button" id="clear-search-btn" class="clear-search-btn" style="display: none;">Limpiar</button>
+                </form>
+                <div id="search-suggestions-dropdown" class="search-suggestions-dropdown">
+                    <div class="suggestions-section">
+                        <div class="suggestions-header">
+                            <i class="fas fa-lightbulb"></i>
+                            <span>Sugerencias</span>
+                        </div>
+                        <div id="suggestions-list" class="suggestions-list"></div>
+                    </div>
+                    <div class="history-section">
+                        <div class="suggestions-header">
+                            <div class="header-left">
+                                <i class="fas fa-history"></i>
+                                <span>Búsquedas recientes</span>
+                            </div>
+                            <button id="clear-all-history" class="clear-all-btn" title="Limpiar todo el historial">
+                                <i class="fas fa-trash-alt"></i>
+                                <span>Limpiar todo</span>
+                            </button>
+                        </div>
+                        <div id="history-list" class="suggestions-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="search-results">
+            <div id="results-container">
+                <p class="no-results">Explora nuestro menú o busca tu plato favorito</p>
+            </div>
+        </section>
+
+        
+
+        <section class="carousel-section">
+            <div class="carousel-container">
+                <div class="carousel-slides">
+                    <div class="carousel-slide active">
+                        <img src="Imagenes/lomo%20a%20lo%20pobre.webp" alt="Sabor auténtico" width="1600" height="900">
+                        <div class="carousel-content">
+                            <h2>Sabor auténtico</h2>
+                            <p>Platos preparados con ingredientes frescos y seleccionados</p>
+                        </div>
+                    </div>
+                    <div class="carousel-slide">
+                        <img src="Imagenes/hambuerguesagour.jpg" alt="Promos del día" width="1600" height="900">
+                        <div class="carousel-content">
+                            <h2>Promos del día</h2>
+                            <p>Combinaciones imperdibles para compartir</p>
+                        </div>
+                    </div>
+                    <div class="carousel-slide">
+                        <img src="Imagenes/deliverymot.webp" alt="Retiro y entrega" width="1600" height="900">
+                        <div class="carousel-content">
+                            <h2>Retiro y entrega</h2>
+                            <p>Elegí retirar en local o recibir en tu domicilio</p>
+                        </div>
+                    </div>
+                </div>
+                <button class="carousel-btn carousel-prev" onclick="previousSlide()" aria-label="Imagen anterior">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <button class="carousel-btn carousel-next" onclick="nextSlide()" aria-label="Siguiente imagen">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+                <div class="carousel-indicators">
+                    <button class="indicator active" onclick="goToSlide(0)" aria-label="Ir al slide 1"></button>
+                    <button class="indicator" onclick="goToSlide(1)" aria-label="Ir al slide 2"></button>
+                    <button class="indicator" onclick="goToSlide(2)" aria-label="Ir al slide 3"></button>
+                </div>
+
+                <!-- Control de auto-play con indicador de progreso SVG -->
+                <div class="carousel-controls">
+                    <div class="carousel-play-button" 
+                         onclick="toggleAutoPlay()" 
+                         aria-label="Pausar/Reanudar reproducción automática del carrusel"
+                         role="button"
+                         tabindex="0"
+                         onkeydown="if(event.key==='Enter'||event.key===' '){toggleAutoPlay();event.preventDefault();}"
+                         title="Click para pausar/reanudar reproducción automática">
+                        <svg class="progress-ring" viewBox="0 0 36 36">
+                            <circle class="progress-ring-circle" cx="18" cy="18" r="16" />
+                            <circle class="progress-ring-progress" cx="18" cy="18" r="16" />
+                        </svg>
+                        <div class="play-button-center">
+                            <i id="play-pause-icon" class="fas fa-pause" aria-hidden="true"></i>
+                        </div>
+                        <span class="sr-only" id="autoplay-status">Reproducción automática activa</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        
+
+        <section class="special-discounts" id="featured-dishes">
+            <h2 id="featured-dishes-title" class="section-title">Platos destacados</h2>
+            <div class="discounts-wrapper">
+                <div class="discounts-container">
+                    <div class="discounts-grid">
+                    </div>
+                </div>
+
+                <button class="discounts-nav-btn prev" onclick="scrollDiscounts('left')" aria-label="Anterior">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <button class="discounts-nav-btn next" onclick="scrollDiscounts('right')" aria-label="Siguiente">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </section>
+        
+        <!-- Inicio: Sección de intereses en tira (círculos) -->
+        <section class="interest-section" id="interest-index" aria-labelledby="interest-section-title">
+            <h2 id="interest-section-title" class="section-title">Explora y aprovecha</h2>
+            <div class="interest-strip" role="list">
+                <button class="interest-item" role="listitem" data-term="Entradas rápidas" aria-label="Ver entradas rápidas">
+                    <span class="interest-circle">
+                        <i class="fas fa-utensils" aria-hidden="true"></i>
+                    </span>
+                    <span class="interest-label">Entradas rápidas</span>
+                </button>
+                <button class="interest-item" role="listitem" data-term="Promociones" aria-label="Ver promociones">
+                    <span class="interest-circle">
+                        <i class="fas fa-tags" aria-hidden="true"></i>
+                    </span>
+                    <span class="interest-label">Promos</span>
+                </button>
+                <button class="interest-item" role="listitem" data-term="Especialidad de la casa" aria-label="Ver especialidad de la casa">
+                    <span class="interest-circle">
+                        <i class="fas fa-award" aria-hidden="true"></i>
+                    </span>
+                    <span class="interest-label">Especiales</span>
+                </button>
+                <button class="interest-item" role="listitem" data-term="Combos" aria-label="Ver combos">
+                    <span class="interest-circle">
+                        <i class="fas fa-layer-group" aria-hidden="true"></i>
+                    </span>
+                    <span class="interest-label">Combos</span>
+                </button>
+                <button class="interest-item" role="listitem" data-term="2x1" aria-label="Ver promociones 2x1">
+                    <span class="interest-circle">
+                        <i class="fas fa-gift" aria-hidden="true"></i>
+                    </span>
+                    <span class="interest-label">2x1</span>
+                </button>
+            </div>
+            <!-- Flechas de navegación para móviles -->
+            <button class="interest-nav-btn prev" aria-label="Anterior">
+                <i class="fas fa-chevron-left" aria-hidden="true"></i>
+            </button>
+            <button class="interest-nav-btn next" aria-label="Siguiente">
+                <i class="fas fa-chevron-right" aria-hidden="true"></i>
+            </button>
+        </section>
+        <!-- Fin: Sección de intereses en tira (círculos) -->
+
+        <!-- Carrito de compras -->
+        <div id="shopping-cart" class="shopping-cart" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="cart-title" aria-describedby="cart-desc" tabindex="-1">
+            <div class="cart-header">
+                <h2 id="cart-title">Carrito de Compras</h2>
+                <p id="cart-desc" class="sr-only">Carrito de compras. Lista de productos y acciones disponibles.</p>
+                <button id="close-cart" class="close-cart" aria-label="Cerrar carrito" title="Cerrar"><i class="fas fa-times" aria-hidden="true"></i></button>
+            </div>
+            <div id="cart-items" class="cart-items">
+                <p class="empty-cart">Tu carrito está vacío</p>
+            </div>
+            <div class="cart-order-options">
+                <label class="order-type-label">Pedido para:</label>
+                <div class="order-type-switch">
+                    <label><input type="radio" name="orderType" value="mesa" checked> Mesa</label>
+                    <label><input type="radio" name="orderType" value="direccion"> Dirección</label>
+                </div>
+                <div class="order-extra order-mesa" id="order-mesa-fields">
+                    <label for="mesa-number">Número de mesa</label>
+                    <input type="text" id="mesa-number" placeholder="Ej: 12" inputmode="numeric">
+                </div>
+                <div class="order-extra order-direccion" id="order-address-fields" style="display: none;">
+                    <label for="delivery-address">Dirección de entrega</label>
+                    <input type="text" id="delivery-address" placeholder="Calle, altura, referencias">
+                </div>
+            </div>
+            <div class="cart-footer">
+                <div class="cart-total">
+                    <span>Total:</span>
+                    <span id="cart-total-price" aria-live="polite" aria-atomic="true">$0.00 ARS</span>
+                </div>
+                <div id="cart-announcements" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+                <button id="checkout-btn" class="checkout-btn">🍽️ Realizar pedido</button>
+                <button id="clear-cart-btn" class="clear-cart-btn">Vaciar carrito</button>
+            </div>
+        </div>
+
+        <div class="floating-cart" id="floating-cart">
+            <div class="cart-icon-float">
+                <i class="fas fa-shopping-cart"></i>
+                <span class="cart-count-float" id="floating-cart-count">0</span>
+            </div>
+            <span class="cart-text">Ver carrito</span>
+        </div>
+
+        <section class="category-filter" id="category-filter">
+            <button class="filter-btn active" data-filter="todos">Todos</button>
+            <button class="filter-btn" data-filter="sandwich">Sándwich</button>
+            <button class="filter-btn" data-filter="pizzas">Pizzas</button>
+            <button class="filter-btn" data-filter="comen-dos">Comen dos</button>
+            <button class="filter-btn" data-filter="al-plato">Al plato</button>
+            <button class="filter-btn" data-filter="bebidas-cocteles">Bebidas</button>
+            <button class="filter-btn" data-filter="postres">Postres</button>
+        </section>
+
+        <section class="products searchable-section" id="menu-gastronomia">
+            <h2 class="section-title">Menú principal</h2>
+            <div class="products-grid">
+            </div>
+        </section>
+        
+        <!-- Productos de ejemplo por interés (justo debajo del menú de gastronomía) -->
+        <section class="products interest-products searchable-section">
+            <h2 id="interest-products-index-title" class="section-title">Recomendados por interés</h2>
+            <div class="products-grid">
+            </div>
+        </section>
+
+        <!-- Información del Restaurante -->
+        <section class="restaurant-info" id="restaurant-info">
+            <h2 class="section-title">Información del Restaurante</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <i class="fab fa-whatsapp" aria-hidden="true"></i>
+                    <div class="info-content">
+                        <strong>WhatsApp</strong>
+                        <span>+54 9 261 589-3590</span>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <i class="fab fa-instagram" aria-hidden="true"></i>
+                    <div class="info-content">
+                        <strong>Instagram</strong>
+                        <span>@resto_independiente</span>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <i class="fas fa-map-marker-alt" aria-hidden="true"></i>
+                    <div class="info-content">
+                        <strong>Ubicación</strong>
+                        <span>Mendoza, Argentina</span>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <i class="fas fa-clock" aria-hidden="true"></i>
+                    <div class="info-content">
+                        <strong>Horarios</strong>
+                        <span>Lun-Dom: 12:00-23:00</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>🍽️ Restaurante Independiente</h4>
+                <p>Sabores auténticos y platos de calidad.</p>
+            </div>
+            <div class="footer-section">
+                <h4>📞 Contacto</h4>
+                <p><i class="fab fa-whatsapp"></i> WhatsApp: +54 9 261 589-3590</p>
+                <p><i class="fas fa-envelope"></i> info@resto-demo.com</p>
+            </div>
+            <div class="footer-section">
+                <h4>📍 Ubicación</h4>
+                <p>Mendoza, Argentina</p>
+                <p>Lun-Dom: 12:00-23:00</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2025 Restaurante Independiente. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+    
+    <!-- Modal de producto (compatible con scrip.js) -->
+    <div id="product-modal" class="product-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modal-product-title" aria-describedby="modal-product-description" tabindex="-1">
+      <div class="modal-content">
+        <button class="close-modal" aria-label="Cerrar modal" title="Cerrar"><i class="fas fa-times" aria-hidden="true"></i></button>
+        <div class="modal-body">
+          <div class="modal-media">
+            <img id="modal-product-image" alt="Imagen del producto">
+          </div>
+          <div class="modal-info">
+            <h3 id="modal-product-title"></h3>
+            <p id="modal-product-description"></p>
+            <ul id="modal-product-features"></ul>
+            <div class="modal-price" id="modal-product-price"></div>
+            <button id="modal-add-to-cart-btn" class="add-to-cart-btn">Añadir al carrito</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Botón flotante para volver al inicio -->
+    <button id="back-to-top-float" class="back-to-top-float" aria-label="Volver al inicio" title="Volver al inicio">
+        <i class="fas fa-arrow-up" aria-hidden="true"></i>
+    </button>
+
+    <!-- Opcional: definir BUSINESS_SLUG por script si no usas data-slug -->
+    <script>window.BUSINESS_SLUG = 'gastronomia';</script>
+            <script src="theme-loader.js" defer></script>
+    <script type="module" src="js/app.js"></script>
+            <script src="media-loader.js" defer></script>
+            </body>
+</html>

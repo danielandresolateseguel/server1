@@ -1,0 +1,89 @@
+{
+  "meta": {
+    "slug": "gastronomia-independiente",
+    "category": "gastronomia",
+    "branding": {
+      "name": "Gastronomía Independiente",
+      "contact": {
+        "whatsapp": "+54 9 261 589-3590",
+        "instagram": "resto_independiente",
+        "location": "Mendoza, Argentina"
+      }
+    }
+  },
+  "checkout": {
+    "mode": "mesa",
+    "whatsappNumber": "+5492615893590",
+    "messageTemplate": "Hola! Quiero hacer un pedido desde la web. {{orderTypeLabel}} {{orderTypeValue}}. Productos: {{items}}. Total: {{total}} ARS."
+  },
+  "filters": {
+    "categories": [
+      "sandwich",
+      "pizzas",
+      "comen-dos",
+      "al-plato",
+      "bebidas-cocteles",
+      "postres"
+    ],
+    "synonyms": {
+      "limonada": ["limon", "limón", "refresco"],
+      "empanadas": ["empanada", "docena", "salteñas"]
+    }
+  },
+  "catalog": [
+    {
+      "id": "plato1",
+      "name": "Pizza Margarita",
+      "price": 6500,
+      "image": "Imagenes/PIZZAMARGARITA.webp",
+      "categories": ["pizzas", "comen-dos"],
+      "description": "Mozzarella, tomate y albahaca fresca."
+    },
+    {
+      "id": "plato2",
+      "name": "Empanadas (docena)",
+      "price": 8000,
+      "image": "Imagenes/enpanadas.webp",
+      "categories": ["sandwich", "comen-dos"],
+      "description": "Carne suave, cebolla y especias."
+    },
+    {
+      "id": "plato3",
+      "name": "Ensalada César",
+      "price": 5200,
+      "image": "Imagenes/ensaladacesar.webp",
+      "categories": ["ensaladas"]
+    },
+    {
+      "id": "plato4",
+      "name": "Limonada Casera",
+      "price": 2500,
+      "image": "Imagenes/Limonadacasera.jpg",
+      "categories": ["bebidas"],
+      "description": "Refrescante, con limón, azúcar y menta."
+    }
+  ],
+  "themes": {
+    "independiente": {
+      "palette": {
+        "accent": "#ff6a00",
+        "accentDark": "#c85000",
+        "chipBg": "#f3f3f3",
+        "chipHoverBg": "#e9e9e9",
+        "chipText": "#111111",
+        "surfaceCard": "#fffdfb"
+      },
+      "backgrounds": {
+        "page": "radial-gradient(1200px 600px at 10% 0%, rgba(30,30,30,0.40) 0%, rgba(18,18,18,0.30) 40%, rgba(12,12,12,0.26) 75%), linear-gradient(180deg, rgba(12,12,12,0.09) 0%, rgba(12,12,12,0.16) 100%)",
+        "specialDiscounts": "linear-gradient(90deg, rgba(12, 12, 12, 0.95) 0%, rgba(22, 22, 22, 0.88) 40%, rgba(55, 55, 55, 0.72) 100%)",
+        "productsSection": "linear-gradient(90deg, rgba(15, 15, 15, 0.95) 0%, rgba(28, 28, 28, 0.88) 45%, rgba(58, 58, 58, 0.72) 100%)",
+        "interestSection": "linear-gradient(90deg, rgba(18, 18, 18, 0.95) 0%, rgba(30, 30, 30, 0.88) 45%, rgba(62, 62, 62, 0.72) 100%)",
+        "carousel": "linear-gradient(90deg, rgba(10,10,10,0.85) 0%, rgba(38,38,38,0.72) 100%)",
+        "cartHeader": "linear-gradient(90deg, rgba(22,22,22,0.96) 0%, rgba(44,44,44,0.9) 100%)",
+        "restaurantInfo": "linear-gradient(90deg, rgba(14,14,14,0.94) 0%, rgba(40,40,40,0.78) 100%)",
+        "footer": "linear-gradient(180deg, rgba(20,20,20,0.96) 0%, rgba(36,36,36,0.9) 100%)",
+        "floatingCart": "linear-gradient(90deg, rgba(22,22,22,0.96) 0%, rgba(44,44,44,0.9) 100%)"
+      }
+    }
+  }
+}

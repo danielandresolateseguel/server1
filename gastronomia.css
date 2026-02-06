@@ -1,0 +1,15 @@
+@charset "UTF-8";
+
+/* 
+   GASTRONOMÍA STYLES - MODULARIZED
+   This file now imports functionality-specific CSS files.
+*/
+
+@import 'css/base.css';
+@import 'css/layout.css';
+@import 'css/components.css';
+@import 'css/filters.css';
+@import 'css/product-cards.css';
+@import 'css/cart.css';
+@import 'css/stepper.css';
+@import 'css/modals.css';

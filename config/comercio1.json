@@ -1,0 +1,45 @@
+{
+  "meta": {
+    "title": "Comercio 1 - Electrónica y Gaming",
+    "description": "Catálogo distintivo con ofertas, destacados y carrito de compras.",
+    "slug": "comercio1",
+    "branding": {
+      "primaryColor": "#2ecc71",
+      "secondaryColor": "#1abc9c",
+      "titleColor": "#000000",
+      "footerTextColor": "#000000",
+      "storeInfoTextColor": "#000000",
+      "buttonColor": "#000000",
+      "buttonTextColor": "#fff",
+      "categoryColor": "#000000",
+      "categoryTextColor": "#000000",
+      "categoryActiveTextColor": "#ffffff",
+      "categoryBaseBg": "#ffffff",
+      "categoryHoverBg": "#f2f2f2",
+      "categoryBorderColor": "#000000",
+      "textColor": "#2c3e50",
+      "borderColor": "#16a085",
+      "backgroundColor": "#f4f9f4",
+      "backgrounds": {
+        "page": "linear-gradient(180deg, #f4f9f4 0%, #e8f7ee 100%)",
+        "productsSection": "linear-gradient(90deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.96) 50%, rgba(0,0,0,0.98) 100%)",
+        "interestSection": "linear-gradient(180deg, #f0fffb 0%, #d9f7ef 100%)",
+        "modal": "#ffffff",
+        "footer": "linear-gradient(180deg, #e8f6f3 0%, #d0ece7 100%)",
+        "specialDiscounts": "linear-gradient(90deg, rgba(140,108,78,0.85) 0%, rgba(99,73,49,0.90) 45%, rgba(74,54,36,0.95) 100%)",
+        "cartHeader": "#000000",
+        "floatingCart": "#000000",
+        "checkoutBtn": "#000000"
+      }
+    }
+  },
+  "catalog": {
+    "categories": ["consolas", "auriculares", "laptops", "teclados", "smartphone", "accesorios"],
+    "featured": ["Xbox Series X", "ASUS ProArt P16"],
+    "offers": [
+      { "id": "d1", "name": "Xbox Series X", "price": 89999 },
+      { "id": "d2", "name": "ASUS ProArt P16", "price": 129999 },
+      { "id": "d3", "name": "Monitor Gaming 4K", "price": 39999 }
+    ]
+  }
+}

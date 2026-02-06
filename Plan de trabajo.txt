@@ -1,0 +1,39 @@
+Plan de Trabajo
+
+- Crear plantilla base comercio-base.html con header, footer y main comunes
+- Estandarizar IDs y clases; añadir body data-page por página
+- Añadir SEO base: title, meta description, canonical, html lang="es"
+- Implementar accesibilidad del modal y alt descriptivos en imágenes
+- Crear scope CSS por página y extraer estilos comunes a style.css
+- Componentizar scrip.js con guardas y activación por data-page
+- Unificar image-loader y lazy-phase1 en un módulo único
+- Normalizar nombres de imágenes a minúsculas y guiones
+- Convertir imágenes a avif/webp con picture y srcset
+- Definir width y height en imágenes de carrusel y tarjetas
+- Namespacar carrito por comercio en localStorage con slug
+- Quitar botones de prueba y añadir navegación y breadcrumbs consistentes
+- Revisar preloads de imágenes críticos y eliminar duplicados
+- Agregar puerto configurable en main.py vía env y CLI
+- Ejecutar validaciones: W3C, Lighthouse, teclado, móvil y fallbacks de imágenes
+Orden sugerido
+
+- Empieza por la plantilla base, IDs/clases y data-page para estabilizar la estructura.
+- Sigue con SEO y accesibilidad para evitar deuda técnica.
+- Aísla CSS y divide comportamientos JS para que cada comercio sea independiente.
+- Optimiza imágenes y define dimensiones para rendimiento y evitar layout shifts.
+- Ajusta carrito con namespaces por comercio.
+- Cierra con navegación, preloads y validaciones técnicas.
+Criterios de aceptación por tarea
+
+- Plantilla base: un archivo comercio-base.html funcional, sin dependencias rotas.
+- IDs/data-page: selectores únicos y sin errores en consola al cargar.
+- SEO: títulos y descripciones únicas, lang="es" , canonical correcto.
+- Accesibilidad: modal navegable por teclado, aria-* y alt adecuados.
+- CSS: sin fugas entre páginas; estilos comunes centralizados.
+- JS: no falla si faltan secciones; inicializa solo lo necesario por página.
+- Imágenes: nombres normalizados, <picture> con avif/webp , dimensiones definidas.
+- Carrito: claves en localStorage con cart:<slug> , sin mezcla entre comercios.
+- Navegación: sin botones de prueba, rutas relativas correctas.
+- Preloads: solo críticos, cero duplicados.
+- Servidor: puerto configurable; servidor arrancando sin warnings.
+- Validaciones: Lighthouse ≥90 en Performance/Accessibility/SEO, HTML válido, pruebas de teclado/móvil correctas.

@@ -1,0 +1,6 @@
+Script started
+sqlite3 imported
+psycopg2 imported
+execute_values imported
+dotenv imported
+app imported

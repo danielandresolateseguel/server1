@@ -1,0 +1,237 @@
+/* Tema independiente para gastronomia-independiente */
+/* Esta hoja sólo se carga en gastronomia-independiente.html */
+
+/* Override de variables de paleta negro/naranja sin tocar el proyecto global */
+body.sector-gastronomia[data-theme="independiente"] {
+  /* Naranja de marca + negro en textos */
+  --gastro-accent: #ff6a00;          /* acento principal (naranja) */
+  --gastro-accent-dark: #c85000;     /* acento oscuro (naranja profundo) */
+  --gastro-bg: #fff6ee;              /* fondo suave con tinte cálido */
+  --gastro-chip-bg: #f3f3f3;         /* fondos claros para chips/botones secundarios */
+  --gastro-chip-hover-bg: #e9e9e9;   /* hover de chips/botones secundarios */
+  --gastro-chip-text: #111111;       /* texto negro para chips y énfasis */
+  --gastro-surface-card: #fffdfb;
+  /* Derivados con alpha para compatibilidad mientras migramos */
+  --gastro-accent-08: rgba(255,106,0,0.08);
+  --gastro-accent-18: rgba(255,106,0,0.18);
+  --gastro-accent-22: rgba(255,106,0,0.22);
+  --gastro-accent-25: rgba(255,106,0,0.25);
+  --gastro-accent-28: rgba(255,106,0,0.28);
+  --gastro-accent-35: rgba(255,106,0,0.35);
+  --gastro-accent-42: rgba(255,106,0,0.42);
+  --gastro-accent-55: rgba(255,106,0,0.55);
+  --gastro-accent-85: rgba(255,106,0,0.85);
+}
+
+/* Fondos oscuros con aclarado lateral para mayor familiaridad visual */
+body.sector-gastronomia .special-discounts {
+  background: var(--gastro-special-discounts-bg, linear-gradient(90deg, rgba(12, 12, 12, 0.95) 0%, rgba(22, 22, 22, 0.88) 40%, rgba(55, 55, 55, 0.72) 100%));
+}
+body.sector-gastronomia .special-discounts .section-title,
+body.sector-gastronomia .special-discounts h2 {
+  color: #f5f5f5; /* contraste alto sobre fondo oscuro */
+}
+
+body.sector-gastronomia #menu-gastronomia.products.searchable-section {
+  background: var(--gastro-products-bg, linear-gradient(90deg, rgba(15, 15, 15, 0.95) 0%, rgba(28, 28, 28, 0.88) 45%, rgba(58, 58, 58, 0.72) 100%));
+}
+body.sector-gastronomia #menu-gastronomia .section-title {
+  color: #f5f5f5; /* asegurar legibilidad del título en fondo oscuro */
+}
+
+/* Recomendados por interés: mismo tratamiento de fondo oscuro con aclarado lateral */
+body.sector-gastronomia .interest-products {
+  background: var(--gastro-interest-bg, linear-gradient(90deg, rgba(18, 18, 18, 0.95) 0%, rgba(30, 30, 30, 0.88) 45%, rgba(62, 62, 62, 0.72) 100%));
+  border-radius: 12px;
+}
+body.sector-gastronomia .interest-products .section-title {
+  color: #f5f5f5;
+}
+
+/* Tarjetas dentro de Recomendados por interés: fondo blanco y alto contraste */
+body.sector-gastronomia .interest-products .product-card {
+  background: #ffffff;
+}
+body.sector-gastronomia .interest-products .product-card .product-info h3 {
+  color: #111111;
+}
+body.sector-gastronomia .interest-products .product-card .product-info .product-description {
+  color: #333333;
+}
+body.sector-gastronomia .interest-products .product-card .product-info .product-price {
+  color: #111111;
+}
+
+/* Tarjetas dentro de Platos destacados: fondo blanco y alto contraste */
+body.sector-gastronomia #featured-dishes .product-card,
+body.sector-gastronomia .special-discounts .product-card {
+  background: #ffffff;
+}
+body.sector-gastronomia #featured-dishes .product-card .product-info h3,
+body.sector-gastronomia .special-discounts .product-card .product-info h3 {
+  color: #111111;
+}
+body.sector-gastronomia #featured-dishes .product-card .product-info .product-description,
+body.sector-gastronomia .special-discounts .product-card .product-info .product-description {
+  color: #333333;
+}
+body.sector-gastronomia #featured-dishes .product-card .product-info .product-price,
+body.sector-gastronomia .special-discounts .product-card .product-info .product-price {
+  color: #111111;
+}
+
+/* Hover en Platos destacados: si el fondo se oscurece/grisea, subir contraste en textos */
+body.sector-gastronomia .special-discounts .discount-card:hover .product-info h3,
+body.sector-gastronomia .special-discounts .discount-card:hover .product-info .product-description,
+body.sector-gastronomia .special-discounts .discount-card:hover .product-info .product-price {
+  color: #ffffff;
+}
+
+/* Estilo global agradable para toda la página independiente */
+body.sector-gastronomia {
+  /* Oscurezco levemente las capas de fondo para mayor contraste */
+  background: var(--gastro-page-bg, radial-gradient(1200px 600px at 10% 0%, rgba(30,30,30,0.40) 0%, rgba(18,18,18,0.30) 40%, rgba(12,12,12,0.26) 75%),
+              linear-gradient(180deg, rgba(12,12,12,0.09) 0%, rgba(12,12,12,0.16) 100%));
+}
+
+/* Header: coherente con negro/naranja */
+
+/* Buscador con acento naranja */
+body.sector-gastronomia #search-input {
+  background: rgba(255,255,255,0.96);
+  border: 2px solid var(--gastro-accent-35);
+  color: #1a1a1a;
+  box-shadow: 0 2px 10px var(--gastro-accent-18);
+}
+body.sector-gastronomia #search-input:focus-visible {
+  outline: 2px solid var(--gastro-accent);
+  box-shadow: 0 0 0 4px var(--gastro-accent-18);
+}
+
+/* Carrusel: botones e indicadores */
+body.sector-gastronomia .carousel-section {
+  background: var(--gastro-carousel-bg, linear-gradient(90deg, rgba(10,10,10,0.85) 0%, rgba(38,38,38,0.72) 100%));
+  border-radius: 14px;
+}
+body.sector-gastronomia .carousel-btn {
+  background: linear-gradient(180deg, var(--gastro-accent) 0%, var(--gastro-accent-dark) 100%);
+  border: none;
+  color: #121212;
+  box-shadow: 0 8px 22px var(--gastro-accent-35);
+}
+body.sector-gastronomia .carousel-btn:hover {
+  filter: brightness(1.05);
+  box-shadow: 0 12px 28px var(--gastro-accent-42);
+}
+body.sector-gastronomia .carousel-indicators .indicator,
+body.sector-gastronomia .carousel-indicators button.indicator {
+  background: var(--gastro-accent-55);
+  border: 1px solid var(--gastro-accent-85);
+}
+body.sector-gastronomia .carousel-indicators .indicator.active,
+body.sector-gastronomia .carousel-indicators button.indicator.active {
+  background: var(--gastro-accent);
+}
+
+/* Filtros de categoría */
+body.sector-gastronomia .category-filter {
+  background: transparent; /* usa el mismo fondo que el principal */
+  border-radius: 12px;
+}
+body.sector-gastronomia .category-filter .filter-btn {
+  background: var(--gastro-chip-bg);
+  color: var(--gastro-chip-text);
+  border: 1px solid var(--gastro-accent-35);
+}
+body.sector-gastronomia .category-filter .filter-btn:hover {
+  background: var(--gastro-chip-hover-bg);
+  box-shadow: 0 8px 18px var(--gastro-accent-22);
+}
+body.sector-gastronomia .category-filter .filter-btn.active {
+  background: var(--gastro-accent);
+  color: #1a1a1a;
+  border-color: var(--gastro-accent-dark);
+}
+
+/* Tarjetas de producto */
+body.sector-gastronomia .product-card {
+  background: var(--gastro-surface-card);
+  border: 1px solid var(--gastro-accent-18);
+  box-shadow: 0 10px 24px rgba(12,12,12,0.15), 0 2px 10px var(--gastro-accent-08);
+  border-radius: 14px;
+}
+body.sector-gastronomia .product-card .product-price {
+  color: #111111;
+}
+body.sector-gastronomia .product-card .add-to-cart-btn {
+  background: linear-gradient(180deg, var(--gastro-accent) 0%, var(--gastro-accent-dark) 100%);
+  color: #121212;
+  border: none;
+}
+body.sector-gastronomia .product-card .add-to-cart-btn:hover {
+  filter: brightness(1.06);
+}
+
+/* Carrito */
+body.sector-gastronomia .shopping-cart .cart-header {
+  background: var(--gastro-cart-header-bg, linear-gradient(90deg, rgba(22,22,22,0.96) 0%, rgba(44,44,44,0.9) 100%));
+  color: #f5f5f5;
+}
+body.sector-gastronomia .shopping-cart .checkout-btn {
+  background: var(--gastro-accent);
+  color: #121212;
+  border: none;
+}
+body.sector-gastronomia .shopping-cart .clear-cart-btn {
+  background: #2b2b2b;
+  color: #f5f5f5;
+  border: 1px solid var(--gastro-accent-28);
+}
+
+/* Carrito flotante */
+body.sector-gastronomia .floating-cart {
+  background: var(--gastro-floating-cart-bg, linear-gradient(180deg, rgba(24,24,24,0.95) 0%, rgba(42,42,42,0.92) 100%));
+  border: 1px solid var(--gastro-accent-28);
+  box-shadow: 0 12px 24px rgba(12,12,12,0.35);
+}
+/* Mantener contraste en hover: no aclarar el fondo del carrito flotante */
+body.sector-gastronomia .floating-cart:hover {
+  background: var(--gastro-floating-cart-bg, linear-gradient(180deg, rgba(24,24,24,0.95) 0%, rgba(42,42,42,0.92) 100%));
+  box-shadow: 0 14px 28px rgba(12,12,12,0.40);
+}
+body.sector-gastronomia .floating-cart .cart-icon-float,
+body.sector-gastronomia .floating-cart i {
+  color: var(--gastro-accent);
+}
+body.sector-gastronomia .floating-cart .cart-count-float {
+  background: var(--gastro-accent);
+  color: #121212;
+}
+body.sector-gastronomia .floating-cart .cart-text {
+  color: #ffffff; /* Contraste alto sobre fondo del botón */
+}
+
+/* Mantener contraste en hover: no aclarar el fondo del carrito flotante */
+body.sector-gastronomia .floating-cart:hover {
+  background: var(--gastro-floating-cart-bg, linear-gradient(180deg, rgba(24,24,24,0.95) 0%, rgba(42,42,42,0.92) 100%));
+}
+
+/* Información del restaurante */
+body.sector-gastronomia .restaurant-info {
+  background: var(--gastro-restaurant-bg, linear-gradient(90deg, rgba(14,14,14,0.94) 0%, rgba(40,40,40,0.78) 100%));
+  color: #f5f5f5;
+  border-radius: 12px;
+}
+body.sector-gastronomia .restaurant-info a { color: #ffd5bf; }
+body.sector-gastronomia .restaurant-info a:hover { color: var(--gastro-accent); }
+
+/* Footer */
+body.sector-gastronomia footer {
+  background: var(--gastro-footer-bg, linear-gradient(180deg, rgba(20,20,20,0.96) 0%, rgba(36,36,36,0.9) 100%));
+  color: #eaeaea;
+}
+body.sector-gastronomia .footer-section h4 { color: #ffffff; }
+body.sector-gastronomia .footer-section p { color: #d9d9d9; }
+body.sector-gastronomia .footer-section i { color: var(--gastro-accent); }
+body.sector-gastronomia .footer-bottom { border-top: 1px solid var(--gastro-accent-25); }
+body.sector-gastronomia .footer-bottom p { color: #cfcfcf; }

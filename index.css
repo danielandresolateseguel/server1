@@ -1,0 +1,58 @@
+/* Estilos específicos para index: scoped al atributo data-page */
+body[data-page="index"] #products-index-title.section-title,
+body[data-page="index"] #store-info-index-title.section-title,
+body[data-page="index"] #interest-products-index-title.section-title {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #5a6f90;
+  letter-spacing: 0.2px;
+  margin: 0 16px 10px;
+  padding-bottom: 0;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+body[data-page="index"] #products-index-title.section-title::before,
+body[data-page="index"] #store-info-index-title.section-title::before,
+body[data-page="index"] #interest-products-index-title.section-title::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c5cff, #b197fc);
+  box-shadow: 0 0 8px rgba(124, 92, 255, 0.35);
+}
+
+/* Ajustes menores para la sección de interés en index */
+body[data-page="index"] .interest-section#interest-index .section-title {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #5a6f90;
+  margin: 0 16px 6px;
+}
+
+body[data-page="index"] .interest-section#interest-index .interest-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: rgba(0, 0, 0, 0.15);
+  color: #333;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  z-index: 10;
+  cursor: pointer;
+}
+
+@media (max-width: 768px) {
+  body[data-page="index"] .interest-section#interest-index .interest-nav-btn { display: flex; }
+  body[data-page="index"] .interest-section#interest-index .interest-nav-btn.prev { left: 8px; }
+  body[data-page="index"] .interest-section#interest-index .interest-nav-btn.next { right: 8px; }
+}

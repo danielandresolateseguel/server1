@@ -1,0 +1,97 @@
+/* --- LAYOUT & SECTIONS --- */
+
+/* Fondos oscuros con aclarado lateral */
+body.sector-gastronomia .special-discounts {
+  background: var(--gastro-special-discounts-bg, linear-gradient(90deg, rgba(12, 12, 12, 0.95) 0%, rgba(22, 22, 22, 0.88) 40%, rgba(55, 55, 55, 0.72) 100%));
+}
+body.sector-gastronomia .special-discounts .section-title,
+body.sector-gastronomia .special-discounts h2 {
+  color: #f5f5f5;
+}
+
+body.sector-gastronomia #menu-gastronomia.products.searchable-section {
+  background: var(--gastro-products-bg, linear-gradient(90deg, rgba(15, 15, 15, 0.95) 0%, rgba(28, 28, 28, 0.88) 45%, rgba(58, 58, 58, 0.72) 100%));
+}
+body.sector-gastronomia #menu-gastronomia .section-title {
+  color: #f5f5f5;
+}
+
+body.sector-gastronomia.products-loading #menu-gastronomia .product-image img,
+body.sector-gastronomia.products-loading #featured-dishes .product-image img,
+body.sector-gastronomia.products-loading .interest-products .product-image img {
+  visibility: hidden;
+}
+
+body.sector-gastronomia.products-ready #menu-gastronomia .product-image img,
+body.sector-gastronomia.products-ready #featured-dishes .product-image img,
+body.sector-gastronomia.products-ready .interest-products .product-image img {
+  visibility: visible;
+}
+
+/* Recomendados por interés */
+body.sector-gastronomia .interest-products {
+  background: var(--gastro-interest-bg, linear-gradient(90deg, rgba(18, 18, 18, 0.95) 0%, rgba(30, 30, 30, 0.88) 45%, rgba(62, 62, 62, 0.72) 100%));
+  border-radius: 12px;
+}
+body.sector-gastronomia .interest-products .section-title {
+  color: #f5f5f5;
+}
+
+/* Tarjetas dentro de Recomendados por interés */
+body.sector-gastronomia .interest-products .product-card {
+  background: #ffffff;
+}
+body.sector-gastronomia .interest-products .product-card .product-info h3 {
+  color: #111111;
+}
+body.sector-gastronomia .interest-products .product-card .product-info .product-description {
+  color: #333333;
+}
+body.sector-gastronomia .interest-products .product-card .product-info .product-price {
+  color: #111111;
+}
+
+/* Tarjetas dentro de Platos destacados */
+body.sector-gastronomia #featured-dishes .product-card,
+body.sector-gastronomia .special-discounts .product-card {
+  background: #ffffff;
+}
+body.sector-gastronomia #featured-dishes .product-card .product-info h3,
+body.sector-gastronomia .special-discounts .product-card .product-info h3 {
+  color: #111111;
+}
+body.sector-gastronomia #featured-dishes .product-card .product-info .product-description,
+body.sector-gastronomia .special-discounts .product-card .product-info .product-description {
+  color: #333333;
+}
+body.sector-gastronomia #featured-dishes .product-card .product-info .product-price,
+body.sector-gastronomia .special-discounts .product-card .product-info .product-price {
+  color: #111111;
+}
+
+/* Hover en Platos destacados */
+body.sector-gastronomia .special-discounts .discount-card:hover .product-info h3,
+body.sector-gastronomia .special-discounts .discount-card:hover .product-info .product-description,
+body.sector-gastronomia .special-discounts .discount-card:hover .product-info .product-price {
+  color: #ffffff;
+}
+
+/* Información del restaurante */
+body.sector-gastronomia .restaurant-info {
+  background: var(--gastro-restaurant-bg, linear-gradient(90deg, rgba(14,14,14,0.94) 0%, rgba(40,40,40,0.78) 100%));
+  color: #f5f5f5;
+  border-radius: 12px;
+}
+body.sector-gastronomia .restaurant-info a { color: #ffd5bf; }
+body.sector-gastronomia .restaurant-info a:hover { color: var(--gastro-accent); }
+
+/* Footer */
+body.sector-gastronomia footer {
+  background: var(--gastro-footer-bg, linear-gradient(180deg, rgba(20,20,20,0.96) 0%, rgba(36,36,36,0.9) 100%));
+  color: #eaeaea;
+}
+body.sector-gastronomia .footer-section h4 { color: #ffffff; }
+body.sector-gastronomia .footer-section p { color: #d9d9d9; }
+body.sector-gastronomia .footer-section i { color: var(--gastro-accent); }
+body.sector-gastronomia .footer-bottom { border-top: 1px solid var(--gastro-accent-25); }
+body.sector-gastronomia .footer-bottom p { color: #cfcfcf; }

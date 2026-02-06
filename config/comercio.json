@@ -1,0 +1,123 @@
+{
+  "meta": {
+    "slug": "comercio",
+    "category": "comercio",
+    "page": "comercio",
+    "branding": {
+      "name": "Comercio Demo",
+      "primaryColor": "#1e88e5",
+      "secondaryColor": "#4a6fa5",
+      "backgroundColor": "",
+      "textColor": "",
+      "buttonColor": "#1e88e5",
+      "buttonTextColor": "#ffffff",
+      "borderColor": "#c9d4e7",
+      "backgrounds": {
+        "page": "",
+        "productsSection": "linear-gradient(135deg, rgba(245,247,250,1) 0%, rgba(195,207,226,0.6) 100%)",
+        "interestSection": "linear-gradient(135deg, rgba(250,250,250,1) 0%, rgba(230,235,245,0.6) 100%)",
+        "modal": "#ffffff",
+        "footer": ""
+      }
+    }
+  },
+  "checkout": {
+    "mode": "whatsapp",
+    "whatsappNumber": "+5492615893590",
+    "messageTemplate": "Hola! Me gustaría realizar el siguiente pedido:"
+  },
+  "filters": {
+    "categories": ["Destacados", "Liquidaciones", "Más vendidos", "Nuevo"],
+    "synonyms": {
+      "tv": ["televisor"],
+      "celular": ["smartphone", "móvil"],
+      "auriculares": ["audífonos", "headphones"]
+    }
+  },
+  "catalog": [
+    {
+      "id": "dest-001",
+      "name": "Consola Xbox Series X",
+      "price": 799999,
+      "imageSrc": "Imagenes/Xbox-01-copia-1024x1024.png",
+      "tags": ["Destacados"]
+    },
+    {
+      "id": "dest-002",
+      "name": "Notebook ASUS ProArt P16",
+      "price": 1549999,
+      "imageSrc": "Imagenes/asus-proart-p16.png",
+      "tags": ["Destacados"]
+    },
+    {
+      "id": "dest-003",
+      "name": "Smartphone Gama Alta",
+      "price": 599999,
+      "imageSrc": "Imagenes/producto2.webp",
+      "tags": ["Destacados"]
+    },
+    {
+      "id": "liq-001",
+      "name": "Televisor 4K 55"",
+      "price": 389999,
+      "imageSrc": "Imagenes/1366_2000.jpeg",
+      "tags": ["Liquidaciones"]
+    },
+    {
+      "id": "liq-002",
+      "name": "Auriculares Bluetooth",
+      "price": 49999,
+      "imageSrc": "Imagenes/images.jfif",
+      "tags": ["Liquidaciones"]
+    },
+    {
+      "id": "liq-003",
+      "name": "Monitor 27\" IPS",
+      "price": 219999,
+      "imageSrc": "Imagenes/producto3.webp",
+      "tags": ["Liquidaciones"]
+    },
+    {
+      "id": "mv-001",
+      "name": "Control Xbox Inalámbrico",
+      "price": 79999,
+      "imageSrc": "Imagenes/xbox.png",
+      "tags": ["Más vendidos"]
+    },
+    {
+      "id": "mv-002",
+      "name": "Notebook para productividad",
+      "price": 899999,
+      "imageSrc": "Imagenes/0NvnRmTfq_720x0__1.jpg",
+      "tags": ["Más vendidos"]
+    },
+    {
+      "id": "mv-003",
+      "name": "Smartphone Gama Media",
+      "price": 299999,
+      "imageSrc": "Imagenes/producto1.webp.avif",
+      "tags": ["Más vendidos"]
+    },
+    {
+      "id": "new-001",
+      "name": "Router WiFi 6",
+      "price": 149999,
+      "imageSrc": "Imagenes/producto2.webp",
+      "tags": ["Nuevo"]
+    },
+    {
+      "id": "new-002",
+      "name": "Smartwatch Deportivo",
+      "price": 129999,
+      "imageSrc": "Imagenes/producto3.webp",
+      "tags": ["Nuevo"]
+    },
+    {
+      "id": "new-003",
+      "name": "Auriculares con cancelación",
+      "price": 159999,
+      "imageSrc": "Imagenes/images.jfif",
+      "tags": ["Nuevo"]
+    }
+  ]
+}

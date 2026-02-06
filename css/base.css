@@ -1,0 +1,38 @@
+@charset "UTF-8";
+
+/* --- BASE VARIABLES (Generic for sector-gastronomia) --- */
+body.sector-gastronomia {
+  /* Naranja de marca + negro en textos */
+  --gastro-accent: #ff6a00;          /* acento principal (naranja) */
+  --gastro-accent-dark: #c85000;     /* acento oscuro (naranja profundo) */
+  --gastro-bg: #fff6ee;              /* fondo suave con tinte cálido */
+  --gastro-chip-bg: #f3f3f3;         /* fondos claros para chips/botones secundarios */
+  --gastro-chip-hover-bg: #e9e9e9;   /* hover de chips/botones secundarios */
+  --gastro-chip-text: #111111;       /* texto negro para chips y énfasis */
+  --gastro-surface-card: #fffdfb;
+  
+  /* Derivados con alpha */
+  --gastro-accent-08: rgba(255,106,0,0.08);
+  --gastro-accent-18: rgba(255,106,0,0.18);
+  --gastro-accent-22: rgba(255,106,0,0.22);
+  --gastro-accent-25: rgba(255,106,0,0.25);
+  --gastro-accent-28: rgba(255,106,0,0.28);
+  --gastro-accent-35: rgba(255,106,0,0.35);
+  --gastro-accent-42: rgba(255,106,0,0.42);
+  --gastro-accent-55: rgba(255,106,0,0.55);
+  --gastro-accent-85: rgba(255,106,0,0.85);
+
+  /* Variables adicionales para compatibilidad con nuevos estilos */
+  --gastro-primary: var(--gastro-accent);
+  --gastro-primary-dark: var(--gastro-accent-dark);
+  --gastro-success: #10b981;
+  --gastro-danger: #ef4444;
+  --gastro-text: #374151;
+  --gastro-text-dark: #111827;
+}
+
+/* Estilo global agradable */
+body.sector-gastronomia {
+  background: var(--gastro-page-bg, radial-gradient(1200px 600px at 10% 0%, rgba(30,30,30,0.40) 0%, rgba(18,18,18,0.30) 40%, rgba(12,12,12,0.26) 75%),
+              linear-gradient(180deg, rgba(12,12,12,0.09) 0%, rgba(12,12,12,0.16) 100%));
+}

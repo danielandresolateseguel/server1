@@ -1,0 +1,49 @@
+Claro. Te explico qué modifica cada pieza y cómo se refleja en la página independiente sin afectar al resto.
+
+Arquitectura CSS
+
+gastronomia.css: estilos base del sector gastronomía, usan variables de color con var(...).
+gastronomia-independiente.css: overrides de variables y ajustes puntuales, sólo aplican cuando el body tiene class="independiente-theme".
+body.sector-gastronomia.independiente-theme: scopea los cambios para que sólo afecten gastronomia-independiente.html.
+Variables de Color
+
+--gastro-accent:
+Acento principal (botones, líneas decorativas, badges).
+Ejemplos: #menu-gastronomia .section-title::after, .product-card .add-to-cart-btn, .discount-card .add-to-cart-btn.
+--gastro-accent-dark:
+Acento oscuro (degradados, énfasis en headers y counters).
+Ejemplos: .shopping-cart .cart-header, .shopping-cart .checkout-btn, .floating-cart .cart-count-float, #product-modal .modal-price, #product-modal .add-to-cart-btn.
+--gastro-bg:
+Fondo suave de secciones principales.
+Ejemplos: .category-filter, #menu-gastronomia.products.searchable-section (incluye gradiente), .special-discounts.
+--gastro-chip-bg:
+Fondo de chips, botones secundarios y contenedores suaves.
+Ejemplos: .shopping-cart .clear-cart-btn, .cart-order-options, .floating-cart, .quantity-btn, .remove-item-btn, #product-modal .modal-content.
+--gastro-chip-hover-bg:
+Hover/activo para elementos suaves.
+Ejemplos: .floating-cart:hover, .quantity-btn:hover, .remove-item-btn:hover, #product-modal .close-modal:hover.
+--gastro-chip-text:
+Color de texto en chips/labels y precios destacados.
+Ejemplos: #menu-gastronomia .section-title, .product-card .product-price, .shopping-cart .cart-total, .cart-item-price, #product-modal .modal-info p.
+Qué cambia visualmente en la página
+
+Títulos y trazos decorativos: el subrayado del Menú principal y Platos destacados toma --gastro-accent.
+Botones “Añadir al carrito” y “Realizar pedido”: usan --gastro-accent y --gastro-accent-dark.
+Carrito (encabezado, botones, totales): degrada con --gastro-accent/--gastro-accent-dark; textos con --gastro-chip-text.
+Tarjetas de productos: borde, sombra y el pequeño “cintillo” superior se matizan con el acento.
+Carrito flotante: fondo con --gastro-chip-bg, contador con --gastro-accent-dark.
+Modal de producto: fondo y textos con --gastro-chip-*, precio y botón interno con --gastro-accent-dark.
+Por qué no afecta otras páginas
+
+Los overrides viven en gastronomia-independiente.css.
+El scope .sector-gastronomia.independiente-theme se aplica sólo en gastronomia-independiente.html.
+El orden de carga respeta la cascada: primero gastronomia.css (base), después gastronomia-independiente.css (override).
+Cómo personalizar rápido
+
+Define los hex en gastronomia-independiente.css:
+--gastro-accent: color principal de marca.
+--gastro-accent-dark: variante más oscura.
+--gastro-bg: fondo de secciones.
+--gastro-chip-bg / --gastro-chip-hover-bg: fondos y hover suaves.
+--gastro-chip-text: texto en chips, precios y etiquetas.
+Si quieres que todo venga del config/gastronomia.json, puedo añadir un pequeño loader que lea esos colores y los aplique con document.body.style.setProperty(...) al body.independiente-theme, manteniendo el mismo aislamiento.

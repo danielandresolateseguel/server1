@@ -1,0 +1,21 @@
+--- Checking for Active orders that are Archived (Should not happen) ---
+No active-but-archived orders found.
+
+--- Checking for Paid orders (Active) ---
+
+--- Checking movements in LAST CLOSED session ---
+Last Closed Session: #54 Opened: 2026-01-02T22:29:24.170725 Closed: 2026-01-03T13:17:51.288304
+  -> Movement #78: entrada $13000 Note: Cobro pedido #206 (contado)
+     [Order #206] Status: entregado, Pay: paid, Archived: False
+  -> Movement #79: entrada $5000 Note: Cobro pedido #207 (contado)
+     [Order #207] Status: entregado, Pay: paid, Archived: False
+  -> Movement #80: entrada $17200 Note: Cobro pedido #208 (contado)
+     [Order #208] Status: entregado, Pay: paid, Archived: False
+  -> Movement #81: entrada $20996 Note: Cobro pedido #209 (contado)
+     [Order #209] Status: entregado, Pay: paid, Archived: False
+  -> Movement #82: entrada $15700 Note: Cobro pedido #210 (contado)
+     [Order #210] Status: entregado, Pay: paid, Archived: False
+  -> Movement #83: entrada $6396 Note: Cobro pedido #211 (contado)
+     [Order #211] Status: entregado, Pay: paid, Archived: False
+  -> Movement #84: entrada $10700 Note: Cobro pedido #212 (transferencia)
+     [Order #212] Status: entregado, Pay: paid, Archived: False

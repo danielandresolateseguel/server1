@@ -1,0 +1,38 @@
+/* --- COMPONENTS (Search, Carousel, etc.) --- */
+
+/* Buscador */
+body.sector-gastronomia #search-input {
+  background: rgba(255,255,255,0.96);
+  border: 2px solid var(--gastro-accent-35);
+  color: #1a1a1a;
+  box-shadow: 0 2px 10px var(--gastro-accent-18);
+}
+body.sector-gastronomia #search-input:focus-visible {
+  outline: 2px solid var(--gastro-accent);
+  box-shadow: 0 0 0 4px var(--gastro-accent-18);
+}
+
+/* Carrusel */
+body.sector-gastronomia .carousel-section {
+  background: var(--gastro-carousel-bg, linear-gradient(90deg, rgba(10,10,10,0.85) 0%, rgba(38,38,38,0.72) 100%));
+  border-radius: 14px;
+}
+body.sector-gastronomia .carousel-btn {
+  background: linear-gradient(180deg, var(--gastro-accent) 0%, var(--gastro-accent-dark) 100%);
+  border: none;
+  color: #121212;
+  box-shadow: 0 8px 22px var(--gastro-accent-35);
+}
+body.sector-gastronomia .carousel-btn:hover {
+  filter: brightness(1.05);
+  box-shadow: 0 12px 28px var(--gastro-accent-42);
+}
+body.sector-gastronomia .carousel-indicators .indicator,
+body.sector-gastronomia .carousel-indicators button.indicator {
+  background: var(--gastro-accent-55);
+  border: 1px solid var(--gastro-accent-85);
+}
+body.sector-gastronomia .carousel-indicators .indicator.active,
+body.sector-gastronomia .carousel-indicators button.indicator.active {
+  background: var(--gastro-accent);
+}
