@@ -65,4 +65,8 @@ def create_app(test_config=None):
     # Register public last to avoid catching API routes
     app.register_blueprint(public.bp)
 
+    @app.route('/')
+    def root():
+        return {'status': 'ok', 'message': 'Root application running', 'version': '1.0.7'}
+
     return app
