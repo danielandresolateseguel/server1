@@ -1,5 +1,6 @@
-Flask
-python-dotenv
+flask
 waitress
-requests
+python-dotenv
 psycopg2-binary
+pillow
+requests
