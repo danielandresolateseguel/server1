@@ -79,3 +79,28 @@ def db_check():
         status['error'] = str(e)
         
     return jsonify(status)
+
+@bp.route('/api/init_db_force')
+def init_db_force():
+    """Forza la inicialización de la base de datos y creación de tablas."""
+    from app.database import init_db, seed_admin_users_from_env, seed_products_from_config
+    import os
+    
+    log = []
+    try:
+        log.append("Iniciando init_db()...")
+        init_db()
+        log.append("init_db() completado.")
+        
+        config_dir = current_app.config.get('CONFIG_DIR')
+        if config_dir and os.path.exists(config_dir):
+            log.append(f"Seeding admin users from {config_dir}...")
+            seed_admin_users_from_env(config_dir)
+            log.append("Seeding products...")
+            seed_products_from_config(config_dir)
+        else:
+            log.append("Config dir not found or empty.")
+            
+        return jsonify({'status': 'ok', 'log': log})
+    except Exception as e:
+        return jsonify({'status': 'error', 'error': str(e), 'log': log}), 500
