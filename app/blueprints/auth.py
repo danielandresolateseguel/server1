@@ -52,8 +52,7 @@ def auth_me():
 
 @bp.route('/auth/csrf', methods=['GET'])
 def auth_csrf():
-    if not is_authed():
-        return jsonify({'error': 'no autorizado'}), 401
+    # Allow fetching CSRF token even if not authenticated (for login page, etc)
     return jsonify({'token': get_csrf_token()})
 
 @bp.route('/admin_users', methods=['GET'])

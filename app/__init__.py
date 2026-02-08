@@ -47,7 +47,7 @@ def create_app(test_config=None):
     start_background_tasks(app)
 
     # Register Blueprints
-    from .blueprints import auth, orders, cash, products, carousel, public, archive, tenants
+    from .blueprints import auth, orders, cash, products, carousel, public, archive, tenants, system
     
     print("DEBUG: Registrando blueprints...")
     app.register_blueprint(auth.bp)
@@ -58,15 +58,11 @@ def create_app(test_config=None):
     app.register_blueprint(archive.bp)
     print("DEBUG: Registrando blueprint tenants...")
     app.register_blueprint(tenants.bp)
-    print("DEBUG: Blueprint tenants registrado.")
+    print("DEBUG: Registrando blueprint system...")
+    app.register_blueprint(system.bp)
+    print("DEBUG: Blueprints registrados.")
+
     # Register public last to avoid catching API routes
     app.register_blueprint(public.bp)
-
-    @app.route('/api/ping_modular')
-    def ping():
-        routes = []
-        for rule in app.url_map.iter_rules():
-            routes.append(f"{rule.endpoint}: {rule.rule} ({','.join(rule.methods)})")
-        return {'status': 'ok', 'message': 'Modular app running', 'routes': routes}
 
     return app
