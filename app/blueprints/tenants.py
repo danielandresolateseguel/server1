@@ -60,6 +60,31 @@ def calculate_average_times(conn, slug):
         
     return avgs
 
+@bp.route('/tenants', methods=['GET'])
+def get_tenants():
+    """Returns a list of available tenants. Currently returns hardcoded list based on config or DB."""
+    # En el futuro esto podría venir de una tabla 'tenants' real.
+    # Por ahora devolvemos el tenant por defecto y los que encontremos en config.
+    tenants_list = [
+        {'slug': 'gastronomia-local1', 'name': 'Gastronomía Local 1'}
+    ]
+    # Intentar leer más tenants de la DB si existen (opcional)
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("SELECT DISTINCT tenant_slug FROM tenant_config")
+        rows = cur.fetchall()
+        seen = {'gastronomia-local1'}
+        for r in rows:
+            slug = r[0]
+            if slug and slug not in seen:
+                tenants_list.append({'slug': slug, 'name': slug.replace('-', ' ').title()})
+                seen.add(slug)
+    except Exception:
+        pass
+        
+    return jsonify(tenants_list)
+
 @bp.route('/tenant_tables', methods=['GET'])
 def get_tenant_tables():
     slug = request.args.get('tenant_slug') or request.args.get('slug') or 'gastronomia-local1'
