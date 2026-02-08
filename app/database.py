@@ -619,15 +619,21 @@ def init_db_sqlite(cur):
     cur.execute("CREATE INDEX IF NOT EXISTS idx_carousel_tenant ON carousel_slides(tenant_slug)")
 
 def init_db():
-    db = get_db()
-    cur = db.cursor()
-    
-    if is_postgres():
-        init_db_postgres(cur)
-    else:
-        init_db_sqlite(cur)
-    
-    db.commit()
+    try:
+        db = get_db()
+        cur = db.cursor()
+        
+        if is_postgres():
+            init_db_postgres(cur)
+        else:
+            init_db_sqlite(cur)
+        
+        db.commit()
+    except Exception as e:
+        print(f"WARNING: Database initialization failed: {e}")
+        # Don't crash the app, just log the error.
+        # This allows the app to start even if DB is temporarily unreachable.
+        pass
 
 def seed_products_from_config(config_dir):
     try:
