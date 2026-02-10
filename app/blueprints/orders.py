@@ -215,8 +215,8 @@ def create_order():
             # Insert Order Item
             cur.execute(
                 """
-                INSERT INTO order_items (order_id, tenant_slug, product_id, name, qty, unit_price, modifiers_json, notes, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO order_items (order_id, tenant_slug, product_id, name, qty, unit_price, modifiers_json, notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     order_id,
@@ -226,8 +226,7 @@ def create_order():
                     qty,
                     int(it.get('price', 0) or 0),
                     str(it.get('modifiers') or {}),
-                    it.get('notes') or '',
-                    created_at
+                    it.get('notes') or ''
                 )
             )
             
