@@ -329,7 +329,7 @@ def get_order_detail(order_id):
     
     cur.execute(
         """
-        SELECT id, product_id, name, qty, unit_price, modifiers_json, notes, created_at
+        SELECT id, product_id, name, qty, unit_price, modifiers_json, notes
         FROM order_items WHERE order_id = ? ORDER BY id ASC
         """,
         (order_id,)
