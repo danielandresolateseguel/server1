@@ -119,110 +119,129 @@ def update_tenant_config():
 
 @bp.route('/orders', methods=['POST'])
 def create_order():
-    payload = request.get_json(silent=True) or {}
-    tenant_slug = payload.get('tenant_slug') or payload.get('slug') or 'gastronomia-local1'
-    order_type = (payload.get('order_type') or 'mesa').lower()
-    if order_type not in ('mesa', 'direccion', 'espera', 'none'):
-        return jsonify({'error': 'order_type inválido'}), 400
-    table_number = payload.get('table_number') or ''
-    address_json = payload.get('address') or {}
-    items = payload.get('items') or []
-    customer_name = payload.get('customer_name') or ''
-    customer_phone = payload.get('customer_phone') or ''
-
-    if order_type == 'mesa' and not table_number:
-        return jsonify({'error': 'Número de mesa requerido'}), 400
-    if order_type == 'direccion' and not address_json:
-        return jsonify({'error': 'Dirección requerida'}), 400
-    if order_type == 'espera':
-        if not customer_name:
-            return jsonify({'error': 'Nombre requerido para pedidos en espera'}), 400
-        if not customer_phone:
-            return jsonify({'error': 'Teléfono requerido para pedidos en espera'}), 400
-    if not items:
-        return jsonify({'error': 'Carrito vacío'}), 400
-
-    total = compute_total(items)
-    created_at = datetime.utcnow().isoformat() + 'Z'
-    status = 'pendiente'
-
-    conn = get_db()
-    cur = conn.cursor()
-    
-    shipping_cost = 0
-    if order_type == 'direccion':
-        try:
-            cfg = get_cached_tenant_config(tenant_slug)
-            shipping_cost = int(cfg.get('shipping_cost', 0))
-        except:
-            pass
-    
-    total += shipping_cost
-    
-    order_notes = (payload.get('order_notes') or '').strip()
-    
     try:
-        cur.execute(
-            """
-            INSERT INTO orders (tenant_slug, customer_name, customer_phone, order_type, table_number, address_json, status, total, payment_method, payment_status, created_at, order_notes, shipping_cost)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (tenant_slug, customer_name, customer_phone, order_type, table_number, str(address_json), status, total, None, None, created_at, order_notes, shipping_cost)
-        )
-        order_id = cur.lastrowid
-    except Exception as e:
-        print(f"Error creating order: {e}")
-        return jsonify({'error': f'Error interno al crear orden: {str(e)}'}), 500
-
-    for it in items:
-        qty = int(it.get('quantity', it.get('qty', 1)) or 1)
-        pid = it.get('id')
-        cur.execute("SELECT stock FROM products WHERE tenant_slug = ? AND product_id = ?", (tenant_slug, pid))
-        row = cur.fetchone()
-        if not row:
-            try:
-                nm = str(it.get('name') or '').strip() or 'Producto'
-                pr = int(it.get('price') or 0)
-                cur.execute(
-                    "INSERT OR IGNORE INTO products (tenant_slug, product_id, name, price, stock, active) VALUES (?, ?, ?, ?, ?, 1)",
-                    (tenant_slug, pid, nm, max(0, pr), 1000)
-                )
-                conn.commit()
-                cur.execute("SELECT stock FROM products WHERE tenant_slug = ? AND product_id = ?", (tenant_slug, pid))
-                row = cur.fetchone()
-            except Exception:
-                conn.rollback()
-                return jsonify({'error': 'producto no encontrado', 'product_id': pid}), 400
-        stock = int((row[0] if row else 0) or 0)
-        if stock < qty:
-            conn.rollback()
-            return jsonify({'error': 'stock insuficiente', 'product_id': pid, 'stock': stock, 'requested': qty}), 400
+        payload = request.get_json(silent=True) or {}
+        tenant_slug = payload.get('tenant_slug') or payload.get('slug') or 'gastronomia-local1'
+        order_type = (payload.get('order_type') or 'mesa').lower()
         
-        cur.execute(
-            """
-            INSERT INTO order_items (order_id, tenant_slug, product_id, name, qty, unit_price, modifiers_json, notes, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                order_id,
-                tenant_slug,
-                pid,
-                it.get('name'),
-                qty,
-                int(it.get('price', 0) or 0),
-                str(it.get('modifiers') or {}),
-                it.get('notes') or '',
-                created_at
+        print(f"DEBUG: Creating order for {tenant_slug}, type={order_type}")
+        
+        if order_type not in ('mesa', 'direccion', 'espera', 'none'):
+            return jsonify({'error': 'order_type inválido'}), 400
+            
+        table_number = payload.get('table_number') or ''
+        address_json = payload.get('address') or {}
+        items = payload.get('items') or []
+        customer_name = payload.get('customer_name') or ''
+        customer_phone = payload.get('customer_phone') or ''
+
+        if order_type == 'mesa' and not table_number:
+            return jsonify({'error': 'Número de mesa requerido'}), 400
+        if order_type == 'direccion' and not address_json:
+            return jsonify({'error': 'Dirección requerida'}), 400
+        if order_type == 'espera':
+            if not customer_name:
+                return jsonify({'error': 'Nombre requerido para pedidos en espera'}), 400
+            if not customer_phone:
+                return jsonify({'error': 'Teléfono requerido para pedidos en espera'}), 400
+        if not items:
+            return jsonify({'error': 'Carrito vacío'}), 400
+
+        total = compute_total(items)
+        created_at = datetime.utcnow().isoformat() + 'Z'
+        status = 'pendiente'
+
+        conn = get_db()
+        cur = conn.cursor()
+        
+        shipping_cost = 0
+        if order_type == 'direccion':
+            try:
+                cfg = get_cached_tenant_config(tenant_slug)
+                shipping_cost = int(cfg.get('shipping_cost', 0))
+            except:
+                pass
+        
+        total += shipping_cost
+        
+        order_notes = (payload.get('order_notes') or '').strip()
+        
+        # Insert Order
+        try:
+            cur.execute(
+                """
+                INSERT INTO orders (tenant_slug, customer_name, customer_phone, order_type, table_number, address_json, status, total, payment_method, payment_status, created_at, order_notes, shipping_cost)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (tenant_slug, customer_name, customer_phone, order_type, table_number, str(address_json), status, total, None, None, created_at, order_notes, shipping_cost)
             )
-        )
-        cur.execute("UPDATE products SET stock = stock - ? WHERE tenant_slug = ? AND product_id = ?", (qty, tenant_slug, pid))
-    
-    conn.commit()
-    
-    # Event log
+            order_id = cur.lastrowid
+            print(f"DEBUG: Order created with ID {order_id}")
+        except Exception as e:
+            print(f"Error executing INSERT orders: {e}")
+            raise e
 
+        # Process Items
+        for it in items:
+            qty = int(it.get('quantity', it.get('qty', 1)) or 1)
+            pid = it.get('id')
+            
+            # Check/Create Product
+            cur.execute("SELECT stock FROM products WHERE tenant_slug = ? AND product_id = ?", (tenant_slug, pid))
+            row = cur.fetchone()
+            if not row:
+                try:
+                    nm = str(it.get('name') or '').strip() or 'Producto'
+                    pr = int(it.get('price') or 0)
+                    # Using INSERT OR IGNORE wrapper logic in database.py
+                    cur.execute(
+                        "INSERT OR IGNORE INTO products (tenant_slug, product_id, name, price, stock, active) VALUES (?, ?, ?, ?, ?, 1)",
+                        (tenant_slug, pid, nm, max(0, pr), 1000)
+                    )
+                    conn.commit()
+                    # Re-fetch
+                    cur.execute("SELECT stock FROM products WHERE tenant_slug = ? AND product_id = ?", (tenant_slug, pid))
+                    row = cur.fetchone()
+                except Exception as e:
+                    print(f"Error auto-creating product {pid}: {e}")
+                    conn.rollback()
+                    return jsonify({'error': 'producto no encontrado y fallo al crear', 'product_id': pid}), 400
+            
+            stock = int((row[0] if row else 0) or 0)
+            if stock < qty:
+                conn.rollback()
+                return jsonify({'error': 'stock insuficiente', 'product_id': pid, 'stock': stock, 'requested': qty}), 400
+            
+            # Insert Order Item
+            cur.execute(
+                """
+                INSERT INTO order_items (order_id, tenant_slug, product_id, name, qty, unit_price, modifiers_json, notes, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    order_id,
+                    tenant_slug,
+                    pid,
+                    it.get('name'),
+                    qty,
+                    int(it.get('price', 0) or 0),
+                    str(it.get('modifiers') or {}),
+                    it.get('notes') or '',
+                    created_at
+                )
+            )
+            
+            # Update Stock
+            cur.execute("UPDATE products SET stock = stock - ? WHERE tenant_slug = ? AND product_id = ?", (qty, tenant_slug, pid))
+        
+        conn.commit()
+        return jsonify({'order_id': order_id, 'status': status, 'total': total, 'tenant_slug': tenant_slug}), 201
 
-    return jsonify({'order_id': order_id, 'status': status, 'total': total, 'tenant_slug': tenant_slug}), 201
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(f"CRITICAL ERROR in create_order: {e}")
+        return jsonify({'error': f'Error interno crítico: {str(e)}', 'details': str(e)}), 500
 
 @bp.route('/orders', methods=['GET'])
 def list_orders():

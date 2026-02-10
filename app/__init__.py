@@ -69,4 +69,16 @@ def create_app(test_config=None):
     def root():
         return {'status': 'ok', 'message': 'Root application running', 'version': '1.0.8'}
 
+    @app.errorhandler(500)
+    def internal_error(error):
+        return {'error': 'Internal Server Error', 'message': str(error)}, 500
+
+    @app.errorhandler(Exception)
+    def handle_exception(e):
+        # pass through HTTP errors
+        if isinstance(e, HTTPException):
+            return e
+        # now you're handling non-HTTP exceptions only
+        return {'error': 'Unexpected Error', 'message': str(e)}, 500
+
     return app
