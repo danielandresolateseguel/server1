@@ -583,10 +583,10 @@ def update_order_content(order_id):
             else:
                 cur.execute(
                     """
-                    INSERT INTO order_items (order_id, tenant_slug, product_id, name, qty, unit_price, notes, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO order_items (order_id, tenant_slug, product_id, name, qty, unit_price, notes)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                     """,
-                    (order_id, tenant_slug, item['product_id'], item['name'], item['qty'], item['price'], item['notes'], datetime.utcnow().isoformat())
+                    (order_id, tenant_slug, item['product_id'], item['name'], item['qty'], item['price'], item['notes'])
                 )
             
         # Actualizar Total Orden y Notas Generales si se proveen
