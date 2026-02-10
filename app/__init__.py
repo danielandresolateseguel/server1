@@ -67,7 +67,7 @@ def create_app(test_config=None):
 
     @app.route('/')
     def root():
-        return {'status': 'ok', 'message': 'Root application running', 'version': '1.0.8'}
+        return {'status': 'ok', 'message': 'Root application running', 'version': '1.0.9'}
 
     @app.errorhandler(500)
     def internal_error(error):
