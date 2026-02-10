@@ -7,8 +7,8 @@ bp = Blueprint('system', __name__)
 @bp.route('/api/version')
 def version():
     return jsonify({
-        'version': '1.0.6', 
-        'timestamp': '2026-02-08 12:30:00', 
+        'version': '1.0.8', 
+        'timestamp': '2026-02-09 12:00:00', 
         'deploy_check': 'ok',
         'python_version': sys.version,
         'cwd': os.getcwd()

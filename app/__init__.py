@@ -67,6 +67,6 @@ def create_app(test_config=None):
 
     @app.route('/')
     def root():
-        return {'status': 'ok', 'message': 'Root application running', 'version': '1.0.7'}
+        return {'status': 'ok', 'message': 'Root application running', 'version': '1.0.8'}
 
     return app

@@ -16,7 +16,7 @@ def routes_list():
 
 @bp.route('/api/version')
 def version():
-    return jsonify({'version': '1.0.5', 'timestamp': '2026-02-08 12:00:00', 'deploy_check': 'ok'})
+    return jsonify({'version': '1.0.8', 'timestamp': '2026-02-09 12:00:00', 'deploy_check': 'ok'})
 
 @bp.route('/<path:path>')
 def static_proxy(path):
