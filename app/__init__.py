@@ -10,6 +10,27 @@ def create_app(test_config=None):
     # static_folder='../' means serve files from project root
     app = Flask(__name__, instance_relative_config=True, static_folder='../', static_url_path='/')
     
+    # Configure JSON provider to handle datetime as ISO8601
+    import json
+    from datetime import datetime
+    
+    class CustomJSONEncoder(json.JSONEncoder):
+        def default(self, obj):
+            if isinstance(obj, datetime):
+                return obj.isoformat()
+            return super().default(obj)
+
+    try:
+        from flask.json.provider import DefaultJSONProvider
+        class CustomJSONProvider(DefaultJSONProvider):
+            def default(self, obj):
+                if isinstance(obj, datetime):
+                    return obj.isoformat()
+                return super().default(obj)
+        app.json = CustomJSONProvider(app)
+    except ImportError:
+        app.json_encoder = CustomJSONEncoder
+
     # Default config
     app.config.from_mapping(
         SECRET_KEY=os.getenv('SECRET_KEY', 'dev'),
