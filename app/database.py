@@ -399,6 +399,9 @@ def init_db_postgres(cur):
         """
     )
     cur.execute("CREATE INDEX IF NOT EXISTS idx_carousel_tenant ON carousel_slides(tenant_slug)")
+    
+    # Fix sequences after table creation (in case of migration)
+    fix_postgres_sequences(cur)
 
 def init_db_sqlite(cur):
     # Tabla de pedidos

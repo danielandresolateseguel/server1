@@ -160,14 +160,19 @@ def create_order():
     total += shipping_cost
     
     order_notes = (payload.get('order_notes') or '').strip()
-    cur.execute(
-        """
-        INSERT INTO orders (tenant_slug, customer_name, customer_phone, order_type, table_number, address_json, status, total, payment_method, payment_status, created_at, order_notes, shipping_cost)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (tenant_slug, customer_name, customer_phone, order_type, table_number, str(address_json), status, total, None, None, created_at, order_notes, shipping_cost)
-    )
-    order_id = cur.lastrowid
+    
+    try:
+        cur.execute(
+            """
+            INSERT INTO orders (tenant_slug, customer_name, customer_phone, order_type, table_number, address_json, status, total, payment_method, payment_status, created_at, order_notes, shipping_cost)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (tenant_slug, customer_name, customer_phone, order_type, table_number, str(address_json), status, total, None, None, created_at, order_notes, shipping_cost)
+        )
+        order_id = cur.lastrowid
+    except Exception as e:
+        print(f"Error creating order: {e}")
+        return jsonify({'error': f'Error interno al crear orden: {str(e)}'}), 500
 
     for it in items:
         qty = int(it.get('quantity', it.get('qty', 1)) or 1)

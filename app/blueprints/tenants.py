@@ -161,6 +161,20 @@ def get_tenant_sla():
         'metrics': metrics
     })
 
+@bp.route('/tenant_prefs', methods=['GET'])
+def get_tenant_prefs():
+    slug = request.args.get('tenant_slug') or request.args.get('slug') or 'gastronomia-local1'
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT config_json FROM tenant_config WHERE tenant_slug = ?", (slug,))
+    row = cur.fetchone()
+    if row and row[0]:
+        try:
+            return jsonify(json.loads(row[0]))
+        except:
+            pass
+    return jsonify({})
+
 @bp.route('/tenant_prefs', methods=['POST'])
 def update_tenant_prefs():
     if not is_authed():
