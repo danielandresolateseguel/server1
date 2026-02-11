@@ -4437,7 +4437,36 @@
       if (carouselMobile) attachListeners(carouselMobile);
     }
 
+    let carouselLastFocus = null;
+
+    function closeCarouselModalSafe() {
+      if (!carouselModal) return;
+      
+      // 1. Move focus away FIRST to avoid aria-hidden error
+      try {
+        if (carouselLastFocus && typeof carouselLastFocus.focus === 'function' && document.body.contains(carouselLastFocus)) {
+           carouselLastFocus.focus();
+        } else {
+           // Fallback: blur current element to remove focus from modal
+           if (document.activeElement && carouselModal.contains(document.activeElement)) {
+               document.activeElement.blur();
+           }
+           document.body.focus(); // Ensure focus is definitely out
+        }
+      } catch(e) { console.warn('Focus restore failed', e); }
+
+      // 2. Hide modal (display:none removes it from a11y tree, so do this FIRST)
+      carouselModal.style.display = 'none';
+      
+      // 3. Set attributes for state consistency
+      carouselModal.setAttribute('aria-hidden', 'true');
+      if ('inert' in carouselModal) {
+        carouselModal.inert = true;
+      }
+    }
+
     function openCarouselModal(slide = null) {
+      carouselLastFocus = document.activeElement;
       if(!carouselModal) return;
       carEditId.value = slide ? slide.id : '';
       carEditImage.value = slide ? slide.image_url : '';
@@ -4458,6 +4487,9 @@
       }
       carouselModal.style.display = 'flex';
       carouselModal.setAttribute('aria-hidden', 'false');
+      if ('inert' in carouselModal) {
+        carouselModal.inert = false;
+      }
     }
 
     // Carousel Event Bindings
@@ -4679,10 +4711,7 @@
     // Modal Actions
     if (carouselModal) {
       const closeBtns = carouselModal.querySelectorAll('.close-modal, .cancel-btn');
-      closeBtns.forEach(b => b.addEventListener('click', () => {
-        carouselModal.style.display = 'none';
-        carouselModal.setAttribute('aria-hidden', 'true');
-      }));
+      closeBtns.forEach(b => b.addEventListener('click', closeCarouselModalSafe));
 
       const saveBtn = carouselModal.querySelector('.save-btn');
       saveBtn.addEventListener('click', async () => {
@@ -4712,8 +4741,7 @@
         });
 
         if (resp.ok) {
-          carouselModal.style.display = 'none';
-          carouselModal.setAttribute('aria-hidden', 'true');
+          closeCarouselModalSafe();
           renderCarousel();
         } else {
           alert('Error al guardar');

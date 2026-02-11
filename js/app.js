@@ -293,6 +293,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Callback tras cargar config (opcional)
     });
 
+    // Inicializar Carrusel
+    loadAndInitCarousel(window.BUSINESS_SLUG || 'gastronomia-local1');
+
     // Inicializar elementos del carrito
     initCartElements();
     loadCart();
