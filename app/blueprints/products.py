@@ -5,6 +5,8 @@ from werkzeug.utils import secure_filename
 from flask import Blueprint, request, jsonify, session, current_app
 from app.database import get_db
 from app.utils import is_authed, check_csrf
+import cloudinary
+import cloudinary.uploader
 
 bp = Blueprint('products', __name__, url_prefix='/api')
 
@@ -198,6 +200,27 @@ def upload_file():
     if file.filename == '': return jsonify({'error': 'No selected file'}), 400
     
     if file:
+        # Check for Cloudinary configuration
+        cloud_name = os.getenv('CLOUDINARY_CLOUD_NAME')
+        api_key = os.getenv('CLOUDINARY_API_KEY')
+        api_secret = os.getenv('CLOUDINARY_API_SECRET')
+        
+        if cloud_name and api_key and api_secret:
+            try:
+                cloudinary.config(
+                    cloud_name=cloud_name,
+                    api_key=api_key,
+                    api_secret=api_secret,
+                    secure=True
+                )
+                
+                # Upload to Cloudinary
+                upload_result = cloudinary.uploader.upload(file)
+                return jsonify({'url': upload_result['secure_url']})
+            except Exception as e:
+                return jsonify({'error': f'Cloudinary upload failed: {str(e)}'}), 500
+
+        # Fallback to local storage if Cloudinary is not configured
         filename = secure_filename(file.filename)
         ts = int(datetime.utcnow().timestamp())
         filename = f"{ts}_{filename}"

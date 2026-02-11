@@ -451,7 +451,8 @@ export async function initDynamicProducts() {
             if (p.active === false) return;
             if (existingIds.has(p.id)) return;
             const v = p._variants || {};
-            const section = v.section || '';
+            // Default to 'main' section if not specified to ensure visibility
+            const section = v.section || 'main'; 
             if (!section) return;
             let targetGrid = null;
             let className = 'product-card searchable-item';
