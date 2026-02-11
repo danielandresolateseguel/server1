@@ -64,7 +64,7 @@ function renderCarouselSlides(slides) {
         `;
 
         indicatorsHtml += `
-            <button class="indicator${activeClass}" onclick="goToSlide(${index})" aria-label="Ir al slide ${index + 1}"></button>
+            <button class="indicator${activeClass}" aria-label="Ir al slide ${index + 1}"></button>
         `;
     });
 
@@ -191,6 +191,28 @@ export function previousSlide() {
 export function goToSlide(index) {
     showSlide(index);
     if (isAutoPlayActive) startProgress();
+}
+
+export function toggleAutoPlay() {
+    isAutoPlayActive = !isAutoPlayActive;
+    if (isAutoPlayActive) {
+        startCarouselInterval();
+    } else {
+        stopCarouselInterval();
+    }
+    updatePlayButtonUI();
+}
+
+function updatePlayButtonUI() {
+    const playBtnIcon = document.querySelector('.carousel-play-button i');
+    const statusSpan = document.getElementById('autoplay-status');
+    
+    if (playBtnIcon) {
+        playBtnIcon.className = isAutoPlayActive ? 'fas fa-pause' : 'fas fa-play';
+    }
+    if (statusSpan) {
+        statusSpan.textContent = isAutoPlayActive ? 'Reproducción automática activa' : 'Reproducción automática pausada';
+    }
 }
 
 function updateIndicators() {

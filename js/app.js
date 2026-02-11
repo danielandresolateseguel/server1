@@ -79,6 +79,7 @@ window.clearCart = clearCart;
 window.nextSlide = nextSlide;
 window.previousSlide = previousSlide;
 window.goToSlide = goToSlide;
+window.toggleAutoPlay = toggleAutoPlay;
 window.scrollDiscounts = scrollDiscounts;
 
 window.closeCartUI = closeCartUI;
