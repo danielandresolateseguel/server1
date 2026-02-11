@@ -1,6 +1,15 @@
 from flask import Blueprint, send_from_directory, current_app, jsonify
+import os
 
 bp = Blueprint('public', __name__)
+
+@bp.route('/Imagenes/<path:filename>')
+def serve_images(filename):
+    # Construct absolute path to Imagenes directory in project root
+    # app.root_path points to '.../app'
+    project_root = os.path.dirname(current_app.root_path)
+    images_dir = os.path.join(project_root, 'Imagenes')
+    return send_from_directory(images_dir, filename)
 
 @bp.route('/')
 def index():
