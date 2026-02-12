@@ -7459,23 +7459,26 @@
       overflow: hidden;
     }
     #create-order-modal .create-order-left {
-      height: 50% !important;
-      flex: none !important;
+      flex: 1 1 0% !important; /* Force equal split using flex-grow/shrink/basis */
+      height: auto !important;
       width: 100%;
       border-right: none;
-      border-bottom: 1px solid var(--kds-border);
+      border-bottom: 4px solid #e0e0e0; /* Distinct separator */
       min-height: 0;
       overflow-y: auto;
     }
     #create-order-modal .create-order-right {
-      height: 50% !important;
-      flex: none !important;
+      flex: 1 1 0% !important; /* Force equal split */
+      height: auto !important;
       max-height: none !important;
       width: 100%;
       min-width: 0;
       border-left: none;
-      box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
+      box-shadow: none; /* Remove shadow in mobile to avoid confusion */
       overflow-y: auto;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
     }
     #create-order-modal .kds-modal-content {
       width: 100% !important;
