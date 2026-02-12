@@ -7456,23 +7456,24 @@
   @media (max-width: 900px) {
     #create-order-modal .create-order-body {
       flex-direction: column;
-      overflow-y: auto;
+      overflow: hidden; /* Prevent body scroll, use inner scrolls */
     }
     #create-order-modal .create-order-left {
-      flex: 1 0 auto;
+      flex: 1; /* Take available space */
       width: 100%;
       border-right: none;
       border-bottom: 1px solid var(--kds-border);
-      min-height: 40vh;
+      min-height: 0; /* Crucial for nested flex scroll */
+      overflow-y: auto; /* Scroll internally */
     }
     #create-order-modal .create-order-right {
-      flex: 1 0 auto;
+      flex: 0 0 auto; /* Don't grow, size to content */
+      max-height: 50%; /* Limit height to 50% of screen */
       width: 100%;
       min-width: 0;
-      height: auto;
       border-left: none;
       box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
-      min-height: 40vh;
+      overflow-y: auto; /* Scroll if content exceeds max-height */
     }
     #create-order-modal .kds-modal-content {
       width: 100% !important;
