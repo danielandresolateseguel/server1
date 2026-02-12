@@ -214,8 +214,14 @@ def upload_file():
                     secure=True
                 )
                 
-                # Upload to Cloudinary
-                upload_result = cloudinary.uploader.upload(file)
+                # Upload to Cloudinary with optimizations
+                upload_result = cloudinary.uploader.upload(
+                    file,
+                    quality="auto",
+                    fetch_format="auto",
+                    width=1200,
+                    crop="limit"
+                )
                 return jsonify({'url': upload_result['secure_url']})
             except Exception as e:
                 return jsonify({'error': f'Cloudinary upload failed: {str(e)}'}), 500
