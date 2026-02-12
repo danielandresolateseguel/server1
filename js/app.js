@@ -26,10 +26,7 @@ import {
     closeCartUI
 } from './ui.js';
 import { 
-    refreshSearchableItems, 
-    searchableItems, 
-    performSearch, 
-    displayResults 
+    initSearch
 } from './search.js';
 import { handleCheckout } from './checkout.js';
 import { 
@@ -39,6 +36,7 @@ import {
     previousSlide, 
     goToSlide, 
     showSlide, 
+    toggleAutoPlay,
     initInterestNav, 
     initInterestFocusState 
 } from './carousel.js';
@@ -308,7 +306,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initInterestFiltering();
 
     // Inicializar Carrusel (si existe)
-    loadAndInitCarousel(window.BUSINESS_SLUG);
+    // loadAndInitCarousel(window.BUSINESS_SLUG); // Removed duplicate call
 
     // Inicializar navegación de intereses (si existe)
     initInterestNav();
@@ -317,37 +315,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initHeaderContact();
 
     // Setup Buscador
-    const searchForm = document.getElementById('search-form');
-    const searchInput = document.getElementById('search-input');
-    const resultsContainer = document.getElementById('results-container');
-    const clearSearchBtn = document.getElementById('clear-search-btn');
-
-    refreshSearchableItems();
-
-    if (searchInput) {
-        searchInput.addEventListener('input', function() {
-            const term = this.value.trim();
-            const searchResultsSection = document.querySelector('.search-results');
-            
-            if (term.length > 0) {
-                if (searchResultsSection) searchResultsSection.classList.add('active');
-                const results = performSearch(term, document.querySelectorAll('.searchable-item'));
-                displayResults(results, term, resultsContainer);
-            } else {
-                if (searchResultsSection) searchResultsSection.classList.remove('active');
-            }
-        });
-    }
-
-    if (clearSearchBtn) {
-        clearSearchBtn.addEventListener('click', () => {
-            if (searchInput) {
-                searchInput.value = '';
-                searchInput.dispatchEvent(new Event('input'));
-                searchInput.focus();
-            }
-        });
-    }
+    initSearch();
 
     // Setup Carrito UI (Overlay, toggle)
     const cartIcon = document.querySelector('.cart-icon');

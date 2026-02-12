@@ -174,6 +174,23 @@ def close_db(e=None):
         else:
             db.close()
 
+def fix_postgres_sequences(cur):
+    try:
+        tables = [
+            'orders', 'order_items', 'order_status_history', 'archived_orders',
+            'products', 'admin_users', 'order_events', 'cash_sessions',
+            'cash_movements', 'carousel_slides'
+        ]
+        for table in tables:
+            try:
+                # Reset sequence to max(id)
+                # pg_get_serial_sequence returns the sequence name for the column
+                cur.execute(f"SELECT setval(pg_get_serial_sequence('{table}', 'id'), coalesce(max(id), 1)) FROM {table}")
+            except Exception:
+                pass
+    except Exception:
+        pass
+
 def init_db_postgres(cur):
     # Tabla de pedidos
     cur.execute(
@@ -691,6 +708,66 @@ def backfill_product_details_from_config(config_dir):
                     cur.execute(
                         "UPDATE products SET details = ? WHERE tenant_slug = ? AND product_id = ? AND (details IS NULL OR TRIM(details) = '')",
                         (desc, slug, pid)
+                    )
+            except Exception:
+                continue
+        db.commit()
+    except Exception:
+        pass
+
+def backfill_product_variants_from_config(config_dir):
+    try:
+        db = get_db()
+        cur = db.cursor()
+        for name in os.listdir(config_dir):
+            if not name.endswith('.json'):
+                continue
+            p = os.path.join(config_dir, name)
+            try:
+                with open(p, 'r', encoding='utf-8') as f:
+                    j = json.load(f)
+                meta = j.get('meta') or {}
+                slug = meta.get('slug') or name.replace('.json','')
+                catalog = j.get('catalog') or []
+                for it in catalog:
+                    pid = str(it.get('id') or '').strip()
+                    if not pid: continue
+                    
+                    # Build variants object
+                    variants = {}
+                    
+                    # 1. Food Categories
+                    cats = it.get('categories')
+                    if cats:
+                        if isinstance(cats, list):
+                            variants['food_categories'] = cats
+                        else:
+                            variants['food_categories'] = [str(cats)]
+                    
+                    # 2. Section / Interest Tag
+                    tags = it.get('tags') or []
+                    if tags:
+                        # Logic for tags
+                        if "Destacados" in tags:
+                             variants['section'] = 'featured'
+                        elif "Liquidaciones" in tags:
+                             variants['section'] = 'interest'
+                             variants['interest_tag'] = 'oferta' # Default for Liquidaciones
+                        elif "Promociones" in tags:
+                             variants['section'] = 'interest'
+                             variants['interest_tag'] = 'promocion'
+                        elif "2x1" in tags:
+                             variants['section'] = 'interest'
+                             variants['interest_tag'] = '2x1'
+                    
+                    if not variants:
+                        continue
+                        
+                    v_json = json.dumps(variants)
+                    
+                    cur.execute(
+                        "UPDATE products SET variants_json = ? WHERE tenant_slug = ? AND product_id = ?",
+                        (v_json, slug, pid)
                     )
             except Exception:
                 continue

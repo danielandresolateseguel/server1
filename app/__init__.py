@@ -60,6 +60,7 @@ def create_app(test_config=None):
         database.init_db()
         database.seed_products_from_config(app.config['CONFIG_DIR'])
         database.backfill_product_details_from_config(app.config['CONFIG_DIR'])
+        database.backfill_product_variants_from_config(app.config['CONFIG_DIR'])
         database.backfill_product_images_from_config(app.config['CONFIG_DIR'])
         database.seed_admin_users_from_env(app.config['CONFIG_DIR'])
 
@@ -70,18 +71,14 @@ def create_app(test_config=None):
     # Register Blueprints
     from .blueprints import auth, orders, cash, products, carousel, public, archive, tenants, system
     
-    print("DEBUG: Registrando blueprints...")
     app.register_blueprint(auth.bp)
     app.register_blueprint(orders.bp)
     app.register_blueprint(cash.bp)
     app.register_blueprint(products.bp)
     app.register_blueprint(carousel.bp)
     app.register_blueprint(archive.bp)
-    print("DEBUG: Registrando blueprint tenants...")
     app.register_blueprint(tenants.bp)
-    print("DEBUG: Registrando blueprint system...")
     app.register_blueprint(system.bp)
-    print("DEBUG: Blueprints registrados.")
 
     # Register public last to avoid catching API routes
     app.register_blueprint(public.bp)

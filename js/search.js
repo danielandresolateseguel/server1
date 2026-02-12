@@ -432,8 +432,19 @@ export function initSearch() {
     const searchForm = document.getElementById('search-form');
     const suggestionsDropdown = document.getElementById('search-suggestions-dropdown');
     const clearAllHistoryBtn = document.getElementById('clear-all-history');
+    const clearSearchBtn = document.getElementById('clear-search-btn');
     
     refreshSearchableItems();
+
+    if (clearSearchBtn) {
+        clearSearchBtn.addEventListener('click', () => {
+            if (searchInput) {
+                searchInput.value = '';
+                searchInput.dispatchEvent(new Event('input'));
+                searchInput.focus();
+            }
+        });
+    }
 
     if (searchInput && suggestionsDropdown) {
         searchInput.addEventListener('focus', () => {

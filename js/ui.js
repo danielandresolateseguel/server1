@@ -2,6 +2,7 @@
  * UI Animations and Interactions
  */
 import { addToCart, updateCartDisplay, updateCartCount } from './cart.js';
+import { refreshSearchableItems } from './search.js';
 
 // Animación de añadir al carrito
 export function showAddToCartAnimation(event) {
@@ -182,11 +183,25 @@ export function updateDiscountNavButtons() {
     
     if (!container || !prevBtn || !nextBtn) return;
     
-    const isAtStart = container.scrollLeft <= 0;
-    const isAtEnd = container.scrollLeft >= (container.scrollWidth - container.clientWidth - 1);
+    // Check if scrollable
+    const maxScroll = container.scrollWidth - container.clientWidth;
+    if (maxScroll <= 0) {
+        prevBtn.style.display = 'none';
+        nextBtn.style.display = 'none';
+        return;
+    } else {
+        prevBtn.style.display = '';
+        nextBtn.style.display = '';
+    }
+
+    const isAtStart = container.scrollLeft <= 5; // Tolerance
+    const isAtEnd = container.scrollLeft >= (maxScroll - 5);
     
     prevBtn.disabled = isAtStart;
     nextBtn.disabled = isAtEnd;
+    
+    prevBtn.style.opacity = isAtStart ? '0.5' : '1';
+    nextBtn.style.opacity = isAtEnd ? '0.5' : '1';
 }
 
 // Auto-scroll logic
@@ -254,20 +269,29 @@ export function initProductModals() {
         modal.dataset.bound = 'true';
     }
 
-    const productCards = document.querySelectorAll('.product-card');
-    productCards.forEach(card => {
-        if (card.dataset.modalBound === 'true') return;
-        card.style.cursor = 'pointer';
-        card.addEventListener('click', (e) => {
+    // Event Delegation for Product Cards (Handles static and dynamic content)
+    if (document.body.dataset.modalsInitialized !== 'true') {
+        document.body.addEventListener('click', (e) => {
+            const card = e.target.closest('.product-card');
+            if (!card) return;
+            
+            // Ignore if clicking add-to-cart button or its children
             if (e.target.closest('.add-to-cart-btn')) {
                 return;
             }
+            
+            // Optional: Ignore if selecting text?
+            if (window.getSelection().toString().length > 0) return;
+
             e.preventDefault();
-            e.stopPropagation();
+            // e.stopPropagation(); // Optional, but safer to let it bubble if needed, but here we want to capture
             openProductModal(card);
         });
-        card.dataset.modalBound = 'true';
-    });
+        document.body.dataset.modalsInitialized = 'true';
+    }
+
+    // Legacy manual binding removed in favor of delegation
+    // This ensures both static "Platos Destacados" and dynamic products work immediately
 
     function openProductModal(card) {
         const img = card.querySelector('img');
@@ -503,14 +527,17 @@ export async function initDynamicProducts() {
                 '<h3>' + (p.name || '') + '</h3>' +
                 '<p class="product-description">' + (p.details || '') + '</p>' +
                 '<div class="price-container">' +
-                '<p class="product-price">' + priceText + '</p>' +
+                (priceText ? '<p class="product-price">' + priceText + '</p>' : '') +
                 '</div>' +
-                '<button class="add-to-cart-btn" data-id="' + p.id + '" data-name="' + (p.name || '') + '" data-price="' + (priceVal || 0) + '">Añadir al carrito</button>' +
+                '<button class="add-to-cart-btn" data-id="' + p.id + '" data-name="' + (p.name || '') + '" data-price="' + priceVal + '">Añadir al carrito</button>' +
                 '</div>';
             targetGrid.appendChild(card);
         });
         bindAddToCartEvents(document);
+
+        // Re-initialize modals and search items after dynamic content is loaded
         initProductModals();
+        refreshSearchableItems();
         
         // Disparar evento para notificar que los productos se cargaron
         document.dispatchEvent(new CustomEvent('productsLoaded'));
