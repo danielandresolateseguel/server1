@@ -533,7 +533,7 @@ def update_order_content(order_id):
     if not row:
         return jsonify({'error': 'orden no encontrada'}), 404
     
-    status, tenant_slug = row
+    status, tenant_slug, _ = row
     if status in ('entregado', 'cancelado'):
         return jsonify({'error': 'no se puede editar una orden finalizada'}), 400
 
