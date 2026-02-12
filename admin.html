@@ -7556,6 +7556,110 @@
       font-weight: 700 !important;
     }
   }
+
+  /* Table Management Responsive Styles */
+  #table-management {
+    width: 100%;
+    overflow-x: hidden;
+    padding-bottom: 80px; /* Space for bottom scroll/content */
+  }
+
+  #table-management .tm-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  #table-management .tm-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    background: #fff;
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+  }
+
+  #restaurant-map {
+    width: 100%;
+    height: 65vh;
+    min-height: 400px;
+    overflow: auto;
+    position: relative;
+    background-color: #f0f3f8;
+    background-image: radial-gradient(#dfe3eb 1px, transparent 1px);
+    background-size: 20px 20px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.05);
+    touch-action: none; /* Prevent browser scroll when dragging tables */
+  }
+
+  @media (max-width: 768px) {
+    #table-management .tm-row {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+    }
+
+    /* Target direct children divs of tm-row (control groups) */
+    #table-management .tm-row > div {
+      display: flex !important;
+      flex-wrap: wrap;
+      gap: 8px;
+      width: 100%;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Hide the vertical divider */
+    #table-management .tm-row > div[style*="width: 1px"],
+    #table-management .tm-row > div[style*="width:1px"] {
+      display: none !important;
+    }
+
+    /* Make selects and buttons touch-friendly */
+    #table-management select {
+      flex: 1;
+      height: 42px;
+      font-size: 16px; /* Prevent zoom on iOS */
+    }
+
+    #table-management button {
+      height: 42px;
+      padding: 0 16px;
+      font-size: 14px;
+    }
+
+    /* Legend adjustments */
+    #table-management .tm-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      width: 100%;
+      margin-top: 4px;
+    }
+    
+    #table-management .tm-legend .legend-item {
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    /* Specific overrides for layout */
+    #tm-zone-select { flex: 1; }
+    #tm-shape-select, #tm-size-select { flex: 1; min-width: 120px; }
+    
+    /* Ensure action buttons are visible and clickable */
+    #tm-add-table, #tm-merge-btn {
+      flex: 1 1 auto;
+      white-space: nowrap;
+    }
+  }
 </style>
 <!-- Create Order Modal -->
 <div id="create-order-modal" class="kds-modal">
