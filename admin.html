@@ -7224,12 +7224,16 @@
           el.style.cssText = 'border: 1px solid #eee; border-radius: 8px; padding: 10px; background: #fff; cursor: pointer; transition: all 0.2s; display:flex; flex-direction:column; justify-content:space-between; height: 100%;';
           el.onmouseover = () => el.style.borderColor = '#bbb';
           el.onmouseout = () => el.style.borderColor = '#eee';
+          const hasDetails = p.details && p.details.trim().length > 0;
           el.innerHTML = `
-            <div>
-              <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px; line-height: 1.2;">${p.name}</div>
-              <div style="font-size: 11px; color: #888; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${p.details || ''}</div>
+            <div style="flex:1;">
+              <div style="display:flex; align-items:center; margin-bottom: 2px;">
+                 <span style="font-weight: 600; font-size: 14px; line-height: 1.2;">${p.name}</span>
+                 ${hasDetails ? `<span class="info-icon" style="margin-left:8px; color:#2196F3; font-size:16px; padding:0 4px; cursor:pointer;" onclick="event.stopPropagation(); this.closest('.product-card-simple').querySelector('.prod-detail-text').classList.toggle('visible');">&#9432;</span>` : ''}
+              </div>
+              <div class="prod-detail-text" style="font-size: 11px; color: #888;">${p.details || ''}</div>
             </div>
-            <div style="margin-top: 8px; font-weight: 700; color: #2e7d32; text-align: right;">$${p.price}</div>
+            <div style="font-weight: 700; color: #2e7d32; text-align: right;">$${p.price}</div>
           `;
           el.onclick = () => addToCart(p);
           productsGrid.appendChild(el);
@@ -7514,8 +7518,37 @@
       margin-bottom: 2px !important;
       font-size: 14px !important;
     }
-    #new-order-products .product-card-simple > div:first-child > div:last-child {
-      display: none !important; /* Hide description for compact view */
+    #new-order-products .product-card-simple .prod-detail-text {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      font-size: 11px;
+      color: #888;
+    }
+    #new-order-products .product-card-simple .prod-detail-text.visible {
+      display: block !important;
+      -webkit-line-clamp: unset;
+    }
+  }
+
+  @media (max-width: 900px) {
+    #create-order-modal .create-order-body {
+      flex-direction: column;
+      overflow: hidden;
+    }
+    /* ... (rest of media query) ... */
+    #new-order-products .product-card-simple > div:first-child > div:first-child {
+      margin-bottom: 2px !important;
+      font-size: 14px !important;
+    }
+    #new-order-products .product-card-simple .prod-detail-text {
+      display: none; /* Hide description for compact view */
+    }
+    #new-order-products .product-card-simple .prod-detail-text.visible {
+      display: block !important; /* Visible when toggled */
+      margin-top: 4px;
+      white-space: normal;
     }
     #new-order-products .product-card-simple > div:last-child {
       margin-top: 0 !important;
