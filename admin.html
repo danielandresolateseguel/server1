@@ -507,6 +507,15 @@
       box-shadow: 0 0 0 3px #2196F3, 0 8px 12px rgba(0,0,0,0.15);
       z-index: 50;
     }
+
+    .table-item.draggable-active {
+      cursor: grabbing;
+      opacity: 0.8;
+      box-shadow: 0 12px 20px rgba(0,0,0,0.25);
+      z-index: 100 !important;
+      transform: scale(1.1);
+      transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
     
     .table-total {
       font-weight: 800;
@@ -8044,6 +8053,17 @@
 
       // Global Drag Handlers (moved out of render loop to prevent memory leaks and bugs)
       const handleMove = (clientX, clientY) => {
+        // Cancel timer if moved significantly while holding
+        if (!dragState.active && dragState.timer && dragState.el) {
+             const moveX = Math.abs(clientX - dragState.startX);
+             const moveY = Math.abs(clientY - dragState.startY);
+             if (moveX > 5 || moveY > 5) {
+                 clearTimeout(dragState.timer);
+                 dragState.timer = null;
+             }
+             return;
+        }
+
         if (!dragState.active || !dragState.el) return;
         
         const dx = clientX - dragState.startX;
@@ -8053,8 +8073,24 @@
         
         // Update model
         if (dragState.table) {
-          dragState.table.x = dragState.initialLeft + dx;
-          dragState.table.y = dragState.initialTop + dy;
+          // Boundary Checks
+          const map = document.getElementById('restaurant-map');
+          const mapWidth = map.offsetWidth || 1000;
+          const mapHeight = map.offsetHeight || 800;
+          const elWidth = dragState.el.offsetWidth;
+          const elHeight = dragState.el.offsetHeight;
+
+          let newX = dragState.initialLeft + dx;
+          let newY = dragState.initialTop + dy;
+
+          // Clamp values (keep inside map)
+          if (newX < 0) newX = 0;
+          if (newY < 0) newY = 0;
+          if (newX + elWidth > mapWidth) newX = mapWidth - elWidth;
+          if (newY + elHeight > mapHeight) newY = mapHeight - elHeight;
+
+          dragState.table.x = newX;
+          dragState.table.y = newY;
           
           // Update DOM
           dragState.el.style.left = dragState.table.x + 'px';
@@ -8063,6 +8099,12 @@
       };
 
       const handleEnd = () => {
+        // Clear long press timer if it exists
+        if (dragState.timer) {
+            clearTimeout(dragState.timer);
+            dragState.timer = null;
+        }
+
         if (dragState.active) {
           // Set flag if moved so click handler knows to ignore
           if (dragState.hasMoved && dragState.el) {
@@ -8070,12 +8112,18 @@
              saveData();
           }
 
-          dragState.active = false;
-          if (dragState.el) dragState.el.style.zIndex = '';
-          
-          dragState.el = null;
-          dragState.table = null;
+          // Remove visual feedback
+          if (dragState.el) {
+              dragState.el.classList.remove('draggable-active');
+              dragState.el.style.zIndex = '';
+          }
         }
+        
+        // Always reset state
+        dragState.active = false;
+        dragState.el = null;
+        dragState.table = null;
+        dragState.hasMoved = false;
       };
 
       window.addEventListener('mousemove', (e) => handleMove(e.clientX, e.clientY));
@@ -8083,10 +8131,25 @@
 
       // Touch Events Support
       window.addEventListener('touchmove', (e) => {
-        if (!dragState.active) return;
-        e.preventDefault(); // Prevent scrolling while dragging
-        const touch = e.touches[0];
-        handleMove(touch.clientX, touch.clientY);
+        // If active, it's a drag -> prevent default (scroll)
+        if (dragState.active) {
+            e.preventDefault(); 
+            const touch = e.touches[0];
+            handleMove(touch.clientX, touch.clientY);
+        } else {
+            // If not active (waiting for long press), check if user moved too much
+            // If moved significantly while holding, cancel the long press timer
+            if (dragState.timer) {
+                const touch = e.touches[0];
+                const moveX = Math.abs(touch.clientX - dragState.startX);
+                const moveY = Math.abs(touch.clientY - dragState.startY);
+                // Allow small jitter (10px)
+                if (moveX > 10 || moveY > 10) {
+                    clearTimeout(dragState.timer);
+                    dragState.timer = null;
+                }
+            }
+        }
       }, { passive: false });
 
       window.addEventListener('touchend', handleEnd);
@@ -8112,6 +8175,11 @@
                    // Sync to local storage so populateTableSelect can see it
                    localStorage.setItem('kds_tables_' + slug, JSON.stringify(data));
                    ensureCurrentZone();
+                   // Fix potential out-of-bounds tables (negative coordinates)
+                   data.zones.forEach(z => z.tables.forEach(t => {
+                       if (t.x < 0) t.x = 10;
+                       if (t.y < 0) t.y = 10;
+                   }));
                    renderZones();
                    renderTables();
                    return;
@@ -8140,6 +8208,12 @@
           }
           ensureCurrentZone();
           
+          // Fix potential out-of-bounds tables
+          data.zones.forEach(z => z.tables.forEach(t => {
+              if (t.x < 0) t.x = 10;
+              if (t.y < 0) t.y = 10;
+          }));
+
           // If we found local data but server was empty/default, sync to server
           saveData(); 
         } catch(e) {}
@@ -8265,7 +8339,8 @@
       startY: 0,
       initialLeft: 0,
       initialTop: 0,
-      hasMoved: false
+      hasMoved: false,
+      timer: null
     };
 
     window.printBill = async function(orderId) {
@@ -9016,8 +9091,8 @@
           el.classList.add('selected');
           updateToolbarState();
 
-          // Init Drag
-          dragState.active = true;
+          // Init Drag with Long Press Timer
+          dragState.active = false; // Wait for timer
           dragState.el = el;
           dragState.table = table;
           dragState.startX = e.clientX;
@@ -9026,13 +9101,19 @@
           dragState.initialTop = table.y;
           dragState.hasMoved = false;
           
-          el.style.zIndex = 100;
+          // Start 3s timer
+          dragState.timer = setTimeout(() => {
+              dragState.active = true;
+              el.classList.add('draggable-active');
+              if (navigator.vibrate) navigator.vibrate(50);
+          }, 3000);
         });
 
         // Touch Start Handler
         el.addEventListener('touchstart', (e) => {
           if (e.touches.length > 1) return; 
-          e.preventDefault(); 
+          // Do NOT prevent default here, so user can scroll if they don't hold long enough
+          // e.preventDefault(); 
           e.stopPropagation();
 
           delete el.dataset.wasDragging;
@@ -9042,7 +9123,7 @@
           el.classList.add('selected');
           updateToolbarState();
 
-          dragState.active = true;
+          dragState.active = false; // Wait for timer
           dragState.el = el;
           dragState.table = table;
           const touch = e.touches[0];
@@ -9052,8 +9133,13 @@
           dragState.initialTop = table.y;
           dragState.hasMoved = false;
           
-          el.style.zIndex = 100;
-        }, { passive: false });
+          // Start 3s timer
+          dragState.timer = setTimeout(() => {
+              dragState.active = true;
+              el.classList.add('draggable-active');
+              if (navigator.vibrate) navigator.vibrate(50);
+          }, 3000);
+        }, { passive: true }); // Passive true so scrolling works initially
 
         // Revised Click Handler
         el.onclick = (e) => {
