@@ -551,20 +551,41 @@
     .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
 
     @media (max-width: 768px) {
-      /* Hide Zone Management Buttons */
-      #tm-edit-zone, #tm-add-zone, #tm-del-zone { display: none !important; }
+      /* Show toggle button on mobile */
+      #tm-toggle-tools { display: block !important; width: 100%; margin-bottom: 8px; text-align: center; }
 
-      /* Hide Table Management Tools */
+      /* Hide Zone Management Row by default on mobile */
+      .tm-zone-row { display: none !important; }
+      
+      /* ...but show it when 'show-tools' class is present on the toolbar */
+      .tm-toolbar.show-tools .tm-zone-row { display: flex !important; }
+      
+      /* Hide Zone Management Buttons (always hidden on mobile to save extreme space? or should they be toggled too?) 
+         Let's toggle them with the rest. */
+      /* #tm-edit-zone, #tm-add-zone, #tm-del-zone { display: none !important; } REMOVED this hard hide */
+
+      /* Hide Table Management Tools by default */
       .tm-tools-creation,
       .tm-tools-manipulation,
       .tm-separator { display: none !important; }
 
-      /* Hide Save Button and Legend items */
+      /* Show them when toggled */
+      .tm-toolbar.show-tools .tm-tools-creation,
+      .tm-toolbar.show-tools .tm-tools-manipulation,
+      .tm-toolbar.show-tools .tm-separator { display: flex !important; }
+      .tm-toolbar.show-tools .tm-tools-creation { flex-wrap: wrap; }
+
+      /* Hide Save Button and Legend items by default */
       .tm-legend #tm-save-layout,
       .tm-legend .legend-item { display: none !important; }
 
-      /* Ensure Close button is visible and takes full width for better UX */
-      .tm-legend { width: 100%; }
+      /* Show them when toggled */
+      .tm-toolbar.show-tools .tm-legend #tm-save-layout,
+      .tm-toolbar.show-tools .tm-legend .legend-item { display: flex !important; }
+
+      /* Adjust Legend Container for Mobile */
+      .tm-legend { width: 100%; flex-direction: column; align-items: stretch; gap: 8px; }
+      
       .tm-legend #tm-close-btn { 
         display: block !important; 
         width: 100%; 
@@ -984,7 +1005,7 @@
   <section id="table-management">
     <div class="tm-toolbar">
       <!-- Zone Controls -->
-      <div class="tm-row" style="background: #f5f7fb; padding: 8px; border-radius: 6px;">
+      <div class="tm-row tm-zone-row" style="background: #f5f7fb; padding: 8px; border-radius: 6px;">
         <h2 style="margin:0; font-size:1.2rem; color:#425b76;">Salón:</h2>
         <select id="tm-zone-select" style="padding:6px; min-width: 150px; border:1px solid #ccc; border-radius:4px; font-weight:600;"></select>
         <button id="tm-edit-zone" title="Renombrar Salón" style="background:#fff; color:#333; border:1px solid #ccc; padding:6px;"><svg style="width:16px;height:16px;" viewBox="0 0 24 24"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
@@ -1029,6 +1050,7 @@
         </div>
 
         <div class="tm-legend">
+          <button id="tm-toggle-tools" style="display:none; background:#607d8b; color:#fff; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">Herramientas</button>
           <button id="tm-close-btn" style="background:#f44336; color:#fff; margin-right: 12px; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">Cerrar</button>
           <button id="tm-save-layout" style="background:#2196F3; color:#fff; margin-right: 12px;">Guardar Distribución</button>
           <div class="legend-item"><div class="legend-dot" style="background:#4caf50;"></div> Libre</div>
@@ -7852,9 +7874,16 @@
 
       // Navigation
       tmBtn.addEventListener('click', () => {
-        document.querySelectorAll('section.grid, #analytics').forEach(el => el.style.display = 'none');
+        // Keep section.grid visible so Entregados/Cancelados/etc are accessible
+        const analytics = document.getElementById('analytics');
+        if (analytics) analytics.style.display = 'none';
+        
         document.body.classList.remove('show-analytics');
         tmSection.style.display = 'block';
+        
+        // Scroll to map section
+        setTimeout(() => tmSection.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+
         renderZones();
         renderTables();
       });
@@ -9216,6 +9245,24 @@
       });
       
       updateToolbarState();
+    }
+
+    // Event listener for mobile tools toggle
+    const tmToggleTools = document.getElementById('tm-toggle-tools');
+    if (tmToggleTools) {
+      tmToggleTools.addEventListener('click', function() {
+        const toolbar = document.querySelector('.tm-toolbar');
+        toolbar.classList.toggle('show-tools');
+        
+        // Update button text based on state
+        if (toolbar.classList.contains('show-tools')) {
+          this.textContent = 'Ocultar Herramientas';
+          this.style.backgroundColor = '#546e7a';
+        } else {
+          this.textContent = 'Herramientas';
+          this.style.backgroundColor = '#607d8b';
+        }
+      });
     }
 
     if (document.readyState === 'loading') {
