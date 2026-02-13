@@ -7562,9 +7562,14 @@
     width: 100%;
     overflow-x: hidden;
     padding-bottom: 80px; /* Space for bottom scroll/content */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
 
   #table-management .tm-toolbar {
+    width: 100%;
+    max-width: 100%;
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -7594,7 +7599,8 @@
     border: 1px solid #ccc;
     border-radius: 8px;
     box-shadow: inset 0 2px 6px rgba(0,0,0,0.05);
-    touch-action: none; /* Prevent browser scroll when dragging tables */
+    touch-action: pan-x pan-y; /* Allow scrolling, drag handled by elements */
+    margin: 0 auto;
   }
 
   @media (max-width: 768px) {
@@ -8037,11 +8043,11 @@
       });
 
       // Global Drag Handlers (moved out of render loop to prevent memory leaks and bugs)
-      window.addEventListener('mousemove', (e) => {
+      const handleMove = (clientX, clientY) => {
         if (!dragState.active || !dragState.el) return;
         
-        const dx = e.clientX - dragState.startX;
-        const dy = e.clientY - dragState.startY;
+        const dx = clientX - dragState.startX;
+        const dy = clientY - dragState.startY;
         
         if (Math.abs(dx) > 2 || Math.abs(dy) > 2) dragState.hasMoved = true;
         
@@ -8054,9 +8060,9 @@
           dragState.el.style.left = dragState.table.x + 'px';
           dragState.el.style.top = dragState.table.y + 'px';
         }
-      });
+      };
 
-      window.addEventListener('mouseup', () => {
+      const handleEnd = () => {
         if (dragState.active) {
           // Set flag if moved so click handler knows to ignore
           if (dragState.hasMoved && dragState.el) {
@@ -8070,7 +8076,20 @@
           dragState.el = null;
           dragState.table = null;
         }
-      });
+      };
+
+      window.addEventListener('mousemove', (e) => handleMove(e.clientX, e.clientY));
+      window.addEventListener('mouseup', handleEnd);
+
+      // Touch Events Support
+      window.addEventListener('touchmove', (e) => {
+        if (!dragState.active) return;
+        e.preventDefault(); // Prevent scrolling while dragging
+        const touch = e.touches[0];
+        handleMove(touch.clientX, touch.clientY);
+      }, { passive: false });
+
+      window.addEventListener('touchend', handleEnd);
     }
 
     async function loadData() {
@@ -9009,6 +9028,32 @@
           
           el.style.zIndex = 100;
         });
+
+        // Touch Start Handler
+        el.addEventListener('touchstart', (e) => {
+          if (e.touches.length > 1) return; 
+          e.preventDefault(); 
+          e.stopPropagation();
+
+          delete el.dataset.wasDragging;
+
+          selectedTableId = table.id;
+          document.querySelectorAll('.table-item').forEach(item => item.classList.remove('selected'));
+          el.classList.add('selected');
+          updateToolbarState();
+
+          dragState.active = true;
+          dragState.el = el;
+          dragState.table = table;
+          const touch = e.touches[0];
+          dragState.startX = touch.clientX;
+          dragState.startY = touch.clientY;
+          dragState.initialLeft = table.x;
+          dragState.initialTop = table.y;
+          dragState.hasMoved = false;
+          
+          el.style.zIndex = 100;
+        }, { passive: false });
 
         // Revised Click Handler
         el.onclick = (e) => {
