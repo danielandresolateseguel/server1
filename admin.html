@@ -9101,12 +9101,12 @@
           dragState.initialTop = table.y;
           dragState.hasMoved = false;
           
-          // Start 3s timer
+          // Start 0.5s timer (improved sensitivity)
           dragState.timer = setTimeout(() => {
               dragState.active = true;
               el.classList.add('draggable-active');
               if (navigator.vibrate) navigator.vibrate(50);
-          }, 3000);
+          }, 500);
         });
 
         // Touch Start Handler
@@ -9133,12 +9133,12 @@
           dragState.initialTop = table.y;
           dragState.hasMoved = false;
           
-          // Start 3s timer
+          // Start 0.5s timer (improved sensitivity)
           dragState.timer = setTimeout(() => {
               dragState.active = true;
               el.classList.add('draggable-active');
               if (navigator.vibrate) navigator.vibrate(50);
-          }, 3000);
+          }, 500);
         }, { passive: true }); // Passive true so scrolling works initially
 
         // Revised Click Handler
