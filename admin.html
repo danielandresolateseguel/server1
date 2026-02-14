@@ -7604,15 +7604,18 @@
   #new-order-products {
     height: 100%;
     min-height: 0;
-    overflow-y: auto;
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch;
     scrollbar-gutter: stable;
   }
   #create-order-modal .create-order-right > div:first-child {
     height: 100%;
     min-height: 0;
-    overflow-y: auto;
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch;
     scrollbar-gutter: stable;
   }
+  #create-order-modal .kds-modal-content { overflow: hidden !important; }
 
   @media (max-width: 900px) {
     #create-order-modal .create-order-body {
