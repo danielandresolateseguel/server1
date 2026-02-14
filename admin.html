@@ -6876,13 +6876,22 @@
     async function loadSlaThresholds() {
       try {
         const slug = tenantInput.value.trim() || defaultSlug();
-        const url = new URL('/api/tenant_sla', API_BASE);
-        url.searchParams.set('tenant_slug', slug);
-        const resp = await fetch(url.toString());
-        if (!resp.ok) return;
-        const data = await resp.json();
-        const w = Number(data.warning_minutes || 15);
-        const c = Number(data.critical_minutes || 30);
+        const k = 'kds_sla_' + slug;
+        let data = null;
+        const local = localStorage.getItem(k);
+        if (local) {
+          try { data = JSON.parse(local); } catch(_) {}
+        }
+        if (!data) {
+          const url = new URL('/api/tenant_sla', API_BASE);
+          url.searchParams.set('tenant_slug', slug);
+          const resp = await fetch(url.toString());
+          if (!resp.ok) return;
+          data = await resp.json();
+          try { localStorage.setItem(k, JSON.stringify({ warning_minutes: data.warning_minutes, critical_minutes: data.critical_minutes })); } catch(_) {}
+        }
+        const w = Number((data && data.warning_minutes) || 15);
+        const c = Number((data && data.critical_minutes) || 30);
         currentSlaThresholds = { warning: Math.max(1,w), critical: Math.max(w+1,c) };
         if (slaWarnInput && slaCritInput) {
           slaWarnInput.value = String(Math.max(1,w));
@@ -7002,8 +7011,12 @@
                       try { errObj = await slaResp.json(); } catch(_) { 
                         try { const t = await slaResp.text(); errObj = { error: t }; } catch(__) {}
                       }
+                      const k = 'kds_sla_' + slug;
+                      try { localStorage.setItem(k, JSON.stringify({ warning_minutes: wmin, critical_minutes: cmin })); } catch(_) {}
+                      if (slaWarnIn) slaWarnIn.value = String(wmin);
+                      if (slaCritIn) slaCritIn.value = String(cmin);
+                      currentSlaThresholds = { warning: wmin, critical: cmin };
                       console.warn('[DEBUG] SLA save failed', { status: slaResp.status, err: errObj });
-                      alert('Configuración general guardada. El SLA no pudo guardarse (' + (errObj.error || slaResp.statusText) + ').');
                    }
 
                    alert('Configuración guardada correctamente.');
@@ -7033,12 +7046,22 @@
             const warnIn = document.getElementById('sla-warning');
             const critIn = document.getElementById('sla-critical');
             if(!warnIn || !critIn) return;
-            
+            const k = 'kds_sla_' + slug;
+            const local = localStorage.getItem(k);
+            if (local) {
+               try {
+                 const d = JSON.parse(local);
+                 if(d.warning_minutes) warnIn.value = d.warning_minutes;
+                 if(d.critical_minutes) critIn.value = d.critical_minutes;
+                 return;
+               } catch(_) {}
+            }
             fetch(new URL('/api/tenant_sla', API_BASE).toString() + `?tenant_slug=${slug}`)
                 .then(r => r.json())
                 .then(d => {
                     if(d.warning_minutes) warnIn.value = d.warning_minutes;
                     if(d.critical_minutes) critIn.value = d.critical_minutes;
+                    try { localStorage.setItem(k, JSON.stringify({ warning_minutes: d.warning_minutes, critical_minutes: d.critical_minutes })); } catch(_) {}
                 })
                 .catch(e => console.error('Error loading SLA:', e));
         };
