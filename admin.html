@@ -628,7 +628,14 @@
       .tm-legend #tm-save-layout,
       .tm-legend .legend-item { display: none !important; }
       .tm-legend { width: 100%; flex-direction: column; align-items: stretch; gap: 8px; }
-      .tm-legend #tm-close-btn { display: block !important; width: 100%; margin-right: 0 !important; text-align: center; }
+      .tm-legend #tm-close-btn {
+        display: inline-flex !important;
+        width: auto !important;
+        padding: 8px 16px !important;
+        margin: 0 auto !important;
+        text-align: center;
+        align-self: center;
+      }
     }
   </style>
   </head>
