@@ -299,6 +299,18 @@
     #order-detail h3 { margin-top: 12px; margin-bottom: 8px; }
     .detail-items-table { width:100%; border-collapse: collapse; }
     .detail-items-table th, .detail-items-table td { border-bottom:1px solid #eee; padding:6px 8px; font-size:14px; }
+    .detail-items-mobile { display:none; }
+    @media (max-width: 768px) {
+      .detail-items-mobile { display:block; }
+      .detail-items-mobile .row { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #eee; }
+      .detail-items-mobile .row .left { display:flex; gap:6px; align-items:center; }
+      .detail-items-mobile .row .qty { font-weight:600; color:#374151; }
+      .detail-items-mobile .row .name { color:#111827; }
+      .detail-items-mobile .row .subtotal { color:#111827; font-weight:600; }
+      .detail-items-mobile .note { color:#e65100; font-size:12px; font-style:italic; margin:4px 0 8px 0; }
+      .detail-items-table thead { display: table-header-group !important; }
+      .detail-items-table th:nth-child(2), .detail-items-table td:nth-child(2) { display: table-cell !important; }
+    }
     .detail-summary { margin-top: 8px; font-weight: 600; }
     .kds-modal { position: fixed; inset: 0; display: none; z-index: 10000; }
     .kds-modal.active { display: flex; align-items: center; justify-content: center; }
@@ -2622,7 +2634,22 @@
 
           return `<tr ${rowStyle}><td>${qty}</td><td>${it.name}${newBadge}</td><td>$${unit}</td><td>$${subtotal}</td></tr>${notes ? `<tr><td colspan=4 class="small" style="color:#e65100; font-style:italic;">Nota: ${notes}</td></tr>` : ''}`;
         }).join('');
+        const itemsMobileRows = items.map(it => {
+          const qty = Number(it.qty || 0);
+          const unit = Number(it.unit_price || 0);
+          const subtotal = qty * unit;
+          const notes = (it.notes && it.notes !== 'null' && it.notes !== 'undefined') ? String(it.notes) : '';
+          return `<div class="row"><div class="left"><span class="qty">${qty}×</span><span class="name">${it.name}</span></div><div class="subtotal">$${subtotal}</div></div>${notes ? `<div class="note">Nota: ${notes}</div>` : ''}`;
+        }).join('');
         const itemsHtml = items.length ? `
+          <div class="detail-items-mobile">
+            <h3>Productos</h3>
+            ${itemsMobileRows}
+            <div class="detail-summary" style="text-align:right; margin-top:10px;">
+               ${(order.shipping_cost && order.shipping_cost > 0) ? `<div class="small">Subtotal: $${order.total - order.shipping_cost}</div><div class="small">Envío: $${order.shipping_cost}</div>` : ''}
+               <div style="font-weight:bold; font-size:1.1em;">Total: $${order.total}</div>
+            </div>
+          </div>
           <h3>Ítems</h3>
           <table class="detail-items-table">
             <thead><tr><th>Cant.</th><th>Producto</th><th>Unitario</th><th>Subtotal</th></tr></thead>
