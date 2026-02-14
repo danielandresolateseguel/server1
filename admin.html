@@ -7581,6 +7581,7 @@
     border-right: 1px solid var(--kds-border);
     background: #f9fafb;
     min-height: 300px;
+    min-height: 0; /* Allow inner scroll areas to shrink */
   }
 
   #create-order-modal .create-order-right {
@@ -7592,6 +7593,10 @@
     border-left: 1px solid var(--kds-border);
     box-shadow: -2px 0 10px rgba(0,0,0,0.05);
     z-index: 2;
+    min-height: 0; /* Enable child overflow scrollbars */
+  }
+  #create-order-modal .create-order-right > div {
+    min-height: 0; /* Ensure the scroll container can actually scroll */
   }
 
   @media (max-width: 900px) {
