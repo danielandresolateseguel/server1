@@ -562,15 +562,16 @@
         min-width: auto;
         height: auto;
         background: none;
-        display: flex;
-        flex-wrap: wrap;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
         gap: 8px;
         padding: 8px;
       }
       .table-item {
         position: static;
-        width: calc(33.33% - 8px);
-        min-height: 68px;
+        width: auto;
+        min-height: 52px;
+        box-sizing: border-box;
         padding: 6px;
       }
       /* Ocultar completamente herramientas en móviles */
@@ -7673,6 +7674,13 @@
       justify-content: space-between;
       align-items: center;
     }
+    /* Hard overrides: hide tool groups on mobile despite previous flex rule */
+    #table-management .tm-row > .tm-zone-row,
+    #table-management .tm-row > .tm-tools-creation,
+    #table-management .tm-row > .tm-tools-manipulation,
+    #table-management .tm-row > .tm-separator {
+      display: none !important;
+    }
 
     /* Hide the vertical divider */
     #table-management .tm-row > div[style*="width: 1px"],
@@ -7892,8 +7900,8 @@
             document.querySelectorAll(sel).forEach(el => { el.style.display = 'none'; });
           });
           if (mapContainer) {
-            mapContainer.style.display = 'flex';
-            mapContainer.style.flexWrap = 'wrap';
+            mapContainer.style.display = 'grid';
+            mapContainer.style.gridTemplateColumns = 'repeat(3, 1fr)';
             mapContainer.style.gap = '8px';
             mapContainer.style.padding = '8px';
             mapContainer.style.width = '100%';
@@ -9116,7 +9124,7 @@
           el.style.width = w + 'px';
           el.style.height = h + 'px';
         } else {
-          el.style.width = '33.33%';
+          el.style.width = '';
           el.style.height = '';
           el.style.boxSizing = 'border-box';
           el.style.padding = '6px';
