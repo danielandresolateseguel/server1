@@ -9277,23 +9277,7 @@
             return;
           }
 
-          if (isMobile) {
-            const newOrderBtn = document.getElementById('btn-new-order');
-            if (newOrderBtn) newOrderBtn.click();
-            setTimeout(() => {
-              const typeSelect = document.getElementById('new-order-type');
-              if(typeSelect) {
-                  typeSelect.value = 'mesa';
-                  typeSelect.dispatchEvent(new Event('change'));
-              }
-              const tableSelect = document.getElementById('new-order-table');
-              if(tableSelect) {
-                   tableSelect.value = table.label;
-              }
-            }, 200);
-          } else {
-            openTableDetails(table);
-          }
+          openTableDetails(table);
         };
 
         mapContainer.appendChild(el);
