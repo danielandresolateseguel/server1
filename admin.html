@@ -716,6 +716,72 @@
   <div id="cash-box" style="margin-bottom:12px;"></div>
   <div id="cash-history" style="margin-bottom:12px;"></div>
 
+  <!-- Table Management Section (moved up, just below Movimientos del día) -->
+  <section id="table-management" style="display:none;">
+    <div class="tm-toolbar">
+      <!-- Zone Controls -->
+      <div class="tm-row tm-zone-row" style="background: #f5f7fb; padding: 8px; border-radius: 6px;">
+        <h2 style="margin:0; font-size:1.2rem; color:#425b76;">Salón:</h2>
+        <select id="tm-zone-select" style="padding:6px; min-width: 150px; border:1px solid #ccc; border-radius:4px; font-weight:600;"></select>
+        <button id="tm-edit-zone" title="Renombrar Salón" style="background:#fff; color:#333; border:1px solid #ccc; padding:6px;"><svg style="width:16px;height:16px;" viewBox="0 0 24 24"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
+        <button id="tm-add-zone" title="Nuevo Salón" style="background:#fff; color:#333; border:1px solid #ccc; padding:6px;">+ Nuevo</button>
+        <button id="tm-del-zone" title="Eliminar Salón" style="background:#fff; color:#d32f2f; border:1px solid #ccc; padding:6px;"><svg style="width:16px;height:16px;" viewBox="0 0 24 24"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
+      </div>
+
+      <!-- Table Controls -->
+      <div class="tm-row">
+        <div class="tm-tools-creation" style="display:flex; gap:8px; align-items:center;">
+          <select id="tm-shape-select" style="padding:6px; border:1px solid #ccc; border-radius:4px;">
+            <option value="rect">Rectangular</option>
+            <option value="round">Redonda</option>
+            <option value="bar">Barra</option>
+          </select>
+          <select id="tm-size-select" style="padding:6px; border:1px solid #ccc; border-radius:4px;">
+            <option value="small">Pequeña (2p)</option>
+            <option value="medium" selected>Mediana (4p)</option>
+            <option value="large">Grande (6-8p)</option>
+            <option value="xlarge">Extra Grande</option>
+          </select>
+          <button id="tm-add-table" style="background:#fff; color:#333; border:1px solid #ccc;">+ Agregar</button>
+          <button id="tm-merge-btn" style="background:#fff; color:#333; border:1px solid #ccc; margin-left: 4px;">🔗 Unir Mesas</button>
+          <div id="tm-merge-controls" style="display:none; align-items:center; gap:8px; margin-left:8px;">
+              <span id="tm-merge-msg" style="font-size:12px; color:#666;">Selecciona mesas...</span>
+              <button id="tm-confirm-merge" style="background:#4caf50; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">Confirmar</button>
+              <button id="tm-cancel-merge" style="background:#f44336; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">X</button>
+          </div>
+        </div>
+
+        <div class="tm-separator" style="height: 24px; width: 1px; background: #ddd; margin: 0 8px;"></div>
+
+        <div class="tm-tools-manipulation" style="display:flex; gap:8px; align-items:center;">
+          <button id="tm-rotate-btn" title="Rotar Seleccionada" disabled style="background:#fff; color:#333; border:1px solid #ccc; opacity: 0.5;">
+            <svg style="width:18px;height:18px;" viewBox="0 0 24 24"><path fill="currentColor" d="M16.48 2.52c3.27 1.55 5.61 4.72 5.97 8.48h1.5C23.44 4.84 18.29 0 12 0l-1 2h1l4.48.52zM12 5c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9h-2c0 3.86-3.14 7-7 7s-7-3.14-7-7 3.14-7 7-7V5zM7.52 21.48C4.25 19.94 1.91 16.76 1.55 13H.05C.56 19.16 5.71 24 12 24l1-2h-1l-4.48-.52z"/></svg>
+            Rotar
+          </button>
+          <button id="tm-del-btn" title="Eliminar Seleccionada" disabled style="background:#fff; color:#d32f2f; border:1px solid #ccc; opacity: 0.5;">
+            <svg style="width:18px;height:18px;" viewBox="0 0 24 24"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+            Eliminar
+          </button>
+        </div>
+
+        <div class="tm-legend">
+          <button id="tm-toggle-tools" style="display:none; background:#607d8b; color:#fff; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">Herramientas</button>
+          <button id="tm-close-btn" style="background:#f44336; color:#fff; margin-right: 12px; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">Cerrar</button>
+          <button id="tm-save-layout" style="background:#2196F3; color:#fff; margin-right: 12px;">Guardar Distribución</button>
+          <div class="legend-item"><div class="legend-dot" style="background:#4caf50;"></div> Libre</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#f44336;"></div> Ocupada</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#ff9800;"></div> Reservada</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#2196f3;"></div> Cuenta</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="map-wrapper">
+      <div id="restaurant-map" class="table-map-container">
+        <!-- Tables will be rendered here by JS -->
+      </div>
+    </div>
+  </section>
 
   <div id="login-box" style="border:1px solid #e0e0e0; border-radius:8px; padding:12px; margin-bottom:16px; max-width:360px;">
     <h2>Ingresar</h2>
@@ -1060,72 +1126,6 @@
   
   </section>
 
-  <!-- Table Management Section -->
-  <section id="table-management" style="display:none;">
-    <div class="tm-toolbar">
-      <!-- Zone Controls -->
-      <div class="tm-row tm-zone-row" style="background: #f5f7fb; padding: 8px; border-radius: 6px;">
-        <h2 style="margin:0; font-size:1.2rem; color:#425b76;">Salón:</h2>
-        <select id="tm-zone-select" style="padding:6px; min-width: 150px; border:1px solid #ccc; border-radius:4px; font-weight:600;"></select>
-        <button id="tm-edit-zone" title="Renombrar Salón" style="background:#fff; color:#333; border:1px solid #ccc; padding:6px;"><svg style="width:16px;height:16px;" viewBox="0 0 24 24"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
-        <button id="tm-add-zone" title="Nuevo Salón" style="background:#fff; color:#333; border:1px solid #ccc; padding:6px;">+ Nuevo</button>
-        <button id="tm-del-zone" title="Eliminar Salón" style="background:#fff; color:#d32f2f; border:1px solid #ccc; padding:6px;"><svg style="width:16px;height:16px;" viewBox="0 0 24 24"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
-      </div>
-
-      <!-- Table Controls -->
-      <div class="tm-row">
-        <div class="tm-tools-creation" style="display:flex; gap:8px; align-items:center;">
-          <select id="tm-shape-select" style="padding:6px; border:1px solid #ccc; border-radius:4px;">
-            <option value="rect">Rectangular</option>
-            <option value="round">Redonda</option>
-            <option value="bar">Barra</option>
-          </select>
-          <select id="tm-size-select" style="padding:6px; border:1px solid #ccc; border-radius:4px;">
-            <option value="small">Pequeña (2p)</option>
-            <option value="medium" selected>Mediana (4p)</option>
-            <option value="large">Grande (6-8p)</option>
-            <option value="xlarge">Extra Grande</option>
-          </select>
-          <button id="tm-add-table" style="background:#fff; color:#333; border:1px solid #ccc;">+ Agregar</button>
-          <button id="tm-merge-btn" style="background:#fff; color:#333; border:1px solid #ccc; margin-left: 4px;">🔗 Unir Mesas</button>
-          <div id="tm-merge-controls" style="display:none; align-items:center; gap:8px; margin-left:8px;">
-              <span id="tm-merge-msg" style="font-size:12px; color:#666;">Selecciona mesas...</span>
-              <button id="tm-confirm-merge" style="background:#4caf50; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">Confirmar</button>
-              <button id="tm-cancel-merge" style="background:#f44336; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">X</button>
-          </div>
-        </div>
-
-        <div class="tm-separator" style="height: 24px; width: 1px; background: #ddd; margin: 0 8px;"></div>
-
-        <div class="tm-tools-manipulation" style="display:flex; gap:8px; align-items:center;">
-          <button id="tm-rotate-btn" title="Rotar Seleccionada" disabled style="background:#fff; color:#333; border:1px solid #ccc; opacity: 0.5;">
-            <svg style="width:18px;height:18px;" viewBox="0 0 24 24"><path fill="currentColor" d="M16.48 2.52c3.27 1.55 5.61 4.72 5.97 8.48h1.5C23.44 4.84 18.29 0 12 0l-1 2h1l4.48.52zM12 5c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9h-2c0 3.86-3.14 7-7 7s-7-3.14-7-7 3.14-7 7-7V5zM7.52 21.48C4.25 19.94 1.91 16.76 1.55 13H.05C.56 19.16 5.71 24 12 24l1-2h-1l-4.48-.52z"/></svg>
-            Rotar
-          </button>
-          <button id="tm-del-btn" title="Eliminar Seleccionada" disabled style="background:#fff; color:#d32f2f; border:1px solid #ccc; opacity: 0.5;">
-            <svg style="width:18px;height:18px;" viewBox="0 0 24 24"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-            Eliminar
-          </button>
-        </div>
-
-        <div class="tm-legend">
-          <button id="tm-toggle-tools" style="display:none; background:#607d8b; color:#fff; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">Herramientas</button>
-          <button id="tm-close-btn" style="background:#f44336; color:#fff; margin-right: 12px; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">Cerrar</button>
-          <button id="tm-save-layout" style="background:#2196F3; color:#fff; margin-right: 12px;">Guardar Distribución</button>
-          <div class="legend-item"><div class="legend-dot" style="background:#4caf50;"></div> Libre</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#f44336;"></div> Ocupada</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#ff9800;"></div> Reservada</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#2196f3;"></div> Cuenta</div>
-        </div>
-      </div>
-    </div>
-    
-    <div class="map-wrapper">
-      <div id="restaurant-map" class="table-map-container">
-        <!-- Tables will be rendered here by JS -->
-      </div>
-    </div>
-  </section>
 
   <div id="order-detail-modal" class="kds-modal" aria-hidden="true" role="dialog" aria-modal="true">
     <div class="kds-modal-overlay"></div>
