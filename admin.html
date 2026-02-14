@@ -7587,21 +7587,22 @@
   #create-order-modal .create-order-right {
     flex: 0 0 320px; /* Fixed width on desktop */
     width: 320px;
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-rows: 1fr auto;
     position: relative;
     background: #fff;
     border-left: 1px solid var(--kds-border);
     box-shadow: -2px 0 10px rgba(0,0,0,0.05);
     z-index: 2;
     min-height: 0; /* Enable child overflow scrollbars */
-    overflow: hidden; /* allow inner scroller to show its own scrollbar */
+    overflow: hidden;
+    height: 100%;
   }
   #create-order-modal .create-order-right > div {
     min-height: 0; /* Ensure the scroll container can actually scroll */
   }
   #create-order-modal .create-order-body { min-height: 0; }
-  #create-order-modal .create-order-right .content-scroll { flex: 1; min-height: 0; overflow-y: auto; }
+  #create-order-modal .create-order-right .content-scroll { min-height: 0; overflow-y: auto; }
   #new-order-products {
     height: 100%;
     min-height: 0;
@@ -7617,8 +7618,8 @@
   #create-order-modal .create-order-right .content-scroll {
     scrollbar-width: thin;
     scrollbar-color: #c1c1c1 #eeeeee;
-    padding-bottom: 220px;
-    max-height: calc(90vh - 140px);
+    padding-bottom: 16px;
+    max-height: none;
   }
   #create-order-modal .create-order-right > div:first-child {
     height: 100%;
@@ -7631,10 +7632,7 @@
   #create-order-modal .create-order-right .content-scroll::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 6px; }
   #create-order-modal .create-order-right .content-scroll::-webkit-scrollbar-track { background: #eeeeee; }
   #create-order-modal .create-order-right > div:last-child {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    position: static;
     z-index: 3;
   }
 
