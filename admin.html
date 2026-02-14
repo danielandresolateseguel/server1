@@ -557,6 +557,11 @@
     .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
 
     @media (max-width: 768px) {
+      .map-wrapper {
+        display: flex;
+        justify-content: center;
+        padding: 8px;
+      }
       #restaurant-map {
         width: 100%;
         min-width: auto;
@@ -566,6 +571,15 @@
         grid-template-columns: repeat(3, 1fr);
         gap: 8px;
         padding: 8px;
+        justify-content: center; /* Center grid tracks if narrower */
+        align-content: start;
+      }
+      .table-map-container {
+        width: 100% !important;
+        min-width: 0 !important;
+        height: auto !important;
+        margin: 0 auto !important;
+        box-sizing: border-box;
       }
       .table-item {
         position: static;
