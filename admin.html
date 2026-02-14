@@ -6960,27 +6960,50 @@
 
                    // 2. Save SLA Config (robusto: CSRF + fallback método + tenant_slug en body)
                    if (!CSRF_TOKEN || CSRF_TOKEN === '') { try { await fetchCsrfToken(); } catch(e) {} }
-                   const slaUrl = new URL('/api/tenant_sla', API_BASE);
-                   slaUrl.searchParams.set('tenant_slug', slug);
-                   slaUrl.searchParams.set('slug', slug);
-                   const slaHeaders = { 'Content-Type': 'application/json' };
-                   if (CSRF_TOKEN) slaHeaders['X-CSRFToken'] = CSRF_TOKEN;
-                   if (csrfToken) slaHeaders['X-CSRF-Token'] = csrfToken;
-                   const slaPayload = { tenant_slug: slug, slug: slug, warning_minutes: Math.max(1, valSlaWarn), critical_minutes: Math.max(valSlaWarn+1, valSlaCrit) };
-                   const slaBody = JSON.stringify(slaPayload);
+                   const slugEnc = encodeURIComponent(slug);
+                   const jsonHeaders = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+                   const formHeaders = { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json' };
+                   if (CSRF_TOKEN) { jsonHeaders['X-CSRFToken'] = CSRF_TOKEN; formHeaders['X-CSRFToken'] = CSRF_TOKEN; }
+                   if (csrfToken) { jsonHeaders['X-CSRF-Token'] = csrfToken; formHeaders['X-CSRF-Token'] = csrfToken; }
+                   const wmin = Math.max(1, valSlaWarn);
+                   const cmin = Math.max(wmin+1, valSlaCrit);
+                   const slaJsonBody = JSON.stringify({ tenant_slug: slug, warning_minutes: wmin, critical_minutes: cmin });
+                   const slaFormBody = `tenant_slug=${slugEnc}&warning_minutes=${wmin}&critical_minutes=${cmin}`;
                    
-                   async function trySaveSla(method) {
-                      return fetch(slaUrl.toString(), { method, headers: slaHeaders, body: slaBody });
+                   async function trySave(method, url, headers, body) {
+                     return fetch(url, { method, headers, body });
                    }
                    
-                   let slaResp = await trySaveSla('PATCH');
-                   if (!slaResp.ok) slaResp = await trySaveSla('PUT');
-                   if (!slaResp.ok) slaResp = await trySaveSla('POST');
+                   const baseUrls = [
+                     new URL('/api/tenant_sla', API_BASE).toString() + `?tenant_slug=${slugEnc}`,
+                     new URL(`/api/tenant_sla/${slugEnc}`, API_BASE).toString(),
+                     new URL('/api/tenant_sla', API_BASE).toString() + `?tenant_slug=${slugEnc}&warning_minutes=${wmin}&critical_minutes=${cmin}`
+                   ];
+                   const methods = ['PATCH','PUT','POST'];
+                   const bodies = [
+                     { headers: jsonHeaders, body: slaJsonBody },
+                     { headers: formHeaders, body: slaFormBody },
+                     { headers: jsonHeaders, body: '' } // query-only
+                   ];
+                   
+                   let slaResp;
+                   outer:
+                   for (const u of baseUrls) {
+                     for (const m of methods) {
+                       for (const b of bodies) {
+                         slaResp = await trySave(m, u, b.headers, b.body);
+                         if (slaResp.ok) break outer;
+                       }
+                     }
+                   }
                    
                    if (!slaResp.ok) {
-                      const err = await slaResp.json().catch(()=>({}));
-                      console.warn('[DEBUG] SLA save failed', { status: slaResp.status, err });
-                      alert('Configuración general guardada. El SLA no pudo guardarse (' + (err.error || slaResp.statusText) + ').');
+                      let errObj = {};
+                      try { errObj = await slaResp.json(); } catch(_) { 
+                        try { const t = await slaResp.text(); errObj = { error: t }; } catch(__) {}
+                      }
+                      console.warn('[DEBUG] SLA save failed', { status: slaResp.status, err: errObj });
+                      alert('Configuración general guardada. El SLA no pudo guardarse (' + (errObj.error || slaResp.statusText) + ').');
                    }
 
                    alert('Configuración guardada correctamente.');
