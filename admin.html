@@ -564,55 +564,25 @@
         background: none;
         display: flex;
         flex-wrap: wrap;
-        gap: 12px;
+        gap: 8px;
         padding: 8px;
       }
       .table-item {
         position: static;
-        width: calc(50% - 12px);
-        height: auto;
+        width: calc(33.33% - 8px);
+        min-height: 68px;
+        padding: 6px;
       }
-      /* Show toggle button on mobile */
-      #tm-toggle-tools { display: block !important; width: 100%; margin-bottom: 8px; text-align: center; }
-
-      /* Hide Zone Management Row by default on mobile */
+      /* Ocultar completamente herramientas en móviles */
+      #tm-toggle-tools { display: none !important; }
       .tm-zone-row { display: none !important; }
-      
-      /* ...but show it when 'show-tools' class is present on the toolbar */
-      .tm-toolbar.show-tools .tm-zone-row { display: flex !important; }
-      
-      /* Hide Zone Management Buttons (always hidden on mobile to save extreme space? or should they be toggled too?) 
-         Let's toggle them with the rest. */
-      /* #tm-edit-zone, #tm-add-zone, #tm-del-zone { display: none !important; } REMOVED this hard hide */
-
-      /* Hide Table Management Tools by default */
       .tm-tools-creation,
       .tm-tools-manipulation,
       .tm-separator { display: none !important; }
-
-      /* Show them when toggled */
-      .tm-toolbar.show-tools .tm-tools-creation,
-      .tm-toolbar.show-tools .tm-tools-manipulation,
-      .tm-toolbar.show-tools .tm-separator { display: flex !important; }
-      .tm-toolbar.show-tools .tm-tools-creation { flex-wrap: wrap; }
-
-      /* Hide Save Button and Legend items by default */
       .tm-legend #tm-save-layout,
       .tm-legend .legend-item { display: none !important; }
-
-      /* Show them when toggled */
-      .tm-toolbar.show-tools .tm-legend #tm-save-layout,
-      .tm-toolbar.show-tools .tm-legend .legend-item { display: flex !important; }
-
-      /* Adjust Legend Container for Mobile */
       .tm-legend { width: 100%; flex-direction: column; align-items: stretch; gap: 8px; }
-      
-      .tm-legend #tm-close-btn { 
-        display: block !important; 
-        width: 100%; 
-        margin-right: 0 !important; 
-        text-align: center;
-      }
+      .tm-legend #tm-close-btn { display: block !important; width: 100%; margin-right: 0 !important; text-align: center; }
     }
   </style>
   </head>
@@ -9153,17 +9123,18 @@
              }
         }
 
+        const fontFactor = isMobile ? 0.85 : 1;
         let contentHtml = `
-          <div class="table-label" style="font-size:${14*mult}px">${table.label}</div>
-          <div class="table-seats" style="font-size:${10*mult}px">${displayStatus.toUpperCase()}</div>
+          <div class="table-label" style="font-size:${Math.round(14*mult*fontFactor)}px">${table.label}</div>
+          <div class="table-seats" style="font-size:${Math.round(10*mult*fontFactor)}px">${displayStatus.toUpperCase()}</div>
         `;
         
-        if (displayTime) {
+        if (!isMobile && displayTime) {
              contentHtml += `<div class="table-time" style="font-size:${10*mult}px; color:${timeColor}; font-weight:bold; margin-top:2px;">⏱ ${displayTime}</div>`;
         }
 
-        if (displayTotal !== null) {
-            contentHtml += `<div class="table-total" style="font-size:${11*mult}px">$${displayTotal}</div>`;
+        if (!isMobile && displayTotal !== null) {
+            contentHtml += `<div class="table-total" style="font-size:${Math.round(11*mult)}px">$${displayTotal}</div>`;
         }
         
         if (mergeState.active && mergeState.selectedIds.includes(table.id)) {
