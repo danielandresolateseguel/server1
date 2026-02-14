@@ -561,18 +561,24 @@
         display: flex;
         justify-content: center;
         padding: 8px;
+        border: 0 !important;
+        background: transparent !important;
+        border-radius: 0 !important;
       }
       #restaurant-map {
         width: 100%;
         min-width: auto;
         height: auto;
-        background: none;
+        background: none !important;
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 8px;
         padding: 8px;
         justify-content: center; /* Center grid tracks if narrower */
         align-content: start;
+        border: 0 !important;
+        box-shadow: none !important;
+        margin: 0 auto !important;
       }
       .table-map-container {
         width: 100% !important;
@@ -580,6 +586,10 @@
         height: auto !important;
         margin: 0 auto !important;
         box-sizing: border-box;
+        background: none !important;
+        border: 0 !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
       }
       .table-item {
         position: static;
