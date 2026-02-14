@@ -7607,6 +7607,15 @@
     overflow-y: scroll;
     -webkit-overflow-scrolling: touch;
     scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: #c1c1c1 #eeeeee;
+  }
+  #new-order-products::-webkit-scrollbar { width: 12px; }
+  #new-order-products::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 6px; }
+  #new-order-products::-webkit-scrollbar-track { background: #eeeeee; }
+  #create-order-modal .create-order-right .content-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: #c1c1c1 #eeeeee;
   }
   #create-order-modal .create-order-right > div:first-child {
     height: 100%;
@@ -7614,6 +7623,14 @@
     overflow-y: scroll;
     -webkit-overflow-scrolling: touch;
     scrollbar-gutter: stable;
+  }
+  #create-order-modal .create-order-right .content-scroll::-webkit-scrollbar { width: 12px; }
+  #create-order-modal .create-order-right .content-scroll::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 6px; }
+  #create-order-modal .create-order-right .content-scroll::-webkit-scrollbar-track { background: #eeeeee; }
+  #create-order-modal .create-order-right > div:last-child {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
   }
 
   @media (max-width: 900px) {
