@@ -6960,19 +6960,27 @@
 
                    // 2. Save SLA Config (robusto: CSRF + fallback método + tenant_slug en body)
                    if (!CSRF_TOKEN || CSRF_TOKEN === '') { try { await fetchCsrfToken(); } catch(e) {} }
-                   const slaUrl = new URL('/api/tenant_sla', API_BASE); slaUrl.searchParams.set('tenant_slug', slug);
+                   const slaUrl = new URL('/api/tenant_sla', API_BASE);
+                   slaUrl.searchParams.set('tenant_slug', slug);
+                   slaUrl.searchParams.set('slug', slug);
                    const slaHeaders = { 'Content-Type': 'application/json' };
                    if (CSRF_TOKEN) slaHeaders['X-CSRFToken'] = CSRF_TOKEN;
                    if (csrfToken) slaHeaders['X-CSRF-Token'] = csrfToken;
-                   const slaBody = JSON.stringify({ tenant_slug: slug, warning_minutes: Math.max(1, valSlaWarn), critical_minutes: Math.max(valSlaWarn+1, valSlaCrit) });
-                   let slaResp = await fetch(slaUrl.toString(), { method: 'PATCH', headers: slaHeaders, body: slaBody });
+                   const slaPayload = { tenant_slug: slug, slug: slug, warning_minutes: Math.max(1, valSlaWarn), critical_minutes: Math.max(valSlaWarn+1, valSlaCrit) };
+                   const slaBody = JSON.stringify(slaPayload);
+                   
+                   async function trySaveSla(method) {
+                      return fetch(slaUrl.toString(), { method, headers: slaHeaders, body: slaBody });
+                   }
+                   
+                   let slaResp = await trySaveSla('PATCH');
+                   if (!slaResp.ok) slaResp = await trySaveSla('PUT');
+                   if (!slaResp.ok) slaResp = await trySaveSla('POST');
+                   
                    if (!slaResp.ok) {
-                      // Fallback a POST si el servidor no admite PATCH o hubo error
-                      slaResp = await fetch(slaUrl.toString(), { method: 'POST', headers: slaHeaders, body: slaBody });
-                      if (!slaResp.ok) {
-                         const err = await slaResp.json().catch(()=>({}));
-                         throw new Error('Error en SLA: ' + (err.error || slaResp.statusText));
-                      }
+                      const err = await slaResp.json().catch(()=>({}));
+                      console.warn('[DEBUG] SLA save failed', { status: slaResp.status, err });
+                      alert('Configuración general guardada. El SLA no pudo guardarse (' + (err.error || slaResp.statusText) + ').');
                    }
 
                    alert('Configuración guardada correctamente.');
