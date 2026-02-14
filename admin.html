@@ -356,6 +356,9 @@
       #orders-table { display: none !important; }
       #orders-mobile { display: grid; grid-template-columns: 1fr; gap: 12px; }
     }
+    @media (min-width: 769px) {
+      .product-card-simple .info-icon { display: none !important; }
+    }
     @media (max-width: 960px) {
       header { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 8px; }
       .header-main { width: 100%; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
