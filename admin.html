@@ -557,6 +557,21 @@
     .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
 
     @media (max-width: 768px) {
+      #restaurant-map {
+        width: 100%;
+        min-width: auto;
+        height: auto;
+        background: none;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        padding: 8px;
+      }
+      .table-item {
+        position: static;
+        width: calc(50% - 12px);
+        height: auto;
+      }
       /* Show toggle button on mobile */
       #tm-toggle-tools { display: block !important; width: 100%; margin-bottom: 8px; text-align: center; }
 
@@ -9029,6 +9044,7 @@
       if (!zone) return;
 
       const activeOrders = window.currentOrders || [];
+      const isMobile = window.matchMedia('(max-width: 768px)').matches;
 
       zone.tables.forEach(table => {
         const el = document.createElement('div');
@@ -9081,9 +9097,16 @@
         el.className = `table-item ${table.type} status-${displayStatus}`;
         if (table.id === selectedTableId) el.classList.add('selected');
         
-        el.style.left = table.x + 'px';
-        el.style.top = table.y + 'px';
-        el.style.transform = `rotate(${table.rotation || 0}deg)`;
+        if (!isMobile) {
+          el.style.left = table.x + 'px';
+          el.style.top = table.y + 'px';
+          el.style.transform = `rotate(${table.rotation || 0}deg)`;
+        } else {
+          el.style.left = '';
+          el.style.top = '';
+          el.style.transform = '';
+          el.style.position = 'static';
+        }
         
         // Dimensions
         let w = 100, h = 80;
@@ -9094,8 +9117,13 @@
         else if (table.type === 'bar') { w = 160 * mult; h = 60 * mult; }
         else { w = 100 * mult; h = 80 * mult; }
         
-        el.style.width = w + 'px';
-        el.style.height = h + 'px';
+        if (!isMobile) {
+          el.style.width = w + 'px';
+          el.style.height = h + 'px';
+        } else {
+          el.style.width = '';
+          el.style.height = '';
+        }
         
         let displayTime = '';
         let timeColor = '#333';
@@ -9146,7 +9174,7 @@
 
         el.innerHTML = contentHtml;
         
-        el.addEventListener('mousedown', (e) => {
+        if (!isMobile) el.addEventListener('mousedown', (e) => {
           if (e.button !== 0) return;
           e.stopPropagation(); // Prevent map click
           
@@ -9176,8 +9204,7 @@
           }, 500);
         });
 
-        // Touch Start Handler
-        el.addEventListener('touchstart', (e) => {
+        if (!isMobile) el.addEventListener('touchstart', (e) => {
           if (e.touches.length > 1) return; 
           // Do NOT prevent default here, so user can scroll if they don't hold long enough
           // e.preventDefault(); 
@@ -9244,7 +9271,23 @@
             return;
           }
 
-          openTableDetails(table);
+          if (isMobile) {
+            const newOrderBtn = document.getElementById('btn-new-order');
+            if (newOrderBtn) newOrderBtn.click();
+            setTimeout(() => {
+              const typeSelect = document.getElementById('new-order-type');
+              if(typeSelect) {
+                  typeSelect.value = 'mesa';
+                  typeSelect.dispatchEvent(new Event('change'));
+              }
+              const tableSelect = document.getElementById('new-order-table');
+              if(tableSelect) {
+                   tableSelect.value = table.label;
+              }
+            }, 200);
+          } else {
+            openTableDetails(table);
+          }
         };
 
         mapContainer.appendChild(el);
