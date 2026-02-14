@@ -6958,16 +6958,21 @@
                       throw new Error('Error en configuración general: ' + (err.error || resp.statusText));
                    }
 
-                   // 2. Save SLA Config
-                   const slaResp = await fetch(new URL('/api/tenant_sla', API_BASE).toString() + `?tenant_slug=${slug}`, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken || '' },
-                        body: JSON.stringify({ warning_minutes: Math.max(1, valSlaWarn), critical_minutes: Math.max(valSlaWarn+1, valSlaCrit) })
-                   });
-
+                   // 2. Save SLA Config (robusto: CSRF + fallback método + tenant_slug en body)
+                   if (!CSRF_TOKEN || CSRF_TOKEN === '') { try { await fetchCsrfToken(); } catch(e) {} }
+                   const slaUrl = new URL('/api/tenant_sla', API_BASE); slaUrl.searchParams.set('tenant_slug', slug);
+                   const slaHeaders = { 'Content-Type': 'application/json' };
+                   if (CSRF_TOKEN) slaHeaders['X-CSRFToken'] = CSRF_TOKEN;
+                   if (csrfToken) slaHeaders['X-CSRF-Token'] = csrfToken;
+                   const slaBody = JSON.stringify({ tenant_slug: slug, warning_minutes: Math.max(1, valSlaWarn), critical_minutes: Math.max(valSlaWarn+1, valSlaCrit) });
+                   let slaResp = await fetch(slaUrl.toString(), { method: 'PATCH', headers: slaHeaders, body: slaBody });
                    if (!slaResp.ok) {
-                      const err = await slaResp.json().catch(()=>({}));
-                      throw new Error('Error en SLA: ' + (err.error || slaResp.statusText));
+                      // Fallback a POST si el servidor no admite PATCH o hubo error
+                      slaResp = await fetch(slaUrl.toString(), { method: 'POST', headers: slaHeaders, body: slaBody });
+                      if (!slaResp.ok) {
+                         const err = await slaResp.json().catch(()=>({}));
+                         throw new Error('Error en SLA: ' + (err.error || slaResp.statusText));
+                      }
                    }
 
                    alert('Configuración guardada correctamente.');
