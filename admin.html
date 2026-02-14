@@ -74,8 +74,8 @@
     .sla-warning { background:#ff9800; }
     .sla-critical { background:#f44336; }
     .sla-label { margin-left:4px; font-size:12px; color:#666; }
-    .delivered summary, .inventory summary { cursor:pointer; padding:6px 10px; border:1px solid #ddd; border-radius:8px; background:#f9f9f9; }
-    .canceled summary, .archived summary { cursor:pointer; padding:6px 10px; border:1px solid #ddd; border-radius:8px; background:#f9f9f9; }
+    .delivered summary, .inventory summary, .carousel summary { cursor:pointer; padding:6px 10px; border:1px solid #ddd; border-radius:8px; background:#f9f9f9; }
+    .canceled summary, .archived summary, .carousel summary { cursor:pointer; padding:6px 10px; border:1px solid #ddd; border-radius:8px; background:#f9f9f9; }
     .pager { display:flex; gap:8px; align-items:center; margin-top:8px; }
     .phone-row { display:inline-flex; align-items:center; gap:6px; }
     .phone-action { width:28px; height:28px; min-height:0; padding:0; border-radius:6px; display:inline-flex; align-items:center; justify-content:center; background: var(--kds-accent); color:#fff; text-decoration:none; }
@@ -114,7 +114,7 @@
     .pill-mesa { font-weight: 700; }
     .sla-label { font-weight: 600; color: #445; }
     .sla-dot { transition: background-color 0.2s ease; }
-    .delivered summary, .canceled summary, .archived summary, .inventory summary { background: #f0f3f8; border-color: var(--kds-border); }
+    .delivered summary, .canceled summary, .archived summary, .inventory summary, .carousel summary { background: #f0f3f8; border-color: var(--kds-border); }
     .actions button, .pager button { border-radius: 8px; }
     button { touch-action: manipulation; }
     .archived .copy-phone { background:#0f766e; color:#fff; }
@@ -1021,7 +1021,7 @@
     <div style="margin: 12px 0; border: 1px solid #ddd; border-radius: 8px; padding: 12px; background: #fff;">
       <h3 style="margin: 0 0 8px 0; font-size: 1rem; color: #425b76;">Filtros y Exportación</h3>
       <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-start;">
-        <details class="mobile-filters" id="more-filters" open style="flex: 1; min-width: 280px;">
+        <details class="mobile-filters" id="more-filters" style="flex: 1; min-width: 280px;">
           <summary>Más filtros de pedidos</summary>
           <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
             <label>Desde <input id="from-date" type="date" /></label>
@@ -1033,12 +1033,12 @@
                 <option value="100">100</option>
               </select>
             </label>
+            <button id="orders-export-btn" style="background:#e0e0e0; color:#333; border:1px solid #ccc; cursor:pointer; padding:8px 16px; border-radius:6px; display:flex; align-items:center; gap:6px; height:auto;">
+              <svg style="width:16px;height:16px;" viewBox="0 0 24 24"><path fill="currentColor" d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+              Exportar pedidos (CSV)
+            </button>
           </div>
         </details>
-        <button id="orders-export-btn" style="background:#e0e0e0; color:#333; border:1px solid #ccc; cursor:pointer; padding:8px 16px; border-radius:6px; display:flex; align-items:center; gap:6px; height:auto;">
-          <svg style="width:16px;height:16px;" viewBox="0 0 24 24"><path fill="currentColor" d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
-          Exportar pedidos (CSV)
-        </button>
       </div>
     </div>
   </div>
