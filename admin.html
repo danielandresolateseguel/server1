@@ -462,12 +462,19 @@
     }
     .map-wrapper {
       width: 100%;
-      height: 600px;
-      overflow: auto;
+      min-height: 600px;
+      height: auto;
+      overflow-x: auto;
+      overflow-y: auto;
       border: 1px solid #ddd;
       border-radius: 8px;
       background-color: #f0f3f8;
       position: relative;
+    }
+    @media (min-width: 769px) {
+      .map-wrapper {
+        overflow-y: hidden;
+      }
     }
 
     .table-map-container {
