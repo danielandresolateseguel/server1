@@ -7594,10 +7594,13 @@
     box-shadow: -2px 0 10px rgba(0,0,0,0.05);
     z-index: 2;
     min-height: 0; /* Enable child overflow scrollbars */
+    overflow: hidden; /* allow inner scroller to show its own scrollbar */
   }
   #create-order-modal .create-order-right > div {
     min-height: 0; /* Ensure the scroll container can actually scroll */
   }
+  #create-order-modal .create-order-body { min-height: 0; }
+  #create-order-modal .create-order-right .content-scroll { flex: 1; min-height: 0; overflow-y: auto; }
   #new-order-products {
     height: 100%;
     min-height: 0;
@@ -7856,7 +7859,7 @@
 
       <!-- Order Details (Right) -->
       <div class="create-order-right">
-        <div style="padding: 16px; overflow-y: auto; flex: 1;">
+        <div class="content-scroll" style="padding: 16px; overflow-y: auto; flex: 1;">
           <!-- Customer Info -->
           <div style="display: grid; gap: 12px; margin-bottom: 20px;">
             <div>
