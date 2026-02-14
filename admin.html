@@ -6970,41 +6970,15 @@
                    // 2. Save SLA Config (robusto: CSRF + fallback método + tenant_slug en body)
                    if (!CSRF_TOKEN || CSRF_TOKEN === '') { try { await fetchCsrfToken(); } catch(e) {} }
                    const slugEnc = encodeURIComponent(slug);
-                   const jsonHeaders = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
-                   const formHeaders = { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json' };
-                   if (CSRF_TOKEN) { jsonHeaders['X-CSRFToken'] = CSRF_TOKEN; formHeaders['X-CSRFToken'] = CSRF_TOKEN; }
-                   if (csrfToken) { jsonHeaders['X-CSRF-Token'] = csrfToken; formHeaders['X-CSRF-Token'] = csrfToken; }
                    const wmin = Math.max(1, valSlaWarn);
                    const cmin = Math.max(wmin+1, valSlaCrit);
-                   const slaJsonBody = JSON.stringify({ tenant_slug: slug, warning_minutes: wmin, critical_minutes: cmin });
-                   const slaFormBody = `tenant_slug=${slugEnc}&warning_minutes=${wmin}&critical_minutes=${cmin}`;
-                   
-                   async function trySave(method, url, headers, body) {
-                     return fetch(url, { method, headers, body });
-                   }
-                   
-                   const baseUrls = [
-                     new URL('/api/tenant_sla', API_BASE).toString() + `?tenant_slug=${slugEnc}`,
-                     new URL(`/api/tenant_sla/${slugEnc}`, API_BASE).toString(),
-                     new URL('/api/tenant_sla', API_BASE).toString() + `?tenant_slug=${slugEnc}&warning_minutes=${wmin}&critical_minutes=${cmin}`
-                   ];
-                   const methods = ['PATCH','PUT','POST'];
-                   const bodies = [
-                     { headers: jsonHeaders, body: slaJsonBody },
-                     { headers: formHeaders, body: slaFormBody },
-                     { headers: jsonHeaders, body: '' } // query-only
-                   ];
-                   
-                   let slaResp;
-                   outer:
-                   for (const u of baseUrls) {
-                     for (const m of methods) {
-                       for (const b of bodies) {
-                         slaResp = await trySave(m, u, b.headers, b.body);
-                         if (slaResp.ok) break outer;
-                       }
-                     }
-                   }
+                   const prefsUrl = new URL('/api/tenant_prefs', API_BASE).toString() + `?tenant_slug=${slugEnc}`;
+                   const prefsHeaders = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+                   // CSRF headers admitidos por backend
+                   if (csrfToken) prefsHeaders['X-CSRF-Token'] = csrfToken;
+                   if (CSRF_TOKEN) prefsHeaders['X-CSRFToken'] = CSRF_TOKEN;
+                   const prefsBody = JSON.stringify({ section: 'sla', data: { warning_minutes: wmin, critical_minutes: cmin } });
+                   const slaResp = await fetch(prefsUrl, { method: 'POST', headers: prefsHeaders, body: prefsBody });
                    
                    if (!slaResp.ok) {
                       let errObj = {};
@@ -7059,9 +7033,10 @@
             fetch(new URL('/api/tenant_sla', API_BASE).toString() + `?tenant_slug=${slug}`)
                 .then(r => r.json())
                 .then(d => {
-                    if(d.warning_minutes) warnIn.value = d.warning_minutes;
-                    if(d.critical_minutes) critIn.value = d.critical_minutes;
-                    try { localStorage.setItem(k, JSON.stringify({ warning_minutes: d.warning_minutes, critical_minutes: d.critical_minutes })); } catch(_) {}
+                    const conf = (d && d.config) || d || {};
+                    if(conf.warning_minutes) warnIn.value = conf.warning_minutes;
+                    if(conf.critical_minutes) critIn.value = conf.critical_minutes;
+                    try { localStorage.setItem(k, JSON.stringify({ warning_minutes: conf.warning_minutes, critical_minutes: conf.critical_minutes })); } catch(_) {}
                 })
                 .catch(e => console.error('Error loading SLA:', e));
         };
