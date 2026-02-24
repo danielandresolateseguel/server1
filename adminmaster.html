@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel Master</title>
+  <style>
+    :root { --bg:#f5f7fb; --fg:#1f2937; --card:#fff; --muted:#6b7280; --primary:#2563eb; --danger:#c62828; --ok:#2e7d32; --bd:#e5e7eb; }
+    * { box-sizing: border-box; }
+    body { margin:0; background: var(--bg); color: var(--fg); font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    header { padding:16px 20px; background:#0f172a; color:#fff; display:flex; align-items:center; justify-content:space-between; }
+    header h1 { font-size:18px; margin:0; }
+    main { padding:16px; max-width:1100px; margin:0 auto; display:grid; gap:16px; }
+    .card { background:var(--card); border:1px solid var(--bd); border-radius:8px; padding:16px; }
+    .row { display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; }
+    .field { display:flex; flex-direction:column; gap:6px; }
+    .field label { font-size:13px; color:var(--muted); }
+    .field input { padding:10px 12px; border:1px solid var(--bd); border-radius:6px; min-width:240px; }
+    .btn { padding:10px 14px; border-radius:6px; border:1px solid transparent; cursor:pointer; font-weight:600; }
+    .btn.primary { background:var(--primary); color:#fff; }
+    .btn.ok { background:var(--ok); color:#fff; }
+    .btn.muted { background:#e5e7eb; color:#111827; }
+    .btn.danger { background:var(--danger); color:#fff; }
+    .list { display:grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap:12px; }
+    .tenant { border:1px solid var(--bd); border-radius:8px; padding:12px; background:#fff; display:flex; flex-direction:column; gap:8px; }
+    .tenant .t-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .tenant .slug { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background:#f3f4f6; border:1px solid #e5e7eb; padding:4px 6px; border-radius:6px; font-size:12px; }
+    .tenant .actions { display:flex; flex-wrap:wrap; gap:8px; }
+    .sep { height:1px; background:var(--bd); margin:8px 0; }
+    .hint { color:var(--muted); font-size:12px; }
+    .stack { display:flex; flex-direction:column; gap:8px; }
+    @media (max-width:640px){ .field input { min-width: 0; width: 100%; } }
+    .kds-toast-container{position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:8px;z-index:9999}
+    .kds-toast{min-width:220px;max-width:380px;padding:10px 14px;border-radius:6px;color:#fff;background:#333;box-shadow:0 4px 12px rgba(0,0,0,.15);transition:opacity .3s ease}
+    .kds-toast.success{background:#2e7d32}
+    .kds-toast.error{background:#c62828}
+    .kds-toast.info{background:#425b76}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Panel Master</h1>
+    <div class="row">
+      <button id="btn-master-auth" class="btn ok">Iniciar Sesión</button>
+      <button id="btn-master-logout" class="btn danger" style="display:none;">Salir</button>
+      <button id="btn-refresh" class="btn muted">Refrescar</button>
+    </div>
+  </header>
+  <main>
+    <section class="card stack">
+      <strong>Alta rápida de comercio</strong>
+      <div class="row">
+        <div class="field">
+          <label>Slug</label>
+          <input id="t-slug" placeholder="ej: gastronomia-local7" />
+        </div>
+        <div class="field">
+          <label>Nombre</label>
+          <input id="t-name" placeholder="Nombre del comercio" />
+        </div>
+        <div class="field">
+          <label>Email</label>
+          <input id="t-email" placeholder="correo@dominio.com" />
+        </div>
+        <div class="field">
+          <label>Teléfono</label>
+          <input id="t-phone" placeholder="+54 9 ..." />
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Costo envío</label>
+          <input id="t-ship" type="number" min="0" step="1" value="0" />
+        </div>
+        <div class="field">
+          <label>Tiempo Mesa</label>
+          <input id="t-time-mesa" type="number" min="0" step="1" value="0" />
+        </div>
+        <div class="field">
+          <label>Tiempo Espera</label>
+          <input id="t-time-espera" type="number" min="0" step="1" value="0" />
+        </div>
+        <div class="field">
+          <label>Tiempo Domicilio</label>
+          <input id="t-time-delivery" type="number" min="0" step="1" value="0" />
+        </div>
+        <div class="field">
+          <label>SLA Advertencia</label>
+          <input id="t-sla-w" type="number" min="1" step="1" value="15" />
+        </div>
+        <div class="field">
+          <label>SLA Crítico</label>
+          <input id="t-sla-c" type="number" min="2" step="1" value="30" />
+        </div>
+      </div>
+      <div class="row">
+        <button id="btn-create-tenant" class="btn primary">Crear Comercio</button>
+        <span id="csrf-indicator" class="hint"></span>
+      </div>
+    </section>
+
+    <section class="card stack">
+      <strong>Comercios</strong>
+      <div class="row">
+        <div class="field" style="flex:1; min-width:240px;">
+          <label>Buscar</label>
+          <input id="search" placeholder="Buscar por slug o nombre..." />
+        </div>
+        <button id="btn-reload-tenants" class="btn muted">Recargar</button>
+      </div>
+      <div class="sep"></div>
+      <div id="tenants-list" class="list"></div>
+      <div id="empty" class="hint" style="display:none;">Sin comercios.</div>
+    </section>
+  </main>
+  <div id="kds-toast" class="kds-toast-container" aria-live="polite"></div>
+  <div id="auth-modal" style="position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.35); z-index:9998;">
+    <div style="background:#fff; border:1px solid #e5e7eb; border-radius:8px; width:90%; max-width:420px; padding:16px;">
+      <strong>Acceso al Panel Master</strong>
+      <div class="sep"></div>
+      <div class="stack">
+        <div class="field">
+          <label>Usuario</label>
+          <input id="auth-user" />
+        </div>
+        <div class="field">
+          <label>Contraseña</label>
+          <input id="auth-pass" type="password" />
+        </div>
+        <div class="row">
+          <button id="btn-do-login" class="btn ok">Iniciar Sesión</button>
+          <button id="btn-do-bootstrap" class="btn primary">Crear Usuario (si no existe)</button>
+          <button id="btn-auth-close" class="btn muted">Cerrar</button>
+        </div>
+        <div class="hint">Usa “Crear Usuario” solo la primera vez. Si ya existe un usuario, verás un mensaje indicando que ya existe.</div>
+      </div>
+    </div>
+  </div>
+  <script>
+    var DEBUG_LOGS=false;
+    (function(){
+      var __origLog = console.log.bind(console);
+      console.log = function(){
+        try{
+          if(!DEBUG_LOGS && arguments.length && typeof arguments[0]==='string' && arguments[0].indexOf('[DEBUG]')===0) return;
+        }catch(e){}
+        __origLog.apply(console, arguments);
+      };
+      window.showToast = function(msg, type){
+        try{
+          var c = document.getElementById('kds-toast');
+          var t = document.createElement('div');
+          t.className = 'kds-toast ' + (type||'info');
+          t.textContent = String(msg||'');
+          c.appendChild(t);
+          setTimeout(function(){ t.style.opacity='0'; setTimeout(function(){ if(t && t.parentNode) t.parentNode.removeChild(t); }, 300); }, 3500);
+        }catch(e){}
+      };
+    })();
+  </script>
+  <script>
+    const API_BASE = window.location.origin;
+    let CSRF_TOKEN = '';
+    let csrfToken = '';
+
+    async function fetchCsrfToken(){
+      try{
+        const r = await fetch(new URL('/api/auth/csrf', API_BASE).toString(), { cache:'no-store' });
+        const j = await r.json();
+        CSRF_TOKEN = j.token || '';
+        csrfToken = CSRF_TOKEN;
+        const ind = document.getElementById('csrf-indicator');
+        if (ind) ind.textContent = CSRF_TOKEN ? 'CSRF cargado' : 'CSRF no disponible';
+      }catch(e){}
+    }
+
+    function headersJSON(){
+      const h = { 'Content-Type':'application/json' };
+      if (csrfToken) h['X-CSRF-Token'] = csrfToken;
+      if (CSRF_TOKEN) h['X-CSRFToken'] = CSRF_TOKEN;
+      return h;
+    }
+
+    async function masterStatus(){
+      try{
+        const r = await fetch(new URL('/api/auth/master_status', API_BASE).toString(), { cache:'no-store' });
+        if (!r.ok) return { authenticated:false };
+        return await r.json();
+      }catch(e){ return { authenticated:false }; }
+    }
+    async function masterLogin(u,p){
+      try{
+        const r = await fetch(new URL('/api/auth/master_login', API_BASE).toString(), {
+          method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ username:u, password:p })
+        });
+        if (r.ok){ await fetchCsrfToken(); showToast('Sesión master iniciada','success'); return true; }
+        let msg='No se pudo iniciar sesión'; try{ const j=await r.json(); if(j.error) msg=j.error; }catch(_){}
+        showToast(msg,'error'); return false;
+      }catch(e){ showToast('Error de red','error'); return false; }
+    }
+    async function masterBootstrap(u,p){
+      try{
+        const r = await fetch(new URL('/api/auth/master_bootstrap', API_BASE).toString(), {
+          method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ username:u, password:p })
+        });
+        if (r.ok){ showToast('Usuario master creado','success'); return true; }
+        let msg='No se pudo crear usuario'; try{ const j=await r.json(); if(j.error) msg=j.error; }catch(_){}
+        showToast(msg,'error'); return false;
+      }catch(e){ showToast('Error de red','error'); return false; }
+    }
+    async function masterLogout(){
+      try{
+        const r = await fetch(new URL('/api/auth/master_logout', API_BASE).toString(), { method:'POST' });
+        if (r.ok){ showToast('Sesión cerrada','info'); }
+      }catch(e){}
+    }
+
+    async function loginDevTenant(slug){
+      try{
+        const r = await fetch(new URL('/api/auth/login_dev', API_BASE).toString(), {
+          method:'POST',
+          headers: { 'Content-Type':'application/json' },
+          body: JSON.stringify({ username:'admin', tenant_slug: slug })
+        });
+        if (r.ok){
+          await fetchCsrfToken();
+          showToast('Sesión dev para '+slug+' iniciada','success');
+        } else {
+          showToast('No se pudo iniciar sesión para '+slug,'error');
+        }
+      }catch(e){ showToast('Error de red','error'); }
+    }
+
+    function validSlug(s){
+      if (!s) return false;
+      s = s.trim().toLowerCase();
+      const re = /^[a-z0-9\-_]+$/;
+      return re.test(s);
+    }
+
+    async function createTenant(){
+      const slug = document.getElementById('t-slug').value.trim().toLowerCase();
+      const name = document.getElementById('t-name').value.trim();
+      const email = document.getElementById('t-email').value.trim();
+      const phone = document.getElementById('t-phone').value.trim();
+      const ship = parseInt(document.getElementById('t-ship').value||'0',10) || 0;
+      const tm = parseInt(document.getElementById('t-time-mesa').value||'0',10) || 0;
+      const te = parseInt(document.getElementById('t-time-espera').value||'0',10) || 0;
+      const td = parseInt(document.getElementById('t-time-delivery').value||'0',10) || 0;
+      const w = Math.max(1, parseInt(document.getElementById('t-sla-w').value||'15',10));
+      const c = Math.max(w+1, parseInt(document.getElementById('t-sla-c').value||'30',10));
+      if (!validSlug(slug)){ showToast('Slug inválido','error'); return; }
+      try{
+        const url = new URL('/api/tenants/create_demo', API_BASE).toString() + `?tenant_slug=${encodeURIComponent(slug)}`;
+        const r = await fetch(url, {
+          method:'POST',
+          headers: headersJSON(),
+          body: JSON.stringify({
+            tenant_slug: slug,
+            name: name || slug.replace(/[-_]/g,' ').replace(/\b\w/g,m=>m.toUpperCase()),
+            contact_email: email || undefined,
+            contact_phone: phone || undefined,
+            shipping_cost: ship,
+            time_mesa: tm,
+            time_espera: te,
+            time_delivery: td,
+            time_auto: true,
+            warning_minutes: w,
+            critical_minutes: c
+          })
+        });
+        if (r.ok){
+          showToast('Comercio creado','success');
+          loadTenants();
+        } else {
+          let msg = 'No se pudo crear';
+          try { const j = await r.json(); if (j.error) msg = j.error; } catch(_) {}
+          showToast(msg,'error');
+        }
+      }catch(e){ showToast('Error de red','error'); }
+    }
+
+    function renderTenants(list){
+      const q = (document.getElementById('search').value||'').toLowerCase();
+      const cont = document.getElementById('tenants-list');
+      const empty = document.getElementById('empty');
+      cont.innerHTML = '';
+      const filtered = list.filter(it=>{
+        const a = (it.slug||'').toLowerCase();
+        const b = (it.name||'').toLowerCase();
+        return !q || a.includes(q) || b.includes(q);
+      });
+      if (!filtered.length){
+        empty.style.display = 'block';
+        return;
+      }
+      empty.style.display = 'none';
+      filtered.forEach(t=>{
+        const el = document.createElement('div');
+        el.className = 'tenant';
+        const name = t.name || t.slug;
+        el.innerHTML = `
+          <div class="t-head">
+            <strong>${name}</strong>
+            <span class="slug">${t.slug}</span>
+          </div>
+          <div class="actions">
+            <a class="btn muted" href="/${t.slug}.html" target="_blank" rel="noopener">Abrir público</a>
+            <button class="btn ok" data-login="${t.slug}">Login Dev en tenant</button>
+            <button class="btn primary" data-admin="${t.slug}">Abrir Admin de tenant</button>
+            <button class="btn primary" data-copy="${t.slug}">Copiar slug</button>
+          </div>
+        `;
+        cont.appendChild(el);
+      });
+      cont.querySelectorAll('button[data-copy]').forEach(b=>{
+        b.addEventListener('click', ()=>{
+          const s = b.getAttribute('data-copy')||'';
+          try { navigator.clipboard.writeText(s); } catch(_) {}
+          showToast('Slug copiado','info');
+        });
+      });
+      cont.querySelectorAll('button[data-login]').forEach(b=>{
+        b.addEventListener('click', ()=> loginDevTenant(b.getAttribute('data-login')||'')); 
+      });
+      cont.querySelectorAll('button[data-admin]').forEach(b=>{
+        b.addEventListener('click', async ()=>{
+          const slug = b.getAttribute('data-admin')||'';
+          await loginDevTenant(slug);
+          window.open('/admin.html','_blank','noopener');
+        });
+      });
+    }
+
+    async function loadTenants(){
+      try{
+        const r = await fetch(new URL('/api/tenants', API_BASE).toString(), { cache:'no-store' });
+        if (!r.ok){ showToast('No se pudo cargar comercios','error'); return; }
+        const list = await r.json();
+        renderTenants(Array.isArray(list) ? list : []);
+      }catch(e){ showToast('Error de red','error'); }
+    }
+
+    function showAuthModal(show){ document.getElementById('auth-modal').style.display = show ? 'flex' : 'none'; }
+
+    document.addEventListener('DOMContentLoaded', async ()=>{
+      await fetchCsrfToken();
+      const st = await masterStatus();
+      const btnAuth = document.getElementById('btn-master-auth');
+      const btnLogout = document.getElementById('btn-master-logout');
+      if (st.authenticated){ btnAuth.style.display='none'; btnLogout.style.display='inline-flex'; } else { btnAuth.style.display='inline-flex'; btnLogout.style.display='none'; showAuthModal(true); }
+      document.getElementById('btn-master-auth').addEventListener('click', ()=> showAuthModal(true));
+      document.getElementById('btn-master-logout').addEventListener('click', async ()=>{ await masterLogout(); location.reload(); });
+      document.getElementById('btn-do-login').addEventListener('click', async ()=>{
+        const u = document.getElementById('auth-user').value.trim(); const p = document.getElementById('auth-pass').value;
+        const ok = await masterLogin(u,p); if (ok){ showAuthModal(false); document.getElementById('btn-master-auth').style.display='none'; document.getElementById('btn-master-logout').style.display='inline-flex'; loadTenants(); }
+      });
+      document.getElementById('btn-do-bootstrap').addEventListener('click', async ()=>{
+        const u = document.getElementById('auth-user').value.trim(); const p = document.getElementById('auth-pass').value;
+        const ok = await masterBootstrap(u,p); if (ok){ const ok2 = await masterLogin(u,p); if (ok2){ showAuthModal(false); document.getElementById('btn-master-auth').style.display='none'; document.getElementById('btn-master-logout').style.display='inline-flex'; loadTenants(); } }
+      });
+      document.getElementById('btn-auth-close').addEventListener('click', ()=> showAuthModal(false));
+      document.getElementById('btn-refresh').addEventListener('click', ()=>{ fetchCsrfToken(); loadTenants(); });
+      document.getElementById('btn-create-tenant').addEventListener('click', createTenant);
+      document.getElementById('btn-reload-tenants').addEventListener('click', loadTenants);
+      document.getElementById('search').addEventListener('input', async ()=>{
+        try{
+          const r = await fetch(new URL('/api/tenants', API_BASE).toString());
+          const list = await r.json();
+          renderTenants(Array.isArray(list) ? list : []);
+        }catch(e){}
+      });
+      loadTenants();
+    });
+  </script>
+</body>
+</html>
