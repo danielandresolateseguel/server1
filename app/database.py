@@ -159,9 +159,25 @@ def get_db():
                 current_app.config['IS_POSTGRES'] = True
 
         else:
-            g.db = sqlite3.connect(current_app.config['DATABASE'])
-            g.db.row_factory = sqlite3.Row
-            current_app.config['IS_POSTGRES'] = False
+            # SQLite path may be read-only in some PaaS. Try configured path first, then fallback to /tmp.
+            db_path = current_app.config['DATABASE']
+            try:
+                g.db = sqlite3.connect(db_path)
+                g.db.row_factory = sqlite3.Row
+                current_app.config['IS_POSTGRES'] = False
+            except Exception as e:
+                try:
+                    tmp_path = os.environ.get('DATABASE_PATH') or os.path.join('/tmp', 'orders.db')
+                    # Ensure directory exists for tmp_path
+                    os.makedirs(os.path.dirname(tmp_path), exist_ok=True)
+                    g.db = sqlite3.connect(tmp_path)
+                    g.db.row_factory = sqlite3.Row
+                    current_app.config['DATABASE'] = tmp_path
+                    current_app.config['IS_POSTGRES'] = False
+                    print(f"SQLite fallback: using {tmp_path} due to error opening {db_path}: {e}")
+                except Exception as e2:
+                    print(f"SQLite connection failed for both {db_path} and /tmp fallback: {e2}")
+                    raise e2
             
     return g.db
 
@@ -177,9 +193,9 @@ def close_db(e=None):
 def fix_postgres_sequences(cur):
     try:
         tables = [
-            'orders', 'order_items', 'order_status_history', 'archived_orders',
-            'products', 'admin_users', 'order_events', 'cash_sessions',
-            'cash_movements', 'carousel_slides'
+            'tenants', 'orders', 'order_items', 'order_status_history',
+            'archived_orders', 'products', 'admin_users', 'order_events',
+            'cash_sessions', 'cash_movements', 'carousel_slides'
         ]
         for table in tables:
             try:
@@ -192,6 +208,31 @@ def fix_postgres_sequences(cur):
         pass
 
 def init_db_postgres(cur):
+    # Master users (for Panel Master)
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS master_users (
+            id SERIAL PRIMARY KEY,
+            username TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS tenants (
+            id SERIAL PRIMARY KEY,
+            tenant_slug TEXT NOT NULL UNIQUE,
+            name TEXT NOT NULL,
+            contact_email TEXT,
+            contact_phone TEXT,
+            status TEXT NOT NULL DEFAULT 'active',
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_tenants_status ON tenants(status)")
     # Tabla de pedidos
     cur.execute(
         """
@@ -421,6 +462,31 @@ def init_db_postgres(cur):
     fix_postgres_sequences(cur)
 
 def init_db_sqlite(cur):
+    # Master users (for Panel Master)
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS master_users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS tenants (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tenant_slug TEXT NOT NULL UNIQUE,
+            name TEXT NOT NULL,
+            contact_email TEXT,
+            contact_phone TEXT,
+            status TEXT NOT NULL DEFAULT 'active',
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_tenants_status ON tenants(status)")
     # Tabla de pedidos
     cur.execute(
         """
