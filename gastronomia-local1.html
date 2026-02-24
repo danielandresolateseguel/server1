@@ -207,58 +207,6 @@
             <div class="discounts-wrapper">
                 <div class="discounts-container">
                     <div class="discounts-grid">
-                        <div class="product-card discount-card searchable-item" id="destacado1">
-                            <div class="product-image">
-                                <img src="Imagenes/napolitana.webp" alt="Pizza Napolitana" width="800" height="600" loading="lazy">
-                            </div>
-                            <div class="product-info">
-                                <h3>Pizza Napolitana</h3>
-                                <p class="product-description">Tomate, mozzarella y orégano seleccionados.</p>
-                                <div class="price-container">
-                                    <p class="product-price">$6,800 ARS</p>
-                                </div>
-                                <button class="add-to-cart-btn" data-id="dest1" data-name="Pizza Napolitana" data-price="6800">Añadir al carrito</button>
-                            </div>
-                        </div>
-                        <div class="product-card discount-card searchable-item" id="destacado2">
-                            <div class="product-image">
-                                <img src="Imagenes/milacpure.webp" alt="Milanesa con puré" width="800" height="600" loading="lazy">
-                            </div>
-                            <div class="product-info">
-                                <h3>Milanesa con puré</h3>
-                                <p class="product-description">Clásico casero con papas cremosas.</p>
-                                <div class="price-container">
-                                    <p class="product-price">$5,400 ARS</p>
-                                </div>
-                                <button class="add-to-cart-btn" data-id="dest2" data-name="Milanesa con puré" data-price="5400">Añadir al carrito</button>
-                            </div>
-                        </div>
-                        <div class="product-card discount-card searchable-item" id="destacado3">
-                            <div class="product-image">
-                                <img src="Imagenes/ensaladacesar.webp" alt="Ensalada César" width="800" height="600" loading="lazy" fetchpriority="high" decoding="async">
-                            </div>
-                            <div class="product-info">
-                                <h3>Ensalada César</h3>
-                                <p class="product-description">Lechuga fresca, pollo, crutones y aderezo.</p>
-                                <div class="price-container">
-                                    <p class="product-price">$4,930 ARS</p>
-                                </div>
-                                <button class="add-to-cart-btn" data-id="dest3" data-name="Ensalada César" data-price="4930">Añadir al carrito</button>
-                            </div>
-                        </div>
-                        <div class="product-card discount-card searchable-item" id="destacado4">
-                            <div class="product-image">
-                                <img src="Imagenes/raviolioles%20de%20ricota.jpg" alt="Ravioles de Ricota" width="800" height="600" loading="lazy">
-                            </div>
-                            <div class="product-info">
-                                <h3>Ravioles de ricota</h3>
-                                <p class="product-description">Caseros, con salsa pomodoro y albahaca.</p>
-                                <div class="price-container">
-                                    <p class="product-price">$6,396 ARS</p>
-                                </div>
-                                <button class="add-to-cart-btn" data-id="dest4" data-name="Ravioles de ricota" data-price="6396">Añadir al carrito</button>
-                            </div>
-                        </div>
                     </div>
                 </div>
                 <button class="discounts-nav-btn prev" onclick="scrollDiscounts('left')" aria-label="Anterior">
@@ -511,7 +459,19 @@
         </div>
     </div>
 
-    <script>window.BUSINESS_SLUG = 'gastronomia-local1';</script>
+    <!-- Resolución dinámica del BUSINESS_SLUG según el nombre del archivo solicitado -->
+    <script>
+      (function(){
+        if (!window.BUSINESS_SLUG) {
+          try {
+            var name = (window.location.pathname.split('/').pop() || '').replace(/\.html$/,'').trim();
+            window.BUSINESS_SLUG = name || 'gastronomia-local1';
+          } catch(e) {
+            window.BUSINESS_SLUG = 'gastronomia-local1';
+          }
+        }
+      })();
+    </script>
     <script src="theme-loader.js?v=3" defer></script>
     <script type="module" src="js/app.js?v=3"></script>
     <script src="media-loader.js?v=3" defer></script>

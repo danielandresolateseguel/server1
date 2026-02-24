@@ -1,5 +1,6 @@
 from flask import Blueprint, send_from_directory, current_app, jsonify
 import os
+import re
 
 bp = Blueprint('public', __name__)
 
@@ -32,4 +33,15 @@ def static_proxy(path):
     # Evitar capturar prefijos de API que no hayan sido manejados por otros blueprints
     if path.startswith('api/'):
         return jsonify({'error': 'Ruta de API no válida'}), 404
-    return send_from_directory(current_app.static_folder, path)
+    try:
+        return send_from_directory(current_app.static_folder, path)
+    except Exception:
+        # Si piden un HTML que no existe, devolvemos la carta base principal.
+        # El JS interno calculará el tenant_slug a partir del nombre del archivo solicitado.
+        if path.endswith('.html') and re.match(r'^[a-z0-9\-_]+\.html$', path):
+            try:
+                return send_from_directory(current_app.static_folder, 'gastronomia-local1.html')
+            except Exception:
+                return jsonify({'error': 'Página no disponible'}), 404
+        # Para otros assets inexistentes devolvemos 404 controlado
+        return jsonify({'error': 'Recurso no encontrado'}), 404

@@ -19,7 +19,30 @@ export const CART_STORAGE_KEY = window.CART_STORAGE_KEY || (`${CART_KEY_PREFIX}_
 
 // Helpers de configuración
 export function getBusinessSlug() {
-    return window.BUSINESS_SLUG || VENDOR_SLUG || (document.body && document.body.dataset && document.body.dataset.slug) || '';
+    // 1) Permitir override por querystring para pruebas multi-tenant (?tenant_slug=xxx)
+    try {
+        const url = new URL(window.location.href);
+        const qsSlug = url.searchParams.get('tenant_slug') || url.searchParams.get('slug') || url.searchParams.get('tenant');
+        if (qsSlug && qsSlug.trim()) {
+            return qsSlug.trim();
+        }
+    } catch (e) {}
+    
+    // 2) Configuración explícita en la página
+    let slug = window.BUSINESS_SLUG 
+            || VENDOR_SLUG 
+            || (document.body && document.body.dataset && (document.body.dataset.slug || document.body.dataset.tenant)) 
+            || '';
+    
+    // 3) Fallback al nombre del archivo (elchef.html -> elchef) si nada definido
+    if (!slug) {
+        try {
+            const name = (window.location.pathname.split('/').pop() || '').replace(/\.html$/,'').trim();
+            if (name && name !== 'index') slug = name;
+        } catch (e) {}
+    }
+    
+    return slug;
 }
 
 export function getWhatsappNumber() {

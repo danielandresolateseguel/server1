@@ -2,6 +2,7 @@
  * UI Animations and Interactions
  */
 import { addToCart, updateCartDisplay, updateCartCount } from './cart.js';
+import { getBusinessSlug } from './config.js';
 import { refreshSearchableItems } from './search.js';
 
 // Animación de añadir al carrito
@@ -388,7 +389,7 @@ export function closeCartUI() {
 }
 
 export async function initDynamicProducts() {
-    const slug = (window.BUSINESS_SLUG || (document.body && document.body.dataset && document.body.dataset.slug) || '').trim();
+    const slug = (getBusinessSlug() || '').trim();
     if (!slug) return;
     try {
         const origin = window.location.origin || '';
@@ -400,7 +401,18 @@ export async function initDynamicProducts() {
         if (!resp.ok) return;
         const json = await resp.json();
         const arr = Array.isArray(json.products) ? json.products : [];
-        if (!arr.length) return;
+        if (!arr.length) {
+        // Si el tenant no tiene productos, vaciar las grillas para que la carta quede limpia
+        try {
+            const featuredGrid = document.querySelector('#featured-dishes .discounts-grid') || document.querySelector('.special-discounts .discounts-grid');
+            const mainGrid = document.querySelector('#menu-gastronomia .products-grid') || document.querySelector('#menu-electronica .products-grid');
+            const interestGrid = document.querySelector('.interest-products .products-grid');
+            if (featuredGrid) featuredGrid.innerHTML = '';
+            if (mainGrid) mainGrid.innerHTML = '';
+            if (interestGrid) interestGrid.innerHTML = '';
+        } catch (_) {}
+        return;
+        }
         const map = {};
         arr.forEach(p => {
             if (!p || !p.id) return;
@@ -431,7 +443,11 @@ export async function initDynamicProducts() {
                 const bid = btn.getAttribute('data-id') || '';
                 prod = map[bid];
             }
-            if (!prod) return;
+            // Si no existe en el inventario del tenant actual, oculta la tarjeta estática
+            if (!prod) {
+                card.style.display = 'none';
+                return;
+            }
             if (prod.active === false) {
                 card.style.display = 'none';
                 return;

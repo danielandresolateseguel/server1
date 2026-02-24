@@ -5066,6 +5066,11 @@
           isAuthed = true;
           currentUserName = String(data.user || '');
           currentTenantSlug = String(data.tenant_slug || '') || currentTenantSlug;
+          if (typeof tenantInput !== 'undefined' && tenantInput) {
+            const slug = currentTenantSlug || tenantInput.value.trim() || defaultSlug();
+            tenantInput.value = slug;
+            try { localStorage.setItem('tenant_last_selected', slug); } catch (_) {}
+          }
           await fetchCsrfToken(); // Uses the global function defined at the top
           if (typeof csrfToken !== 'undefined') csrfToken = CSRF_TOKEN;
           document.getElementById('login-box').style.display = 'none';
@@ -9979,8 +9984,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const name = pName.value.trim();
       const price = parseInt(pPrice.value) || 0;
       const stock = parseInt(pStock.value) || 0;
-      const tenantSelect = document.getElementById('tenant-select');
-      const tenant = tenantSelect ? tenantSelect.value : (window.BUSINESS_SLUG || 'gastronomia-local1');
+      // Determinar el tenant correctamente desde la sesión/UI actual
+      const tenantInputEl = document.getElementById('tenant-input');
+      const tenant = (typeof currentTenantSlug !== 'undefined' && currentTenantSlug) 
+                      ? currentTenantSlug 
+                      : (tenantInputEl && tenantInputEl.value && tenantInputEl.value.trim()) 
+                        || (window.BUSINESS_SLUG || 'gastronomia-local1');
       
       // Recolección robusta de categorías seleccionadas
       let selectedCats = [];
@@ -10051,6 +10060,43 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 })();
+</script>
+<style>
+  .kds-toast-container{position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:8px;z-index:9999}
+  .kds-toast{min-width:220px;max-width:380px;padding:10px 14px;border-radius:6px;color:#fff;background:#333;box-shadow:0 4px 12px rgba(0,0,0,.15);transition:opacity .3s ease}
+  .kds-toast.success{background:#2e7d32}
+  .kds-toast.error{background:#c62828}
+  .kds-toast.info{background:#425b76}
+</style>
+<div id="kds-toast" class="kds-toast-container" aria-live="polite"></div>
+<script>
+  var DEBUG_LOGS=false;
+  (function(){
+    var __origLog = console.log.bind(console);
+    console.log = function(){
+      try{
+        if(!DEBUG_LOGS && arguments.length && typeof arguments[0]==='string' && arguments[0].indexOf('[DEBUG]')===0) return;
+      }catch(e){}
+      __origLog.apply(console, arguments);
+    };
+    window.showToast = function(msg, type){
+      try{
+        var c = document.getElementById('kds-toast');
+        if(!c){
+          c = document.createElement('div');
+          c.id = 'kds-toast';
+          c.className = 'kds-toast-container';
+          document.body.appendChild(c);
+        }
+        var t = document.createElement('div');
+        t.className = 'kds-toast ' + (type||'info');
+        t.textContent = String(msg||'');
+        c.appendChild(t);
+        setTimeout(function(){ t.style.opacity='0'; setTimeout(function(){ if(t && t.parentNode) t.parentNode.removeChild(t); }, 300); }, 3500);
+      }catch(e){}
+    };
+    window.alert = function(msg){ window.showToast(msg, 'info'); };
+  })();
 </script>
 </body>
 </html>

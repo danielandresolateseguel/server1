@@ -55,6 +55,9 @@ def create_product():
     
     data = request.get_json(silent=True) or {}
     tenant_slug = data.get('tenant_slug')
+    # En entorno multi-tenant, si la sesión tiene tenant_slug, debe coincidir
+    if session.get('tenant_slug') and session.get('tenant_slug') != tenant_slug:
+        return jsonify({'error': 'acceso denegado al tenant'}), 403
     product_id = data.get('id')
     name = data.get('name')
     
