@@ -3,7 +3,7 @@
  */
 import { cart, clearCart } from './cart.js';
 import { closeCartUI } from './ui.js';
-import { getWhatsappNumber, CATEGORY, getCheckoutMode, getWhatsappEnabled, getWhatsappTemplate } from './config.js';
+import { getWhatsappNumber, CATEGORY, getCheckoutMode, getWhatsappEnabled, getWhatsappTemplate, getBusinessSlug } from './config.js';
 
 export function handleCheckout() {
     if (cart.length === 0) {
@@ -150,12 +150,14 @@ ${notas}`;
 function sendOrderToBackend(orderType, data, total) {
     try {
         const getTenantSlug = () => {
-            const dataSlug = document.body.dataset.tenant ? document.body.dataset.tenant.trim() : '';
-            if (dataSlug) return dataSlug;
-            try {
-                const name = (window.location.pathname.split('/').pop() || '').replace(/\.html$/,'');
-                return name || 'gastronomia-local1';
-            } catch (_) { return 'gastronomia-local1'; }
+            let slug = getBusinessSlug();
+            const alias = {
+                'gatrolocal1': 'gastronomia-local1',
+                'gastro-local1': 'gastronomia-local1',
+                'gastro1': 'gastronomia-local1'
+            };
+            slug = alias[slug] || slug || 'gastronomia-local1';
+            return slug;
         };
 
         const payload = {
