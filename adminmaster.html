@@ -327,7 +327,7 @@
         b.addEventListener('click', async ()=>{
           const slug = b.getAttribute('data-admin')||'';
           await loginDevTenant(slug);
-          window.open('/admin.html','_blank','noopener');
+          window.open(`/admin.html?slug=${slug}`,'_blank','noopener');
         });
       });
     }

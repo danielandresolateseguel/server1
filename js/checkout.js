@@ -154,7 +154,8 @@ function sendOrderToBackend(orderType, data, total) {
             const alias = {
                 'gatrolocal1': 'gastronomia-local1',
                 'gastro-local1': 'gastronomia-local1',
-                'gastro1': 'gastronomia-local1'
+                'gastro1': 'gastronomia-local1',
+                'planeta-pancho': 'planeta-pancho'
             };
             slug = alias[slug] || slug || 'gastronomia-local1';
             return slug;
@@ -171,27 +172,38 @@ function sendOrderToBackend(orderType, data, total) {
             order_notes: data.orderNotes
         };
 
-        const API_BASE = window.location.origin;
+        const origin = window.location.origin || '';
+        const API_BASE = /^file:/i.test(origin) ? 'http://127.0.0.1:8000' : origin;
+        
+        console.log('Enviando orden al backend:', payload, 'a', API_BASE);
+
         fetch(new URL('/api/orders', API_BASE).toString(), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.order_id) {
                 console.log('Orden creada con ID:', data.order_id);
                 const slug = getTenantSlug();
                 localStorage.setItem('last_order_id_' + slug, data.order_id);
                 localStorage.setItem('last_viewed_status_' + slug, 'pending'); // Reset status tracking
+            } else {
+                console.warn('Backend no devolvió order_id', data);
             }
         })
         .catch(err => {
             console.error('Error enviando orden al backend:', err);
-            alert('Hubo un error al registrar el pedido en el sistema. Por favor, avisa al personal.');
+            // No alertamos al usuario para no interrumpir el flujo de WhatsApp, 
+            // pero logueamos el error. Si es crítico, el admin lo notará por falta de pedidos.
         });
     } catch (e) {
         console.error('Error preparando envío al backend:', e);
-        alert('Error preparando el pedido. Intenta nuevamente.');
     }
 }
