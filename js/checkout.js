@@ -182,9 +182,11 @@ function sendOrderToBackend(orderType, data, total) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         })
-        .then(response => {
+        .then(async response => {
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                const errData = await response.json().catch(() => ({}));
+                console.error('Error del servidor:', errData);
+                throw new Error(errData.error || `HTTP error! status: ${response.status}`);
             }
             return response.json();
         })
@@ -193,17 +195,17 @@ function sendOrderToBackend(orderType, data, total) {
                 console.log('Orden creada con ID:', data.order_id);
                 const slug = getTenantSlug();
                 localStorage.setItem('last_order_id_' + slug, data.order_id);
-                localStorage.setItem('last_viewed_status_' + slug, 'pending'); // Reset status tracking
+                localStorage.setItem('last_viewed_status_' + slug, 'pending');
             } else {
                 console.warn('Backend no devolvió order_id', data);
             }
         })
-        .catch(err => {
-            console.error('Error enviando orden al backend:', err);
-            // No alertamos al usuario para no interrumpir el flujo de WhatsApp, 
-            // pero logueamos el error. Si es crítico, el admin lo notará por falta de pedidos.
+        .catch(error => {
+            console.error('Error enviando orden:', error);
+            alert('Atención: El pedido se generó para WhatsApp, pero hubo un error al registrarlo en el sistema: ' + error.message);
         });
     } catch (e) {
-        console.error('Error preparando envío al backend:', e);
+        console.error('Excepción en sendOrderToBackend:', e);
+        alert('Error interno al procesar el pedido: ' + e.message);
     }
 }

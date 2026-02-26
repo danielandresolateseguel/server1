@@ -37,8 +37,15 @@ def create_app(test_config=None):
         SECRET_KEY=os.getenv('SECRET_KEY', 'dev'),
         DATABASE=os.getenv('DATABASE_PATH', os.path.join(app.root_path, '..', 'orders.db')),
         CONFIG_DIR=os.path.join(app.root_path, '..', 'config'),
-        JSON_AS_ASCII=True  # Force ASCII JSON to avoid encoding issues with emojis
+        JSON_AS_ASCII=True,  # Force ASCII JSON to avoid encoding issues with emojis
+        # Security: Session Cookie Configuration
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE='Lax',
     )
+    
+    # Enable Secure Cookie if in production (requires HTTPS)
+    if os.environ.get('FLASK_ENV') == 'production':
+        app.config['SESSION_COOKIE_SECURE'] = True
 
     if test_config is None:
         # Load the instance config, if it exists, when not testing
