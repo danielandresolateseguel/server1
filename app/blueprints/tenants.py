@@ -99,6 +99,61 @@ def get_tenants():
         
     return jsonify(tenants_list)
 
+@bp.route('/tenants/create_demo', methods=['POST'])
+def create_demo_tenant():
+    if not is_authed():
+        return jsonify({'error': 'no autorizado'}), 401
+    if not check_csrf():
+        return jsonify({'error': 'csrf inválido'}), 403
+    
+    payload = request.get_json(silent=True) or {}
+    slug = str(payload.get('tenant_slug') or payload.get('slug') or '').strip()
+    name = str(payload.get('name') or '').strip()
+    contact_email = str(payload.get('contact_email') or '').strip() or None
+    contact_phone = str(payload.get('contact_phone') or '').strip() or None
+    
+    if not slug:
+        return jsonify({'error': 'tenant_slug requerido'}), 400
+    slug = slug.lower()
+    allowed = "abcdefghijklmnopqrstuvwxyz0123456789-_"
+    if any(ch not in allowed for ch in slug):
+        return jsonify({'error': 'tenant_slug inválido. Usa letras, números, - y _.'}), 400
+    if not name:
+        name = slug.replace('-', ' ').replace('_', ' ').title()
+    
+    now = datetime.utcnow().isoformat()
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM tenants WHERE tenant_slug = ?", (slug,))
+    row = cur.fetchone()
+    if row:
+        return jsonify({'error': 'tenant ya existe', 'tenant_slug': slug}), 409
+    
+    cur.execute(
+        "INSERT INTO tenants (tenant_slug, name, contact_email, contact_phone, status, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        (slug, name, contact_email, contact_phone, 'active', now)
+    )
+    
+    default_cfg = {
+        'shipping_cost': int(payload.get('shipping_cost') or 0),
+        'time_mesa': int(payload.get('time_mesa') or 0),
+        'time_espera': int(payload.get('time_espera') or 0),
+        'time_delivery': int(payload.get('time_delivery') or 0),
+        'time_auto': bool(payload.get('time_auto') or False),
+        'sla': {
+            'warning_minutes': int(payload.get('warning_minutes') or 15),
+            'critical_minutes': int(payload.get('critical_minutes') or 30)
+        }
+    }
+    cur.execute(
+        "INSERT OR IGNORE INTO tenant_config (tenant_slug, config_json) VALUES (?, ?)",
+        (slug, json.dumps(default_cfg, ensure_ascii=False))
+    )
+    conn.commit()
+    invalidate_tenant_config(slug)
+    
+    return jsonify({'ok': True, 'tenant_slug': slug, 'name': name})
+
 @bp.route('/tenant_tables', methods=['GET'])
 def get_tenant_tables():
     slug = request.args.get('tenant_slug') or request.args.get('slug') or 'gastronomia-local1'

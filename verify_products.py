@@ -1,47 +1,28 @@
-import sqlite3
-import json
 
-DB_PATH = 'orders.db'
+import sys
+import os
+from app import create_app
+from app.database import get_db
 
-def run():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
+with open('verify_output.txt', 'w', encoding='utf-8') as f:
+    try:
+        f.write("Starting verify script...\n")
+        app = create_app()
+        with app.app_context():
+            f.write("Inside app context.\n")
+            db = get_db()
+            cur = db.cursor()
+            
+            f.write("Querying products...\n")
+            cur.execute("SELECT tenant_slug, product_id, name FROM products WHERE tenant_slug='planeta-pancho'")
+            rows = cur.fetchall()
+            f.write(f"Found {len(rows)} products for planeta-pancho:\n")
+            for row in rows:
+                f.write(f"{row}\n")
+                
+    except Exception as e:
+        f.write(f"ERROR: {e}\n")
+        import traceback
+        traceback.print_exc(file=f)
 
-    ids_to_check = [
-        'plato1', 'plato2', 'plato3', 'plato4', 
-        'dest1', 'dest2', 'dest3', 'dest4', 
-        'i1', 'i1-2', 'i2', 'i2-2', 'i3', 'i3-2'
-    ]
-
-    print(f"Checking {len(ids_to_check)} products in {DB_PATH} for tenant 'gastronomia-local1'...")
-    
-    placeholders = ','.join('?' for _ in ids_to_check)
-    query = f"""
-        SELECT product_id, name, active, variants_json 
-        FROM products 
-        WHERE tenant_slug = 'gastronomia-local1' 
-        AND product_id IN ({placeholders})
-    """
-    
-    cur.execute(query, ids_to_check)
-    rows = cur.fetchall()
-    
-    found_ids = set()
-    for r in rows:
-        pid = r['product_id']
-        found_ids.add(pid)
-        print(f"FOUND: {pid} | Name: {r['name']} | Active: {r['active']}")
-        print(f"  Variants: {r['variants_json']}")
-        print("-" * 40)
-
-    missing = set(ids_to_check) - found_ids
-    if missing:
-        print(f"\nMISSING IDs: {missing}")
-    else:
-        print("\nAll IDs found.")
-
-    conn.close()
-
-if __name__ == '__main__':
-    run()
+print("Verify script finished.")

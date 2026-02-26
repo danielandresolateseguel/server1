@@ -55,6 +55,73 @@ def auth_csrf():
     # Allow fetching CSRF token even if not authenticated (for login page, etc)
     return jsonify({'token': get_csrf_token()})
 
+@bp.route('/auth/master_status', methods=['GET'])
+def master_status():
+    return jsonify({'authenticated': bool(session.get('master_auth')), 'user': session.get('admin_user') or ''})
+
+@bp.route('/auth/master_bootstrap', methods=['POST'])
+def master_bootstrap():
+    # Allows creating the first master user if none exists
+    payload = request.get_json(silent=True) or {}
+    username = (payload.get('username') or '').strip()
+    password = str(payload.get('password') or '')
+    if not username or not password:
+        return jsonify({'error': 'datos incompletos'}), 400
+    db = get_db()
+    cur = db.cursor()
+    try:
+        cur.execute("SELECT COUNT(*) FROM master_users")
+        row = cur.fetchone()
+    except Exception:
+        # Fallback in caso de que la tabla aún no exista por algún motivo
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS master_users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+        db.commit()
+        cur.execute("SELECT COUNT(*) FROM master_users")
+        row = cur.fetchone()
+    count = int(row[0]) if row else 0
+    if count > 0:
+        return jsonify({'error': 'ya existe un usuario master'}), 409
+    ph = generate_password_hash(password)
+    import datetime
+    cur.execute("INSERT INTO master_users (username, password_hash, created_at) VALUES (?, ?, ?)", (username, ph, datetime.datetime.utcnow().isoformat()))
+    db.commit()
+    return jsonify({'ok': True, 'username': username})
+
+@bp.route('/auth/master_login', methods=['POST'])
+def master_login():
+    payload = request.get_json(silent=True) or {}
+    username = (payload.get('username') or '').strip()
+    password = str(payload.get('password') or '')
+    if not username or not password:
+        return jsonify({'error': 'datos incompletos'}), 400
+    db = get_db()
+    cur = db.cursor()
+    cur.execute("SELECT password_hash FROM master_users WHERE username = ?", (username,))
+    row = cur.fetchone()
+    if not row or not check_password_hash(row[0], password):
+        return jsonify({'error': 'usuario o contraseña inválidos'}), 401
+    import secrets as _secrets
+    session['master_auth'] = True
+    # Also set admin_auth to reuse existing protections for create_demo
+    session['admin_auth'] = True
+    session['admin_user'] = username
+    session['csrf_token'] = _secrets.token_urlsafe(32)
+    return jsonify({'ok': True, 'user': username})
+
+@bp.route('/auth/master_logout', methods=['POST'])
+def master_logout():
+    session.clear()
+    return jsonify({'ok': True})
+
 @bp.route('/admin_users', methods=['GET'])
 def admin_users_list():
     if not is_authed():

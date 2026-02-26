@@ -1,3 +1,4 @@
+
 from app import create_app
 from app.database import init_db
 
@@ -8,4 +9,4 @@ with app.app_context():
         init_db()
         print("init_db() completed.")
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"init_db() failed: {e}")

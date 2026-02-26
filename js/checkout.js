@@ -186,8 +186,12 @@ function sendOrderToBackend(orderType, data, total) {
                 localStorage.setItem('last_viewed_status_' + slug, 'pending'); // Reset status tracking
             }
         })
-        .catch(err => console.error('Error enviando orden al backend:', err));
+        .catch(err => {
+            console.error('Error enviando orden al backend:', err);
+            alert('Hubo un error al registrar el pedido en el sistema. Por favor, avisa al personal.');
+        });
     } catch (e) {
         console.error('Error preparando envío al backend:', e);
+        alert('Error preparando el pedido. Intenta nuevamente.');
     }
 }

@@ -4,6 +4,10 @@ import sys
 
 bp = Blueprint('system', __name__)
 
+@bp.route('/favicon.ico')
+def favicon():
+    return ('', 204, {'Content-Type': 'image/x-icon'})
+
 @bp.route('/api/version')
 def version():
     return jsonify({

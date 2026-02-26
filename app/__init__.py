@@ -2,13 +2,14 @@ import os
 from flask import Flask
 from dotenv import load_dotenv
 from . import database
+from werkzeug.exceptions import HTTPException
 
 load_dotenv()
 
 def create_app(test_config=None):
     # Create and configure the app
     # static_folder='../' means serve files from project root
-    app = Flask(__name__, instance_relative_config=True, static_folder='../', static_url_path='/')
+    app = Flask(__name__, instance_relative_config=True, static_folder='../', static_url_path='/static')
     
     # Configure JSON provider to handle datetime as ISO8601
     import json

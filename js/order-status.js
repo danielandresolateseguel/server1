@@ -1,4 +1,6 @@
 
+import { getBusinessSlug } from './config.js';
+
 // Estado interno del módulo
 let pollingInterval = null;
 let statusActionInterval = null;
@@ -95,12 +97,14 @@ function closeStatusModal() {
 }
 
 function getTenantSlug() {
-    if (window.BUSINESS_SLUG) return window.BUSINESS_SLUG;
-    if (document.body.dataset.tenant) return document.body.dataset.tenant.trim();
-    try {
-        const name = (window.location.pathname.split('/').pop() || '').replace(/\.html$/,'');
-        return name || 'gastronomia-local1';
-    } catch (_) { return 'gastronomia-local1'; }
+    let slug = getBusinessSlug();
+    const alias = {
+        'gatrolocal1': 'gastronomia-local1',
+        'gastro-local1': 'gastronomia-local1',
+        'gastro1': 'gastronomia-local1'
+    };
+    slug = alias[slug] || slug || 'gastronomia-local1';
+    return slug;
 }
 
 async function updateStatusSilently() {

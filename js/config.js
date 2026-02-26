@@ -24,7 +24,10 @@ export function getBusinessSlug() {
         const url = new URL(window.location.href);
         const qsSlug = url.searchParams.get('tenant_slug') || url.searchParams.get('slug') || url.searchParams.get('tenant');
         if (qsSlug && qsSlug.trim()) {
-            return qsSlug.trim();
+            const slug = qsSlug.trim();
+            // Persistir en sessionStorage para mantener el contexto en recargas
+            try { sessionStorage.setItem('current_tenant_slug', slug); } catch(e){}
+            return slug;
         }
     } catch (e) {}
     
@@ -34,7 +37,15 @@ export function getBusinessSlug() {
             || (document.body && document.body.dataset && (document.body.dataset.slug || document.body.dataset.tenant)) 
             || '';
     
-    // 3) Fallback al nombre del archivo (elchef.html -> elchef) si nada definido
+    // 3) Fallback: Recuperar de sessionStorage (útil si se recarga la página sin querystring)
+    if (!slug) {
+        try {
+            const stored = sessionStorage.getItem('current_tenant_slug');
+            if (stored) slug = stored;
+        } catch(e) {}
+    }
+
+    // 4) Fallback al nombre del archivo (elchef.html -> elchef) si nada definido
     if (!slug) {
         try {
             const name = (window.location.pathname.split('/').pop() || '').replace(/\.html$/,'').trim();

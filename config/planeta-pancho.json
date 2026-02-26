@@ -1,0 +1,71 @@
+{
+  "meta": {
+    "slug": "planeta-pancho",
+    "category": "gastronomia",
+    "admins": [
+      {
+        "username": "admin",
+        "password": "pancho123"
+      }
+    ],
+    "branding": {
+      "name": "Planeta Pancho",
+      "contact": {
+        "whatsapp": "+5492615555555",
+        "instagram": "planeta_pancho",
+        "location": "https://maps.google.com/?q=Planeta+Pancho",
+        "opening_hours": {
+          "mon": [["18:00", "00:00"]],
+          "tue": [["18:00", "00:00"]],
+          "wed": [["18:00", "00:00"]],
+          "thu": [["18:00", "00:00"]],
+          "fri": [["18:00", "01:00"]],
+          "sat": [["18:00", "01:00"]],
+          "sun": [["18:00", "00:00"]]
+        }
+      }
+    }
+  },
+  "checkout": {
+    "mode": "mesa",
+    "whatsappNumber": "+5492615555555",
+    "messageTemplate": "Hola Planeta Pancho! Quiero pedir: {{items}}. Total: {{total}}. {{orderTypeLabel}}: {{orderTypeValue}}"
+  },
+  "filters": {
+    "categories": ["panchos", "hamburguesas", "bebidas", "combos"]
+  },
+  "catalog": [
+    {
+      "id": "pancho1",
+      "name": "Pancho Clásico",
+      "price": 3500,
+      "image": "Imagenes/pancho_clasico.webp",
+      "categories": ["panchos"],
+      "description": "Salchicha vienesa, pan artesanal, aderezos a elección."
+    },
+    {
+      "id": "pancho2",
+      "name": "Pancho Completo",
+      "price": 4200,
+      "image": "Imagenes/pancho_completo.webp",
+      "categories": ["panchos"],
+      "description": "Salchicha, pan, papas pay, queso cheddar, panceta."
+    },
+    {
+      "id": "burger1",
+      "name": "Hamburguesa Simple",
+      "price": 5500,
+      "image": "Imagenes/burger_simple.webp",
+      "categories": ["hamburguesas"],
+      "description": "Carne 120g, lechuga, tomate, queso."
+    },
+    {
+      "id": "coca",
+      "name": "Coca Cola 500ml",
+      "price": 1800,
+      "image": "Imagenes/coca_500.webp",
+      "categories": ["bebidas"],
+      "description": "Botella de 500ml fría."
+    }
+  ]
+}

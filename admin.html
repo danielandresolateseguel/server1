@@ -686,7 +686,8 @@
     <div class="subcontrols">
 
       <button id="tables-open" style="background:#673ab7; color:#fff;">Gestión Mesas</button>
-      <button id="carousel-open" style="background:#e91e63; color:#fff;">Carta Online</button>
+      <button id="btn-view-carta" style="background:#009688; color:#fff;" onclick="const s=document.getElementById('tenant-input').value||'gastronomia-local1'; window.open('/gastronomia-local1.html?slug='+s, '_blank')">Ver Carta Online</button>
+      <button id="carousel-open" style="background:#e91e63; color:#fff;">Editor Carrusel</button>
     </div>
   </header>
 
@@ -8708,7 +8709,39 @@
                             window.print();
                         }
                     <\/script>
-                </body>
+                <script>
+  (function() {
+    const btnViewCarta = document.getElementById('btn-view-carta');
+    if (btnViewCarta) {
+      btnViewCarta.addEventListener('click', function() {
+        // Get current tenant slug from various possible sources
+        let slug = 'gastronomia-local1';
+        
+        // 1. Try global variable if set
+        if (typeof currentTenantSlug !== 'undefined' && currentTenantSlug) {
+            slug = currentTenantSlug;
+        } 
+        // 2. Try input field
+        else {
+            const tenantInput = document.getElementById('tenant-input');
+            if (tenantInput && tenantInput.value) {
+                slug = tenantInput.value.trim();
+            }
+            // 3. Try window.BUSINESS_SLUG
+            else if (window.BUSINESS_SLUG) {
+                slug = window.BUSINESS_SLUG;
+            }
+        }
+        
+        // Construct URL - using gastronomia-local1.html as the template handler
+        // but passing the slug as a parameter to ensure config loads correctly
+        const url = `/gastronomia-local1.html?slug=${encodeURIComponent(slug)}`;
+        window.open(url, '_blank');
+      });
+    }
+  })();
+</script>
+</body>
                 </html>
             `;
             
