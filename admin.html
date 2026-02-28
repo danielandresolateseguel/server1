@@ -5808,12 +5808,18 @@
       const posInput = document.getElementById('arqueo-pos');
       const transInput = document.getElementById('arqueo-trans');
       const otrosInput = document.getElementById('arqueo-otros');
-      const breakdown = {
+      
+      let breakdown = {
           efectivo: parseInt(efInput && efInput.value || '0', 10) || 0,
           pos: parseInt(posInput && posInput.value || '0', 10) || 0,
           transferencia: parseInt(transInput && transInput.value || '0', 10) || 0,
           otros: parseInt(otrosInput && otrosInput.value || '0', 10) || 0
       };
+      // Fallback: If breakdown inputs are empty (sum=0) but closing_amount > 0, attribute everything to Efectivo
+      const totalInputs = breakdown.efectivo + breakdown.pos + breakdown.transferencia + breakdown.otros;
+      if (totalInputs === 0 && closing_amount > 0) {
+        breakdown.efectivo = closing_amount;
+      }
 
       try { await ensureAuth(); } catch(_) {}
       if (!isAuthed || !csrfToken) {
@@ -5858,7 +5864,7 @@
             <div class="cash-card">
               <div class="cash-title">Apertura de caja</div>
               <div class="cash-row">
-                <label>Monto inicial en $ <input id="cash-open-amount" type="number" min="0" step="1" value="${cashOpenDraft.amount || 0}" autocomplete="off" name="cash_opening_amount_field" /> <span id="cash-open-words" class="small"></span></label>
+                <label>Monto inicial en $ <input id="cash-open-amount" type="number" min="0" step="1" value="${cashOpenDraft.amount || 0}" autocomplete="new-password" name="cash_opening_amount_field" /> <span id="cash-open-words" class="small"></span></label>
               </div>
               <div class="cash-row">
                 <textarea id="cash-open-notes" placeholder="Notas">${cashOpenDraft.notes || ''}</textarea>
@@ -5908,6 +5914,9 @@
             const total = ef + pos + trn + otr;
             const el = document.getElementById('arqueo-total');
             if (el) el.textContent = `Total contado: $${total}`;
+            
+            // Sync total to close amount input (which is now readonly)
+            if (closeAmtInput) closeAmtInput.value = total;
 
             // Actualizar diferencias de arqueo
             const breakdown = sum.theoretical_breakdown || { efectivo: 0, pos: 0, transferencia: 0, otros: 0 };
@@ -5950,7 +5959,9 @@
             const sin = Number(sum.entradas || 0);
             const sout = Number(sum.salidas || 0);
             const sys = Number((sum.theoretical_cash || 0));
-            const counted = (useToggle && useToggle.checked) ? updateArqueoTotal() : (parseInt(closeAmtInput && closeAmtInput.value || '0',10)||0);
+            // Force counted to be the arqueo total since toggle is always on
+            const counted = updateArqueoTotal() || 0;
+            
             if (salesEl) salesEl.textContent = `Ventas sesión: ${formatMoney(sdel)}`;
             if (inoutEl) inoutEl.textContent = `Ingresos: ${formatMoney(sin)} · Salidas: ${formatMoney(sout)}`;
             if (sysEl) sysEl.textContent = `Sistema: ${formatMoney(sys)}`;
@@ -5966,6 +5977,10 @@
         const sum = data.summary || {};
         box.innerHTML = `
           <div class="cash-card">
+            <!-- Hidden inputs to fool browser password managers -->
+            <input type="text" name="fake_username_cash" style="position:absolute; top:-9999px; left:-9999px;" tabindex="-1" aria-hidden="true" autocomplete="off" />
+            <input type="password" name="fake_password_cash" style="position:absolute; top:-9999px; left:-9999px;" tabindex="-1" aria-hidden="true" autocomplete="new-password" />
+
             <div class="cash-title" style="display:flex; align-items:center; justify-content:space-between;">
               <span>Caja abierta</span>
               <button id="cash-eye" class="eye-btn" aria-label="Ocultar caja"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5zm0 12.5a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg></button>
@@ -5994,13 +6009,13 @@
                 <tbody>
                   <tr>
                     <td style="padding:4px;">Efectivo</td>
-                    <td style="padding:4px; text-align:right;"><input id="arqueo-efectivo" type="number" min="0" step="1" value="${(cashCloseDraft.methods && cashCloseDraft.methods.efectivo) || 0}" autocomplete="off" name="arqueo_efectivo_field" style="width:100px; text-align:right;" /></td>
+                    <td style="padding:4px; text-align:right;"><input id="arqueo-efectivo" type="number" min="0" step="1" value="${(cashCloseDraft.methods && cashCloseDraft.methods.efectivo) || 0}" autocomplete="new-password" name="arqueo_efectivo_field" style="width:100px; text-align:right;" /></td>
                     <!-- <td style="padding:4px; text-align:right;" id="theo-efectivo">$0</td> -->
                     <!-- <td style="padding:4px; text-align:right; font-weight:bold;" id="diff-efectivo">$0</td> -->
                   </tr>
                   <tr>
                     <td style="padding:4px;">POS/QR</td>
-                    <td style="padding:4px; text-align:right;"><input id="arqueo-pos" type="number" min="0" step="1" value="${(cashCloseDraft.methods && cashCloseDraft.methods.pos) || 0}" autocomplete="off" name="arqueo_pos_field" style="width:100px; text-align:right;" /></td>
+                    <td style="padding:4px; text-align:right;"><input id="arqueo-pos" type="number" min="0" step="1" value="${(cashCloseDraft.methods && cashCloseDraft.methods.pos) || 0}" autocomplete="new-password" name="arqueo_pos_field" style="width:100px; text-align:right;" /></td>
                     <!-- <td style="padding:4px; text-align:right;" id="theo-pos">$0</td> -->
                     <!-- <td style="padding:4px; text-align:right; font-weight:bold;" id="diff-pos">$0</td> -->
                   </tr>
@@ -6030,11 +6045,11 @@
             <div class="small" id="cash-session-diff">Diferencia: $0</div>
             <div class="cash-row">
               <label style="display:flex; align-items:center; gap:8px;">
-                <input id="arqueo-use-toggle" type="checkbox" ${(cashCloseDraft.useArqueo ? 'checked' : '')} /> Usar arqueo para monto de cierre
+                <input id="arqueo-use-toggle" type="checkbox" checked disabled /> Usar arqueo para monto de cierre (Requerido)
               </label>
             </div>
             <div class="cash-row">
-              <label>Monto de cierre <input id="cash-close-amount" type="number" min="0" step="1" value="${(cashCloseDraft.amount !== undefined && cashCloseDraft.amount !== null) ? cashCloseDraft.amount : ''}" autocomplete="new-password" name="cash_closing_amount_field_v2" /></label>
+              <label>Monto de cierre (calculado) <input id="cash-close-amount" type="number" readonly style="background:#f0f0f0; cursor:not-allowed;" min="0" step="1" value="${(cashCloseDraft.amount !== undefined && cashCloseDraft.amount !== null) ? cashCloseDraft.amount : ''}" autocomplete="new-password" name="cash_closing_amount_field_v2" /></label>
             </div>
             <div class="cash-row">
               <textarea id="cash-close-notes" placeholder="Notas de cierre">${cashCloseDraft.notes || ''}</textarea>
@@ -6150,7 +6165,10 @@
         const reviewEs = document.getElementById('cash-close-review-es');
         const reviewTip = document.getElementById('cash-close-review-tip');
         async function showCloseReview() {
-          const v = parseInt(amtInput && amtInput.value || '0', 10) || 0;
+          const elAmt = document.getElementById('cash-close-amount');
+          const elNote = document.getElementById('cash-close-notes');
+          const elUse = document.getElementById('arqueo-use-toggle');
+          const v = parseInt(elAmt && elAmt.value || '0', 10) || 0;
           try {
             const latest = await fetchCashSession();
             const sum = latest && latest.summary ? latest.summary : {};
@@ -6173,11 +6191,21 @@
             const breakdown = sum.theoretical_breakdown || { efectivo: 0, pos: 0, transferencia: 0, otros: 0 };
             const bdEl = document.getElementById('cash-close-review-breakdown');
             
-            // Get user inputs
-            const uEf = parseInt(efInput && efInput.value || '0', 10) || 0;
-            const uPos = parseInt(posInput && posInput.value || '0', 10) || 0;
-            const uTrans = parseInt(transInput && transInput.value || '0', 10) || 0;
-            const uOtros = parseInt(otrosInput && otrosInput.value || '0', 10) || 0;
+            // Get user inputs - Explicitly select elements to ensure we have the latest references
+            const elEf = document.getElementById('arqueo-efectivo');
+            const elPos = document.getElementById('arqueo-pos');
+            const elTrans = document.getElementById('arqueo-trans');
+            const elOtros = document.getElementById('arqueo-otros');
+
+            let uEf = parseInt(elEf && elEf.value || '0', 10) || 0;
+            const uPos = parseInt(elPos && elPos.value || '0', 10) || 0;
+            const uTrans = parseInt(elTrans && elTrans.value || '0', 10) || 0;
+            const uOtros = parseInt(elOtros && elOtros.value || '0', 10) || 0;
+            const uTotal = uEf + uPos + uTrans + uOtros;
+            // Fallback for visual review: if breakdown is empty but total > 0, assume it is Efectivo
+            if (uTotal === 0 && v > 0) {
+              uEf = v;
+            }
 
             const dEf = uEf - breakdown.efectivo;
             const dPos = uPos - breakdown.pos;
@@ -6256,7 +6284,7 @@
                 try { if (sumEl) { const total = rows.reduce((a,b)=>a+Number(b.total||0),0); sumEl.textContent = `Total pedidos en sesión: ${formatMoney(total)}`; } } catch(_){ }
               }
             } catch (_) {}
-            [efInput, posInput, transInput, otrosInput, useToggle, amtInput, noteClose].forEach(el => { try { if (el) el.disabled = true; } catch(_){} });
+            [elEf, elPos, elTrans, elOtros, elUse, elAmt, elNote].forEach(el => { try { if (el) el.disabled = true; } catch(_){} });
             if (reviewModal) reviewModal.style.display = 'block';
           } catch (_) {
             if (reviewCount) reviewCount.textContent = `Contado: $${v}`;
@@ -6432,10 +6460,31 @@
         if (movBtn) movBtn.onclick = openMovModal;
         if (movCancel) movCancel.onclick = () => { if (movModal) movModal.style.display = 'none'; isCashEditing = false; };
         if (movSubmit) movSubmit.onclick = async () => { movSubmit.disabled = true; try { await registerMovement(); } finally { movSubmit.disabled = false; } };
+        const updateActiveSessionTotals = () => {
+          const sdel = Number(sum.delivered_total || 0);
+          const sin = Number(sum.entradas || 0);
+          const sout = Number(sum.salidas || 0);
+          const sys = Number(sum.theoretical_cash || 0);
+          const counted = parseInt(amtInput && amtInput.value || '0', 10) || 0;
+          
+          const salesEl = document.getElementById('cash-session-sales');
+          const inoutEl = document.getElementById('cash-session-inout');
+          const sysEl = document.getElementById('cash-session-system');
+          const countedEl = document.getElementById('cash-session-counted');
+          const diffEl = document.getElementById('cash-session-diff');
+
+          if (salesEl) salesEl.textContent = `Ventas sesión: ${formatMoney(sdel)}`;
+          if (inoutEl) inoutEl.textContent = `Ingresos: ${formatMoney(sin)} · Salidas: ${formatMoney(sout)}`;
+          if (sysEl) sysEl.textContent = `Sistema: ${formatMoney(sys)}`;
+          if (countedEl) countedEl.textContent = `Contado: ${formatMoney(counted)}`;
+          if (diffEl) diffEl.textContent = `Diferencia: ${formatMoney(counted - sys)}`;
+        };
+
         if (amtInput) {
           const syncAmount = () => {
             const v = parseInt(amtInput.value||'0',10)||0;
             cashCloseDraft.amount = v;
+            updateActiveSessionTotals();
           };
           amtInput.addEventListener('input', syncAmount);
           amtInput.addEventListener('focus', () => { isCashEditing = true; });
@@ -6496,6 +6545,15 @@
       const allRows = Array.isArray(data.sessions) ? data.sessions : [];
       const latestRows = allRows.slice(0, 10);
       const prevRows = allRows.slice(10);
+      
+      // Helper to safely get metadata string
+      const getMeta = (s) => {
+        // Prefer explicit declared_breakdown from summary if available, to ensure data consistency
+        // But the attach function expects the full metadata string to parse.
+        // We ensure we pass the DB stored metadata.
+        return (s.closing_metadata || '').replace(/"/g, '&quot;');
+      };
+
       let html = '<div class="history-card"><div class="history-actions"><div class="cash-title" style="display:flex; align-items:center; justify-content:space-between;"><span>Historial de cierres</span><button id="history-eye" class="eye-btn" aria-label="Ocultar historial"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5zm0 12.5a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg></button></div><div style="display:flex; gap:8px; align-items:center;"><button id="cash-history-export">Exportar CSV</button>' + (prevRows.length ? `<button id="cash-history-toggle-prev">Mostrar anteriores (${prevRows.length})</button>` : '') + '</div></div>';
       html += '<div id="cash-history-body"><table class="history-table"><thead><tr><th>Apertura</th><th>Cierre</th><th>Inicial</th><th>Contado</th><th>Ventas</th><th>Entradas</th><th>Salidas</th><th>Teórica</th><th>Diferencia</th><th>Cerró</th><th>Acciones</th></tr></thead><tbody id="history-latest-body">';
       for (const s of latestRows) {
@@ -6512,10 +6570,10 @@
           <td>$${sum.closing_diff||0}</td>
           <td>${s.closed_by||''}</td>
           <td>
-            <button class="hist-view" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}" data-sales="${sum.delivered_total||0}" data-in="${sum.entradas||0}" data-out="${sum.salidas||0}" data-theo="${sum.theoretical_cash||0}" data-diff="${sum.closing_diff||0}" data-tip="${sum.tip_total||0}" data-base="${sum.base_delivered_total||0}" data-ship="${sum.shipping_total||0}" data-metadata="${(s.closing_metadata||'').replace(/"/g,'&quot;')}">
+            <button class="hist-view" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}" data-sales="${sum.delivered_total||0}" data-in="${sum.entradas||0}" data-out="${sum.salidas||0}" data-theo="${sum.theoretical_cash||0}" data-diff="${sum.closing_diff||0}" data-tip="${sum.tip_total||0}" data-base="${sum.base_delivered_total||0}" data-ship="${sum.shipping_total||0}" data-metadata="${getMeta(s)}">
               Ver
             </button>
-            <button class="hist-pdf" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}" data-tip="${sum.tip_total||0}" data-base="${sum.base_delivered_total||0}" data-ship="${sum.shipping_total||0}" data-metadata="${(s.closing_metadata||'').replace(/"/g,'&quot;')}">
+            <button class="hist-pdf" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}" data-tip="${sum.tip_total||0}" data-base="${sum.base_delivered_total||0}" data-ship="${sum.shipping_total||0}" data-metadata="${getMeta(s)}">
               PDF
             </button>
           </td>
@@ -6538,8 +6596,8 @@
             <td>$${sum.closing_diff||0}</td>
             <td>${s.closed_by||''}</td>
             <td>
-              <button class="hist-view" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}" data-sales="${sum.delivered_total||0}" data-in="${sum.entradas||0}" data-out="${sum.salidas||0}" data-theo="${sum.theoretical_cash||0}" data-diff="${sum.closing_diff||0}" data-tip="${sum.tip_total||0}" data-base="${sum.base_delivered_total||0}" data-ship="${sum.shipping_total||0}" data-metadata="${(s.closing_metadata||'').replace(/"/g,'&quot;')}">Ver</button>
-              <button class="hist-pdf" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}" data-tip="${sum.tip_total||0}" data-base="${sum.base_delivered_total||0}" data-ship="${sum.shipping_total||0}" data-metadata="${(s.closing_metadata||'').replace(/"/g,'&quot;')}">PDF</button>
+              <button class="hist-view" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}" data-sales="${sum.delivered_total||0}" data-in="${sum.entradas||0}" data-out="${sum.salidas||0}" data-theo="${sum.theoretical_cash||0}" data-diff="${sum.closing_diff||0}" data-tip="${sum.tip_total||0}" data-base="${sum.base_delivered_total||0}" data-ship="${sum.shipping_total||0}" data-metadata="${getMeta(s)}">Ver</button>
+              <button class="hist-pdf" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}" data-tip="${sum.tip_total||0}" data-base="${sum.base_delivered_total||0}" data-ship="${sum.shipping_total||0}" data-metadata="${getMeta(s)}">PDF</button>
             </td>
           </tr>`;
         }
@@ -6562,8 +6620,8 @@
               <div class="item">Dif.: $${sum.closing_diff||0}</div>
             </div>
             <div class="hm-actions">
-              <button class="hist-view" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}" data-sales="${sum.delivered_total||0}" data-in="${sum.entradas||0}" data-out="${sum.salidas||0}" data-theo="${sum.theoretical_cash||0}" data-diff="${sum.closing_diff||0}" data-tip="${sum.tip_total||0}" data-base="${sum.base_delivered_total||0}" data-ship="${sum.shipping_total||0}" data-metadata="${(s.closing_metadata||'').replace(/"/g,'&quot;')}">Ver</button>
-              <button class="hist-pdf" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}" data-tip="${sum.tip_total||0}" data-base="${sum.base_delivered_total||0}" data-ship="${sum.shipping_total||0}" data-metadata="${(s.closing_metadata||'').replace(/"/g,'&quot;')}">PDF</button>
+              <button class="hist-view" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}" data-sales="${sum.delivered_total||0}" data-in="${sum.entradas||0}" data-out="${sum.salidas||0}" data-theo="${sum.theoretical_cash||0}" data-diff="${sum.closing_diff||0}" data-tip="${sum.tip_total||0}" data-base="${sum.base_delivered_total||0}" data-ship="${sum.shipping_total||0}" data-metadata="${getMeta(s)}">Ver</button>
+              <button class="hist-pdf" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}" data-tip="${sum.tip_total||0}" data-base="${sum.base_delivered_total||0}" data-ship="${sum.shipping_total||0}" data-metadata="${getMeta(s)}">PDF</button>
             </div>
           </div>
         `;
@@ -6586,8 +6644,8 @@
                 <div class="item">Dif.: $${sum.closing_diff||0}</div>
               </div>
               <div class="hm-actions">
-                <button class="hist-view" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}" data-sales="${sum.delivered_total||0}" data-in="${sum.entradas||0}" data-out="${sum.salidas||0}" data-theo="${sum.theoretical_cash||0}" data-diff="${sum.closing_diff||0}" data-tip="${sum.tip_total||0}" data-base="${sum.base_delivered_total||0}" data-ship="${sum.shipping_total||0}" data-metadata="${(s.closing_metadata||'').replace(/"/g,'&quot;')}">Ver</button>
-                <button class="hist-pdf" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}" data-tip="${sum.tip_total||0}" data-base="${sum.base_delivered_total||0}" data-ship="${sum.shipping_total||0}" data-metadata="${(s.closing_metadata||'').replace(/"/g,'&quot;')}">PDF</button>
+                <button class="hist-view" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}" data-sales="${sum.delivered_total||0}" data-in="${sum.entradas||0}" data-out="${sum.salidas||0}" data-theo="${sum.theoretical_cash||0}" data-diff="${sum.closing_diff||0}" data-tip="${sum.tip_total||0}" data-base="${sum.base_delivered_total||0}" data-ship="${sum.shipping_total||0}" data-metadata="${getMeta(s)}">Ver</button>
+                <button class="hist-pdf" data-sid="${s.id}" data-opened="${s.opened_at||''}" data-closed="${s.closed_at||''}" data-note-open="${(s.notes_open||'').replace(/"/g,'&quot;')}" data-note-close="${(s.notes_close||'').replace(/"/g,'&quot;')}" data-open-amt="${s.opening_amount||0}" data-close-amt="${s.closing_amount||0}" data-tip="${sum.tip_total||0}" data-base="${sum.base_delivered_total||0}" data-ship="${sum.shipping_total||0}" data-metadata="${getMeta(s)}">PDF</button>
               </div>
             </div>
           `;
