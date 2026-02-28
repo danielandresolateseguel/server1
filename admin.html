@@ -7245,21 +7245,17 @@
       let cart = [];
       let products = [];
       
-      // Init Tenants
-      const tenants = [
-        { slug: 'gastronomia-local1', name: 'Gastronomía Local 1' },
-        { slug: 'gastronomia-local2', name: 'Gastronomía Local 2' },
-        { slug: 'gastronomia-local3', name: 'Gastronomía Local 3' },
-        { slug: 'gastronomia-local4', name: 'Gastronomía Local 4' },
-        { slug: 'gastronomia-local5', name: 'Gastronomía Local 5' }
-      ];
-      
+      // Helper for tenant name display
+      const formatTenantName = (s) => {
+          if (!s) return 'Desconocido';
+          return s.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      };
+
       if (tenantSelect) {
         // Initial sync
         const current = (typeof tenantInput !== 'undefined' && tenantInput.value) ? tenantInput.value : 'gastronomia-local1';
-        const t = tenants.find(x => x.slug === current) || tenants[0];
-        tenantSelect.innerHTML = `<option value="${t.slug}">${t.name}</option>`;
-        tenantSelect.value = t.slug;
+        tenantSelect.innerHTML = `<option value="${current}">${formatTenantName(current)}</option>`;
+        tenantSelect.value = current;
         tenantSelect.disabled = true;
       }
       
@@ -7270,9 +7266,8 @@
         // Sync with current tenant before opening
         if (tenantSelect && typeof tenantInput !== 'undefined' && tenantInput.value) {
              const current = tenantInput.value;
-             const t = tenants.find(x => x.slug === current) || tenants[0];
-             tenantSelect.innerHTML = `<option value="${t.slug}">${t.name}</option>`;
-             tenantSelect.value = t.slug;
+             tenantSelect.innerHTML = `<option value="${current}">${formatTenantName(current)}</option>`;
+             tenantSelect.value = current;
         }
 
         modal.classList.add('active');
@@ -7362,20 +7357,8 @@
         productsGrid.innerHTML = '<div class="small">Cargando...</div>';
         try {
           const allProducts = await fetchProducts(); // Uses existing function
-          const slug = tenantSelect.value;
-          
-          // Filter by tenant prefix logic
-          let prefix = '';
-          if (slug === 'gastronomia-local2') prefix = 'l2-';
-          else if (slug === 'gastronomia-local3') prefix = 'l3-';
-          else if (slug === 'gastronomia-local4') prefix = 'l4-';
-          else if (slug === 'gastronomia-local5') prefix = 'l5-';
-          
-          products = allProducts.filter(p => {
-             if (prefix) return p.id.startsWith(prefix);
-             // Local 1: Not starting with any other prefix
-             return !p.id.startsWith('l2-') && !p.id.startsWith('l3-') && !p.id.startsWith('l4-') && !p.id.startsWith('l5-');
-          });
+          // No additional filtering needed as fetchProducts uses tenant_slug
+          products = allProducts;
           
           renderProducts();
         } catch (e) {
@@ -8679,14 +8662,29 @@
                     <title>Cuenta #${o.id}</title>
                     <style>
                         @media print {
-                            @page { margin: 0; size: auto; }
+                            @page { margin: 0; size: 80mm auto; }
                             body { margin: 0; padding: 0; }
                         }
-                        body { font-family: 'Courier New', monospace; width: 100%; max-width: 80mm; margin: 0 auto; padding: 5px; color: #000; box-sizing: border-box; }
+                        body { 
+                            font-family: 'Courier New', monospace; 
+                            width: 100%; 
+                            max-width: 80mm; 
+                            margin: 0; 
+                            padding: 2mm 4mm; 
+                            color: #000; 
+                            box-sizing: border-box; 
+                            font-size: 14px;
+                            line-height: 1.2;
+                            overflow-x: hidden;
+                            word-wrap: break-word;
+                        }
                         .center { text-align: center; }
                         .bold { font-weight: bold; }
-                        .line { border-bottom: 1px dashed #000; margin: 10px 0; }
-                        .cut-feed { display: block; height: 20mm; color: transparent; }
+                        .line { border-bottom: 1px dashed #000; margin: 5px 0; }
+                        .cut-feed { display: block; height: 15mm; color: transparent; }
+                        table { width: 100%; font-size: 14px; border-collapse: collapse; }
+                        td, th { vertical-align: top; }
+                        .text-right { text-align: right; }
                     </style>
                 </head>
                 <body>
@@ -8787,15 +8785,29 @@
                     <title>Comanda #${o.id}</title>
                     <style>
                         @media print {
-                            @page { margin: 0; size: auto; }
+                            @page { margin: 0; size: 80mm auto; }
                             body { margin: 0; padding: 0; }
                         }
-                        body { font-family: 'Courier New', monospace; width: 100%; max-width: 80mm; margin: 0 auto; padding: 5px; color: #000; box-sizing: border-box; }
+                        body { 
+                            font-family: 'Courier New', monospace; 
+                            width: 100%; 
+                            max-width: 80mm; 
+                            margin: 0; 
+                            padding: 2mm 4mm; 
+                            color: #000; 
+                            box-sizing: border-box; 
+                            font-size: 14px;
+                            line-height: 1.2;
+                            overflow-x: hidden;
+                            word-wrap: break-word;
+                        }
                         .center { text-align: center; }
                         .bold { font-weight: bold; }
                         .big { font-size: 1.5em; }
-                        .line { border-bottom: 2px dashed #000; margin: 10px 0; }
-                        .cut-feed { display: block; height: 20mm; color: transparent; }
+                        .line { border-bottom: 2px dashed #000; margin: 5px 0; }
+                        .cut-feed { display: block; height: 15mm; color: transparent; }
+                        table { width: 100%; font-size: 16px; border-collapse: collapse; }
+                        td, th { vertical-align: top; }
                     </style>
                 </head>
                 <body>
