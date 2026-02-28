@@ -6006,13 +6006,13 @@
                   </tr>
                   <tr>
                     <td style="padding:4px;">Transferencias</td>
-                    <td style="padding:4px; text-align:right;"><input id="arqueo-trans" type="number" min="0" step="1" value="${(cashCloseDraft.methods && cashCloseDraft.methods.trans) || 0}" autocomplete="off" name="arqueo_trans_field" style="width:100px; text-align:right;" /></td>
+                    <td style="padding:4px; text-align:right;"><input id="arqueo-trans" type="number" min="0" step="1" value="${(cashCloseDraft.methods && cashCloseDraft.methods.trans) || 0}" autocomplete="new-password" name="arqueo_trans_field_v2" style="width:100px; text-align:right;" /></td>
                     <!-- <td style="padding:4px; text-align:right;" id="theo-trans">$0</td> -->
                     <!-- <td style="padding:4px; text-align:right; font-weight:bold;" id="diff-trans">$0</td> -->
                   </tr>
                   <tr>
                     <td style="padding:4px;">Otros</td>
-                    <td style="padding:4px; text-align:right;"><input id="arqueo-otros" type="number" min="0" step="1" value="${(cashCloseDraft.methods && cashCloseDraft.methods.otros) || 0}" autocomplete="off" name="arqueo_otros_field" style="width:100px; text-align:right;" /></td>
+                    <td style="padding:4px; text-align:right;"><input id="arqueo-otros" type="number" min="0" step="1" value="${(cashCloseDraft.methods && cashCloseDraft.methods.otros) || 0}" autocomplete="new-password" name="arqueo_otros_field_v2" style="width:100px; text-align:right;" /></td>
                     <!-- <td style="padding:4px; text-align:right;" id="theo-otros">$0</td> -->
                     <!-- <td style="padding:4px; text-align:right; font-weight:bold;" id="diff-otros">$0</td> -->
                   </tr>
@@ -6034,7 +6034,7 @@
               </label>
             </div>
             <div class="cash-row">
-              <label>Monto de cierre <input id="cash-close-amount" type="number" min="0" step="1" value="${(cashCloseDraft.amount !== undefined && cashCloseDraft.amount !== null) ? cashCloseDraft.amount : ''}" autocomplete="off" name="cash_closing_amount_field" /></label>
+              <label>Monto de cierre <input id="cash-close-amount" type="number" min="0" step="1" value="${(cashCloseDraft.amount !== undefined && cashCloseDraft.amount !== null) ? cashCloseDraft.amount : ''}" autocomplete="new-password" name="cash_closing_amount_field_v2" /></label>
             </div>
             <div class="cash-row">
               <textarea id="cash-close-notes" placeholder="Notas de cierre">${cashCloseDraft.notes || ''}</textarea>
@@ -6108,7 +6108,7 @@
                       <option value="salida">Salida</option>
                     </select>
                   </label>
-                  <label>Monto $ <input id="cash-mov-amount" type="number" min="1" step="1" autocomplete="off" name="cash_movement_amount_field" /></label>
+                  <label>Monto $ <input id="cash-mov-amount" type="number" min="1" step="1" autocomplete="new-password" name="cash_movement_amount_field_v2" /></label>
                 </div>
                 <div class="cash-row">
                   <textarea id="cash-mov-motive" placeholder="Motivo"></textarea>
