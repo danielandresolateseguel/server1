@@ -8657,11 +8657,8 @@
             }
 
             const html = `
-                <!DOCTYPE html>
                 <html>
                 <head>
-                    <meta charset="UTF-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     <title>Cuenta #${o.id}</title>
                     <style>
                         @media print {
@@ -8670,12 +8667,13 @@
                         }
                         body { 
                             font-family: 'Courier New', monospace; 
-                            width: 100%; 
-                            margin: 0; 
+                            width: 100%;
+                            max-width: 74mm;
+                            margin: 0 auto; 
                             padding: 2mm; 
                             color: #000; 
                             box-sizing: border-box; 
-                            font-size: 16px;
+                            font-size: 15px;
                             line-height: 1.2;
                             overflow-x: hidden;
                             word-wrap: break-word;
@@ -8713,7 +8711,7 @@
                 </html>
             `;
             
-            const win = window.open('', 'PrintBill', 'height=600,width=400');
+            const win = window.open('', 'PrintBill', 'height=600,width=350');
             win.document.write(html);
             win.document.close();
             
@@ -8782,11 +8780,8 @@
             itemsHtml += '</table>';
             
             const html = `
-                <!DOCTYPE html>
                 <html>
                 <head>
-                    <meta charset="UTF-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     <title>Comanda #${o.id}</title>
                     <style>
                         @media print {
@@ -8795,12 +8790,13 @@
                         }
                         body { 
                             font-family: 'Courier New', monospace; 
-                            width: 100%; 
-                            margin: 0; 
+                            width: 100%;
+                            max-width: 74mm;
+                            margin: 0 auto; 
                             padding: 2mm; 
                             color: #000; 
                             box-sizing: border-box; 
-                            font-size: 16px;
+                            font-size: 15px;
                             line-height: 1.2;
                             overflow-x: hidden;
                             word-wrap: break-word;
@@ -8833,7 +8829,7 @@
                 </html>
             `;
             
-            const win = window.open('', 'PrintKitchen', 'height=600,width=400');
+            const win = window.open('', 'PrintKitchen', 'height=600,width=350');
             win.document.write(html);
             win.document.close();
             
