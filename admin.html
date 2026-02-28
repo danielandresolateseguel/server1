@@ -8657,23 +8657,25 @@
             }
 
             const html = `
+                <!DOCTYPE html>
                 <html>
                 <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     <title>Cuenta #${o.id}</title>
                     <style>
                         @media print {
-                            @page { margin: 0; size: 80mm auto; }
+                            @page { size: 80mm auto; margin: 0; }
                             body { margin: 0; padding: 0; }
                         }
                         body { 
                             font-family: 'Courier New', monospace; 
                             width: 100%; 
-                            max-width: 80mm; 
                             margin: 0; 
-                            padding: 2mm 4mm; 
+                            padding: 2mm; 
                             color: #000; 
                             box-sizing: border-box; 
-                            font-size: 14px;
+                            font-size: 16px;
                             line-height: 1.2;
                             overflow-x: hidden;
                             word-wrap: break-word;
@@ -8682,7 +8684,7 @@
                         .bold { font-weight: bold; }
                         .line { border-bottom: 1px dashed #000; margin: 5px 0; }
                         .cut-feed { display: block; height: 15mm; color: transparent; }
-                        table { width: 100%; font-size: 14px; border-collapse: collapse; }
+                        table { width: 100%; font-size: 16px; border-collapse: collapse; }
                         td, th { vertical-align: top; }
                         .text-right { text-align: right; }
                     </style>
@@ -8780,23 +8782,25 @@
             itemsHtml += '</table>';
             
             const html = `
+                <!DOCTYPE html>
                 <html>
                 <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     <title>Comanda #${o.id}</title>
                     <style>
                         @media print {
-                            @page { margin: 0; size: 80mm auto; }
+                            @page { size: 80mm auto; margin: 0; }
                             body { margin: 0; padding: 0; }
                         }
                         body { 
                             font-family: 'Courier New', monospace; 
                             width: 100%; 
-                            max-width: 80mm; 
                             margin: 0; 
-                            padding: 2mm 4mm; 
+                            padding: 2mm; 
                             color: #000; 
                             box-sizing: border-box; 
-                            font-size: 14px;
+                            font-size: 16px;
                             line-height: 1.2;
                             overflow-x: hidden;
                             word-wrap: break-word;
