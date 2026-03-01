@@ -1151,7 +1151,19 @@
   <div id="payment-modal" class="kds-modal" aria-hidden="true" role="dialog" aria-modal="true">
     <div class="kds-modal-overlay"></div>
     <div class="kds-modal-content kds-confirm" style="max-width: 350px;">
-      <h3 style="margin:0 0 12px 0; font-size:16px; color:#333;">Seleccione medio de pago</h3>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h3 style="margin:0; font-size:16px; color:#333;">Seleccione medio de pago</h3>
+          <button id="pm-config-btn" style="background:none; border:none; cursor:pointer; color:#666; padding:4px;" title="Configuración">
+             <svg style="width:18px;height:18px;" viewBox="0 0 24 24"><path fill="currentColor" d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
+          </button>
+      </div>
+
+      <div id="pm-config-box" style="display:none; background:#f9f9f9; padding:10px; border:1px solid #ddd; border-radius:6px; margin-bottom:12px;">
+         <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer; color:#333;">
+            <input type="checkbox" id="pm-cfg-print-transfer">
+            Imprimir ticket al registrar Transferencia
+         </label>
+      </div>
       
       <div id="payment-details-box" style="margin-bottom:12px; padding:12px; background:#f0f7ff; border-radius:6px; border:1px solid #cce5ff; display:none;">
           <div id="pm-subtotal-row" style="font-size:14px; margin-bottom:4px; display:flex; justify-content:space-between; display:none;">
@@ -1177,7 +1189,7 @@
           </div>
       </div>
 
-      <div style="display:flex; flex-direction:column; gap:8px;">
+      <div class="pay-options-container" style="display:flex; flex-direction:column; gap:8px;">
         <button class="pay-option-btn" data-method="contado" style="padding:12px; text-align:left; font-size:14px; background:#f5f5f5; color:#333; border:1px solid #ddd; border-radius:6px; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
           <span style="font-weight:600;">Contado (Efectivo)</span>
           <svg style="width:16px;height:16px;opacity:0.5;" viewBox="0 0 24 24"><path fill="currentColor" d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
@@ -1194,6 +1206,7 @@
           <span style="font-weight:600;">Pago Mixto (Dividir)</span>
           <svg style="width:16px;height:16px;opacity:0.5;" viewBox="0 0 24 24"><path fill="currentColor" d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
         </button>
+      </div>
 
         <div id="mixed-payment-box" style="display:none; background:#f9f9f9; padding:12px; border:1px solid #ddd; border-radius:6px; margin-top:-4px;">
            <div style="font-size:12px; color:#666; margin-bottom:8px;">Ingrese los montos para cada medio:</div>
@@ -1222,9 +1235,22 @@
              <span id="mixed-remaining">$0</span>
            </div>
            
-           <button id="confirm-mixed-pay" disabled style="width:100%; margin-top:12px; background:#4caf50; color:white; border:none; padding:8px; border-radius:4px; cursor:pointer; opacity:0.5;">Confirmar Pago Mixto</button>
+           <button id="confirm-mixed-pay" disabled style="width:100%; margin-top:12px; background:#4caf50; color:white; border:none; padding:8px; border-radius:4px; cursor:pointer; opacity:0.5;">Siguiente</button>
         </div>
-      </div>
+
+        <div id="payment-confirmation-box" style="display:none; text-align:center; padding:12px; border-top:1px solid #eee; margin-top:12px;">
+            <h4 id="confirm-pay-msg" style="margin:0 0 12px 0; color:#333; font-size:15px;"></h4>
+            <div style="margin:12px 0; padding:10px; background:#f5f5f5; border-radius:6px;">
+                <label style="display:flex; align-items:center; justify-content:center; gap:8px; font-size:15px; cursor:pointer; font-weight:600;">
+                    <input type="checkbox" id="confirm-print-check" style="transform:scale(1.2);">
+                    Imprimir Comprobante
+                </label>
+            </div>
+            <div style="display:flex; gap:10px; justify-content:center; margin-top:16px;">
+                <button id="confirm-pay-back" style="background:#f5f5f5; border:1px solid #ccc; color:#333; padding:10px 20px; border-radius:6px; cursor:pointer; font-size:14px; font-weight:600;">Volver</button>
+                <button id="confirm-pay-action" style="background:#28a745; color:white; border:none; padding:10px 24px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:14px;">CONFIRMAR PAGO</button>
+            </div>
+        </div>
       <div style="margin-top:12px; text-align:right;">
         <button id="payment-cancel" style="background:#e0e0e0; color:#333; border:none; padding:8px 16px; border-radius:4px; cursor:pointer;">Cancelar</button>
       </div>
@@ -3173,10 +3199,16 @@
               const action = qb.getAttribute('data-action');
               if (action === 'pay') {
                   if (qb.classList.contains('paid')) return;
-                  const methodData = await askPaymentMethod(o.total, (o.order_type || '').toLowerCase() === 'mesa');
+                  const methodData = await askPaymentMethod(o.total, (o.order_type || '').toLowerCase() === 'mesa', o.shipping_cost || 0);
                   if (!methodData) return;
                   try {
                       await payOrder(o.id, methodData);
+
+                      // Check if print was requested in confirmation
+                      if (methodData.print) {
+                          try { window.printBill(o.id); } catch(_) {}
+                      }
+
                       o.payment_status = 'paid';
                       if (o.status === 'entregado') {
                           card.remove();
@@ -3334,6 +3366,12 @@
                 if (!methodData) return;
                 try {
                     await payOrder(o.id, methodData);
+
+                    // Check if print was requested in confirmation
+                    if (methodData.print) {
+                        try { window.printBill(o.id); } catch(_) {}
+                    }
+
                     o.payment_status = 'paid';
                     if (o.status === 'entregado') {
                         tr.remove();
@@ -5319,8 +5357,52 @@
         const mixedRemaining = document.getElementById('mixed-remaining');
         const confirmMixedBtn = document.getElementById('confirm-mixed-pay');
 
+        // CONFIGURATION LOGIC
+        const cfgBtn = document.getElementById('pm-config-btn');
+        const cfgBox = document.getElementById('pm-config-box');
+        const cfgCheck = document.getElementById('pm-cfg-print-transfer');
+
+        if (cfgCheck) {
+            // Load preference
+            cfgCheck.checked = (localStorage.getItem('kds_autoprint_transfer') === 'true');
+            
+            // Save preference on change (ensure listener added only once)
+            if (!cfgCheck.dataset.listener) {
+                cfgCheck.addEventListener('change', (e) => {
+                    localStorage.setItem('kds_autoprint_transfer', e.target.checked);
+                });
+                cfgCheck.dataset.listener = 'true';
+            }
+        }
+
+        if (cfgBtn && cfgBox) {
+            // Reset visibility
+            cfgBox.style.display = 'none';
+            
+            // Toggle visibility on click
+            if (!cfgBtn.dataset.listener) {
+                cfgBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    cfgBox.style.display = (cfgBox.style.display === 'none') ? 'block' : 'none';
+                });
+                cfgBtn.dataset.listener = 'true';
+            }
+        }
+
+        // Elements for confirmation
+        const confirmBox = document.getElementById('payment-confirmation-box');
+        const confirmMsg = document.getElementById('confirm-pay-msg');
+        const confirmCheck = document.getElementById('confirm-print-check');
+        const confirmBack = document.getElementById('confirm-pay-back');
+        const confirmAction = document.getElementById('confirm-pay-action');
+        let pendingData = null;
+
         // Reset mixed UI
         if(mixedBox) mixedBox.style.display = 'none';
+        if(confirmBox) confirmBox.style.display = 'none';
+        const btnContainer = optionBtns[0] ? optionBtns[0].parentNode : null;
+        if(btnContainer) btnContainer.style.display = 'flex';
+
         if(mixedInputs) mixedInputs.forEach(i => i.value = '');
 
         // Elements for details
@@ -5426,9 +5508,42 @@
           cancelBtn.onclick = null;
           optionBtns.forEach(b => b.onclick = null);
           if (tipToggle) tipToggle.onchange = null;
+          if (confirmBack) confirmBack.onclick = null;
+          if (confirmAction) confirmAction.onclick = null;
         };
         
         const onCancel = () => { cleanup(); resolve(null); };
+
+        const showConfirmation = (data) => {
+            if(detailsBox) detailsBox.style.display = 'none';
+            if(mixedBox) mixedBox.style.display = 'none';
+            if(btnContainer) btnContainer.style.display = 'none';
+            
+            if(confirmBox) {
+                confirmBox.style.display = 'block';
+                let msg = '';
+                if(data.method === 'mixed') {
+                    msg = `¿Confirmar Pago Mixto de ${formatMoney(data.final_total)}?`;
+                } else {
+                    let name = data.method;
+                    if(name === 'contado') name = 'Efectivo';
+                    else if(name === 'transferencia') name = 'Transferencia';
+                    else if(name === 'pos') name = 'POS / QR';
+                    msg = `¿Confirmar pago de ${formatMoney(data.final_total)} con ${name}?`;
+                }
+                if(confirmMsg) confirmMsg.textContent = msg;
+                
+                if(confirmCheck) {
+                    const auto = (localStorage.getItem('kds_autoprint_transfer') === 'true');
+                    let isTransfer = (data.method === 'transferencia');
+                    if(data.method === 'mixed' && data.details) {
+                        isTransfer = data.details.some(d => d.method === 'transferencia');
+                    }
+                    confirmCheck.checked = (isTransfer && auto);
+                }
+            }
+        };
+
         const onSelect = (method) => { 
             if (method === 'mixed') {
                if(mixedBox) {
@@ -5437,12 +5552,12 @@
                }
                return; 
             }
-            cleanup(); 
-            resolve({
+            pendingData = {
                 method: method,
                 tip_amount: showBox ? tipAmount : 0,
                 final_total: showBox ? finalAmount : currentTotal
-            }); 
+            };
+            showConfirmation(pendingData);
         };
 
         if(confirmMixedBtn) confirmMixedBtn.onclick = () => {
@@ -5451,13 +5566,33 @@
                 const val = Number(i.value)||0;
                 if(val > 0) details.push({ method: i.dataset.key, amount: val });
              });
-             cleanup();
-             resolve({
+             pendingData = {
                 method: 'mixed',
                 details: details,
                 tip_amount: showBox ? tipAmount : 0,
                 final_total: showBox ? finalAmount : currentTotal
-             });
+             };
+             showConfirmation(pendingData);
+        };
+
+        if(confirmBack) confirmBack.onclick = () => {
+            if(confirmBox) confirmBox.style.display = 'none';
+            if(pendingData && pendingData.method === 'mixed') {
+                 if(mixedBox) mixedBox.style.display = 'block';
+                 if(btnContainer) btnContainer.style.display = 'flex';
+                 if(detailsBox) detailsBox.style.display = 'block';
+            } else {
+                 if(btnContainer) btnContainer.style.display = 'flex';
+                 if(detailsBox) detailsBox.style.display = 'block';
+            }
+            pendingData = null;
+        };
+
+        if(confirmAction) confirmAction.onclick = () => {
+            if(!pendingData) return;
+            pendingData.print = confirmCheck ? confirmCheck.checked : false;
+            cleanup();
+            resolve(pendingData);
         };
         
         overlay.addEventListener('click', onCancel);
@@ -6105,6 +6240,14 @@
                       <option value="salida">Salida</option>
                     </select>
                   </label>
+                  <label>Método
+                    <select id="cash-mov-method">
+                      <option value="efectivo">Efectivo</option>
+                      <option value="pos">POS/QR</option>
+                      <option value="transferencia">Transferencia</option>
+                      <option value="otros">Otros</option>
+                    </select>
+                  </label>
                   <label>Monto $ <input id="cash-mov-amount" type="number" min="1" step="1" autocomplete="new-password" name="cash_movement_amount_field_v2" /></label>
                 </div>
                 <div class="cash-row">
@@ -6171,6 +6314,7 @@
             if (reviewTip) reviewTip.textContent = `Suma total de propina: ${formatMoney(stip)}`;
             
             const breakdown = sum.theoretical_breakdown || { efectivo: 0, pos: 0, transferencia: 0, otros: 0 };
+            const counts = sum.theoretical_breakdown_counts || { efectivo: 0, pos: 0, transferencia: 0, otros: 0 };
             const bdEl = document.getElementById('cash-close-review-breakdown');
             
             // Get user inputs - Explicitly select elements to ensure we have the latest references
@@ -6208,25 +6352,25 @@
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td style="padding:4px;">Efectivo</td>
+                                    <td style="padding:4px;">Efectivo <small style="color:#666">(${counts.efectivo})</small></td>
                                     <td style="text-align:right; padding:4px;">${formatMoney(breakdown.efectivo)}</td>
                                     <td style="text-align:right; padding:4px;">${formatMoney(uEf)}</td>
                                     <td style="text-align:right; padding:4px; font-weight:bold; color:${dEf === 0 ? 'inherit' : (dEf > 0 ? 'green' : 'red')}">${formatMoney(dEf)}</td>
                                 </tr>
                                 <tr>
-                                    <td style="padding:4px;">POS/QR</td>
+                                    <td style="padding:4px;">POS/QR <small style="color:#666">(${counts.pos})</small></td>
                                     <td style="text-align:right; padding:4px;">${formatMoney(breakdown.pos)}</td>
                                     <td style="text-align:right; padding:4px;">${formatMoney(uPos)}</td>
                                     <td style="text-align:right; padding:4px; font-weight:bold; color:${dPos === 0 ? 'inherit' : (dPos > 0 ? 'green' : 'red')}">${formatMoney(dPos)}</td>
                                 </tr>
                                 <tr>
-                                    <td style="padding:4px;">Transferencia</td>
+                                    <td style="padding:4px;">Transferencia <small style="color:#666">(${counts.transferencia})</small></td>
                                     <td style="text-align:right; padding:4px;">${formatMoney(breakdown.transferencia)}</td>
                                     <td style="text-align:right; padding:4px;">${formatMoney(uTrans)}</td>
                                     <td style="text-align:right; padding:4px; font-weight:bold; color:${dTrans === 0 ? 'inherit' : (dTrans > 0 ? 'green' : 'red')}">${formatMoney(dTrans)}</td>
                                 </tr>
                                 <tr>
-                                    <td style="padding:4px;">Otros</td>
+                                    <td style="padding:4px;">Otros <small style="color:#666">(${counts.otros})</small></td>
                                     <td style="text-align:right; padding:4px;">${formatMoney(breakdown.otros)}</td>
                                     <td style="text-align:right; padding:4px;">${formatMoney(uOtros)}</td>
                                     <td style="text-align:right; padding:4px; font-weight:bold; color:${dOtros === 0 ? 'inherit' : (dOtros > 0 ? 'green' : 'red')}">${formatMoney(dOtros)}</td>
@@ -6395,11 +6539,13 @@
         const movAmount = document.getElementById('cash-mov-amount');
         const movMotive = document.getElementById('cash-mov-motive');
         const movDetail = document.getElementById('cash-mov-detail');
+        const movMethod = document.getElementById('cash-mov-method');
         const movCancel = document.getElementById('cash-mov-cancel');
         const movSubmit = document.getElementById('cash-mov-submit');
         function openMovModal() {
           if (movModal) {
             movType.value = 'entrada';
+            if (movMethod) movMethod.value = 'efectivo';
             movAmount.value = '';
             movMotive.value = '';
             movDetail.value = '';
@@ -6411,6 +6557,7 @@
           try { await ensureAuth(); } catch(_) {}
           if (!isAuthed || !csrfToken) { alert('Debes iniciar sesión'); return; }
           const t = (movType && movType.value) || 'entrada';
+          const pm = (movMethod && movMethod.value) || 'efectivo';
           const amt = parseInt((movAmount && movAmount.value) || '0', 10) || 0;
           const motive = (movMotive && movMotive.value || '').trim();
           const detail = (movDetail && movDetail.value || '').trim();
@@ -6420,7 +6567,7 @@
           const resp = await fetch(new URL('/api/cash/movement', API_BASE).toString(), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
-            body: JSON.stringify({ tenant_slug: slug, type: t, amount: amt, note })
+            body: JSON.stringify({ tenant_slug: slug, type: t, amount: amt, note, payment_method: pm })
           });
           if (!resp.ok) { try { const e = await resp.json(); alert(String(e.error||'No se pudo registrar')); } catch(_) { alert('No se pudo registrar'); } return; }
           if (movModal) movModal.style.display = 'none';
@@ -6696,6 +6843,7 @@
           const diffTotal = closeAmt - systemTotal;
           
           const breakdown = { efectivo: openAmt, pos: 0, transferencia: 0, otros: 0 };
+          const breakdownCounts = { efectivo: 0, pos: 0, transferencia: 0, otros: 0 };
           movements.forEach(m => {
               const mt = (m.type||'').toLowerCase();
               const note = (m.note||'').toLowerCase();
@@ -6711,15 +6859,15 @@
                    else if (note.includes('transferencia')) method = 'transferencia';
               }
               if (mt === 'entrada' || mt === 'ingreso') {
-                  if (method === 'pos') breakdown.pos += amt;
-                  else if (method === 'transferencia') breakdown.transferencia += amt;
-                  else if (method === 'otros') breakdown.otros += amt;
-                  else breakdown.efectivo += amt;
+                  if (method === 'pos') { breakdown.pos += amt; breakdownCounts.pos++; }
+                  else if (method === 'transferencia') { breakdown.transferencia += amt; breakdownCounts.transferencia++; }
+                  else if (method === 'otros') { breakdown.otros += amt; breakdownCounts.otros++; }
+                  else { breakdown.efectivo += amt; breakdownCounts.efectivo++; }
               } else if (mt === 'salida') {
-                  if (method === 'pos') breakdown.pos -= amt;
-                  else if (method === 'transferencia') breakdown.transferencia -= amt;
-                  else if (method === 'otros') breakdown.otros -= amt;
-                  else breakdown.efectivo -= amt;
+                  if (method === 'pos') { breakdown.pos -= amt; breakdownCounts.pos++; }
+                  else if (method === 'transferencia') { breakdown.transferencia -= amt; breakdownCounts.transferencia++; }
+                  else if (method === 'otros') { breakdown.otros -= amt; breakdownCounts.otros++; }
+                  else { breakdown.efectivo -= amt; breakdownCounts.efectivo++; }
               }
           });
           const manualMovs = movements.filter(m => !(m.note||'').toLowerCase().includes('cobro pedido'));
@@ -6768,8 +6916,9 @@
                        const color = diff === 0 ? 'green' : (diff > 0 ? 'green' : 'red');
                        const label = k.charAt(0).toUpperCase() + k.slice(1);
                        const displayLabel = k==='pos' ? 'POS/QR' : (k==='transferencia' ? 'Transf.' : label);
+                       const count = breakdownCounts[k] || 0;
                        return `<tr>
-                         <td style="padding:6px; border-bottom:1px solid #eee;">${displayLabel}</td>
+                         <td style="padding:6px; border-bottom:1px solid #eee;">${displayLabel} <small style="color:#666">(${count})</small></td>
                          <td style="padding:6px; border-bottom:1px solid #eee; text-align:right;">${formatMoney(theo)}</td>
                          <td style="padding:6px; border-bottom:1px solid #eee; text-align:right;">${formatMoney(decl)}</td>
                          <td style="padding:6px; border-bottom:1px solid #eee; text-align:right; color:${color}; font-weight:bold;">${formatMoney(diff)}</td>
@@ -6856,7 +7005,8 @@
                        const diff = decl - theo;
                        const label = k.charAt(0).toUpperCase() + k.slice(1);
                        const displayLabel = k==='pos' ? 'POS/QR' : (k==='transferencia' ? 'Transf.' : label);
-                       return `<tr><td>${displayLabel}</td><td style="text-align:right;">${fmt(theo)}</td><td style="text-align:right;">${fmt(decl)}</td><td style="text-align:right;">${fmt(diff)}</td></tr>`;
+                       const count = breakdownCounts[k] || 0;
+                       return `<tr><td>${displayLabel} <small>(${count})</small></td><td style="text-align:right;">${fmt(theo)}</td><td style="text-align:right;">${fmt(decl)}</td><td style="text-align:right;">${fmt(diff)}</td></tr>`;
                     }).join('')}
                   </tbody>
                 </table>
@@ -8637,6 +8787,55 @@
             const isMesa = (typeRaw === 'mesa');
             const isDireccion = (typeRaw === 'direccion');
             const isEspera = (typeRaw === 'espera');
+            const events = data.events || [];
+            
+            // Check for transfer or mixed payment
+            const payMethod = String(o.payment_method || '').toLowerCase();
+            const isTransfer = (payMethod === 'transferencia');
+            const isMixed = (payMethod === 'mixed' || payMethod === 'mixto');
+            
+            let paymentHeader = '';
+            let mixedDetailsHtml = '';
+
+            if (isTransfer) {
+                paymentHeader = `
+                    <div style="text-align:center; font-weight:900; font-size:1.4em; border:2px solid #000; margin:10px 0; padding:5px; text-transform:uppercase;">
+                        TRANSFERENCIA
+                    </div>
+                `;
+            } else if (isMixed) {
+                paymentHeader = `
+                    <div style="text-align:center; font-weight:900; font-size:1.4em; border:2px solid #000; margin:10px 0; padding:5px; text-transform:uppercase;">
+                        PAGO MIXTO
+                    </div>
+                `;
+                
+                // Find payment event to get details
+                try {
+                    const payEvent = events.find(e => e.event_type === 'payment');
+                    if (payEvent && payEvent.payload_json) {
+                        const payload = JSON.parse(payEvent.payload_json);
+                        if (payload.details && Array.isArray(payload.details)) {
+                            mixedDetailsHtml = '<div style="margin:5px 0; font-size:13px; border-bottom:1px dashed #000; padding-bottom:5px;">';
+                            payload.details.forEach(d => {
+                                const mName = (d.method || '').toUpperCase();
+                                const mAmt = d.amount || 0;
+                                if (mAmt > 0) {
+                                    mixedDetailsHtml += `
+                                        <div style="display:flex; justify-content:space-between;">
+                                            <span>- ${mName}:</span>
+                                            <span>$${mAmt}</span>
+                                        </div>
+                                    `;
+                                }
+                            });
+                            mixedDetailsHtml += '</div>';
+                        }
+                    }
+                } catch(e) {
+                    console.error('Error parsing mixed payment details', e);
+                }
+            }
 
             let destText = 'Mostrador';
             if (isMesa) {
@@ -8732,9 +8931,11 @@
                     <div class="center">${destText}</div>
                     <div class="center">Pedido: #${o.id}</div>
                     <div class="center">${dateStr}</div>
+                    ${paymentHeader}
                     <div class="line"></div>
                     ${itemsHtml}
                     <div class="line"></div>
+                    ${mixedDetailsHtml}
                     <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1em;">
                         <span>TOTAL:</span>
                         <span>$${total}</span>
@@ -8744,16 +8945,34 @@
                     <div class="cut-feed">.</div>
                     <script>
                         window.onload = function() {
-                            window.print();
+                            try {
+                                window.focus();
+                                window.print();
+                            } catch(e) { console.error(e); }
                         }
                     <\/script>
                 </body>
                 </html>
             `;
             
-            const win = window.open('', 'PrintBill', 'height=600,width=350');
-            win.document.write(html);
-            win.document.close();
+            // Use off-screen iframe for silent/kiosk printing to avoid popup blockers
+            let iframe = document.getElementById('print-frame');
+            if (!iframe) {
+                iframe = document.createElement('iframe');
+                iframe.id = 'print-frame';
+                iframe.style.position = 'fixed';
+                iframe.style.top = '-10000px';
+                iframe.style.left = '-10000px';
+                iframe.style.width = '1px';
+                iframe.style.height = '1px';
+                iframe.style.border = 'none';
+                document.body.appendChild(iframe);
+            }
+            
+            const doc = iframe.contentWindow.document;
+            doc.open();
+            doc.write(html);
+            doc.close();
             
         } catch (e) {
             alert('Error al imprimir: ' + e.message);
@@ -9015,10 +9234,16 @@
                  if (action === 'pay') {
                       if (qb.classList.contains('paid')) return;
                       if (typeof askPaymentMethod === 'function' && typeof payOrder === 'function') {
-                          const methodData = await askPaymentMethod(o.total, (o.order_type || '').toLowerCase() === 'mesa');
+                          const methodData = await askPaymentMethod(o.total, (o.order_type || '').toLowerCase() === 'mesa', o.shipping_cost || 0);
                           if (!methodData) return;
                           try {
                               await payOrder(o.id, methodData);
+
+                              // Check if print was requested in confirmation
+                              if (methodData.print) {
+                                  try { window.printBill(o.id); } catch(_) {}
+                              }
+
                               o.payment_status = 'paid';
                               qb.classList.add('paid');
                               qb.disabled = true;

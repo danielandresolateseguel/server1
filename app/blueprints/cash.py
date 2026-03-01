@@ -32,11 +32,17 @@ def cash_session_get():
     delivered_count = int(agg[2] or 0)
     shipping_total = int(agg[3] or 0)
     
-    cur.execute("SELECT type, payment_method, SUM(amount) FROM cash_movements WHERE session_id = ? GROUP BY type, payment_method", (sess['id'],))
+    cur.execute("SELECT type, payment_method, SUM(amount), COUNT(*) FROM cash_movements WHERE session_id = ? GROUP BY type, payment_method", (sess['id'],))
     rows_mov = cur.fetchall()
     
     breakdown = {
         'efectivo': int(sess['opening_amount']), 
+        'pos': 0, 
+        'transferencia': 0, 
+        'otros': 0
+    }
+    breakdown_counts = {
+        'efectivo': 0, 
         'pos': 0, 
         'transferencia': 0, 
         'otros': 0
@@ -48,27 +54,36 @@ def cash_session_get():
         mtype = r[0] 
         pm = (r[1] or '').strip().lower() 
         amt = int(r[2] or 0)
+        cnt = int(r[3] or 0)
         
         if mtype == 'entrada':
             entradas += amt
             if 'pos' in pm or 'qr' in pm or 'tarjeta' in pm:
                 breakdown['pos'] += amt
+                breakdown_counts['pos'] += cnt
             elif 'transferencia' in pm:
                 breakdown['transferencia'] += amt
+                breakdown_counts['transferencia'] += cnt
             elif 'otros' in pm:
                 breakdown['otros'] += amt
+                breakdown_counts['otros'] += cnt
             else:
                 breakdown['efectivo'] += amt
+                breakdown_counts['efectivo'] += cnt
         elif mtype == 'salida':
             salidas += amt
             if 'pos' in pm or 'qr' in pm or 'tarjeta' in pm:
                 breakdown['pos'] -= amt
+                breakdown_counts['pos'] += cnt
             elif 'transferencia' in pm:
                 breakdown['transferencia'] -= amt
+                breakdown_counts['transferencia'] += cnt
             elif 'otros' in pm:
                 breakdown['otros'] -= amt
+                breakdown_counts['otros'] += cnt
             else:
                 breakdown['efectivo'] -= amt
+                breakdown_counts['efectivo'] += cnt
 
     theoretical_cash = int(sess['opening_amount']) + entradas - salidas
     return jsonify({
@@ -83,7 +98,8 @@ def cash_session_get():
             'entradas': entradas, 
             'salidas': salidas, 
             'theoretical_cash': theoretical_cash,
-            'theoretical_breakdown': breakdown
+            'theoretical_breakdown': breakdown,
+            'theoretical_breakdown_counts': breakdown_counts
         }
     })
 
@@ -139,10 +155,11 @@ def cash_close():
     shipping_total = int(row_totals[2] or 0)
     delivered_total = base_delivered_total + tip_total
     
-    cur.execute("SELECT type, payment_method, SUM(amount) FROM cash_movements WHERE session_id = ? GROUP BY type, payment_method", (sid,))
+    cur.execute("SELECT type, payment_method, SUM(amount), COUNT(*) FROM cash_movements WHERE session_id = ? GROUP BY type, payment_method", (sid,))
     rows_mov = cur.fetchall()
     
     breakdown = {'efectivo': opening_amount, 'pos': 0, 'transferencia': 0, 'otros': 0}
+    breakdown_counts = {'efectivo': 0, 'pos': 0, 'transferencia': 0, 'otros': 0}
     entradas = 0
     salidas = 0
     
@@ -150,18 +167,36 @@ def cash_close():
         mtype = r[0]
         pm = (r[1] or '').strip().lower()
         amt = int(r[2] or 0)
+        cnt = int(r[3] or 0)
+        
         if mtype == 'entrada':
             entradas += amt
-            if 'pos' in pm or 'qr' in pm or 'tarjeta' in pm: breakdown['pos'] += amt
-            elif 'transferencia' in pm: breakdown['transferencia'] += amt
-            elif 'otros' in pm: breakdown['otros'] += amt
-            else: breakdown['efectivo'] += amt
+            if 'pos' in pm or 'qr' in pm or 'tarjeta' in pm:
+                breakdown['pos'] += amt
+                breakdown_counts['pos'] += cnt
+            elif 'transferencia' in pm:
+                breakdown['transferencia'] += amt
+                breakdown_counts['transferencia'] += cnt
+            elif 'otros' in pm:
+                breakdown['otros'] += amt
+                breakdown_counts['otros'] += cnt
+            else:
+                breakdown['efectivo'] += amt
+                breakdown_counts['efectivo'] += cnt
         elif mtype == 'salida':
             salidas += amt
-            if 'pos' in pm or 'qr' in pm or 'tarjeta' in pm: breakdown['pos'] -= amt
-            elif 'transferencia' in pm: breakdown['transferencia'] -= amt
-            elif 'otros' in pm: breakdown['otros'] -= amt
-            else: breakdown['efectivo'] -= amt
+            if 'pos' in pm or 'qr' in pm or 'tarjeta' in pm:
+                breakdown['pos'] -= amt
+                breakdown_counts['pos'] += cnt
+            elif 'transferencia' in pm:
+                breakdown['transferencia'] -= amt
+                breakdown_counts['transferencia'] += cnt
+            elif 'otros' in pm:
+                breakdown['otros'] -= amt
+                breakdown_counts['otros'] += cnt
+            else:
+                breakdown['efectivo'] -= amt
+                breakdown_counts['efectivo'] += cnt
 
     theoretical_cash = opening_amount + entradas - salidas
     closing_diff = closing_amount - theoretical_cash
@@ -189,6 +224,7 @@ def cash_close():
             'theoretical_cash': theoretical_cash, 
             'closing_diff': closing_diff,
             'theoretical_breakdown': breakdown,
+            'theoretical_breakdown_counts': breakdown_counts,
             'declared_breakdown': declared_breakdown
         }
     })
@@ -352,23 +388,41 @@ def cash_sessions_list():
         salidas = int(mrow[1] or 0)
         theoretical_cash = int(s.get('opening_amount') or 0) + entradas - salidas
         
-        cur.execute("SELECT type, payment_method, SUM(amount) FROM cash_movements WHERE session_id = ? GROUP BY type, payment_method", (sid,))
+        cur.execute("SELECT type, payment_method, SUM(amount), COUNT(*) FROM cash_movements WHERE session_id = ? GROUP BY type, payment_method", (sid,))
         rows_mov = cur.fetchall()
         breakdown = {'efectivo': int(s.get('opening_amount') or 0), 'pos': 0, 'transferencia': 0, 'otros': 0}
+        breakdown_counts = {'efectivo': 0, 'pos': 0, 'transferencia': 0, 'otros': 0}
         for rm in rows_mov:
             mtype = rm[0]
             pm = (rm[1] or '').strip().lower()
             amt = int(rm[2] or 0)
+            cnt = int(rm[3] or 0)
             if mtype == 'entrada':
-                if 'pos' in pm or 'qr' in pm or 'tarjeta' in pm: breakdown['pos'] += amt
-                elif 'transferencia' in pm: breakdown['transferencia'] += amt
-                elif 'otros' in pm: breakdown['otros'] += amt
-                else: breakdown['efectivo'] += amt
+                if 'pos' in pm or 'qr' in pm or 'tarjeta' in pm:
+                    breakdown['pos'] += amt
+                    breakdown_counts['pos'] += cnt
+                elif 'transferencia' in pm:
+                    breakdown['transferencia'] += amt
+                    breakdown_counts['transferencia'] += cnt
+                elif 'otros' in pm:
+                    breakdown['otros'] += amt
+                    breakdown_counts['otros'] += cnt
+                else:
+                    breakdown['efectivo'] += amt
+                    breakdown_counts['efectivo'] += cnt
             elif mtype == 'salida':
-                if 'pos' in pm or 'qr' in pm or 'tarjeta' in pm: breakdown['pos'] -= amt
-                elif 'transferencia' in pm: breakdown['transferencia'] -= amt
-                elif 'otros' in pm: breakdown['otros'] -= amt
-                else: breakdown['efectivo'] -= amt
+                if 'pos' in pm or 'qr' in pm or 'tarjeta' in pm:
+                    breakdown['pos'] -= amt
+                    breakdown_counts['pos'] += cnt
+                elif 'transferencia' in pm:
+                    breakdown['transferencia'] -= amt
+                    breakdown_counts['transferencia'] += cnt
+                elif 'otros' in pm:
+                    breakdown['otros'] -= amt
+                    breakdown_counts['otros'] += cnt
+                else:
+                    breakdown['efectivo'] -= amt
+                    breakdown_counts['efectivo'] += cnt
 
         declared_breakdown = {}
         try:
@@ -386,6 +440,7 @@ def cash_sessions_list():
             'salidas': salidas,
             'theoretical_cash': theoretical_cash,
             'theoretical_breakdown': breakdown,
+            'theoretical_breakdown_counts': breakdown_counts,
             'declared_breakdown': declared_breakdown,
             'base_delivered_total': base_delivered_total,
             'tip_total': tip_total,
