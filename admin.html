@@ -5955,18 +5955,7 @@
             return total;
           };
           const updateSessionTotals = () => {
-            const sdel = Number(sum.delivered_total || 0);
-            const sin = Number(sum.entradas || 0);
-            const sout = Number(sum.salidas || 0);
-            const sys = Number((sum.theoretical_cash || 0));
-            // Force counted to be the arqueo total since toggle is always on
             const counted = updateArqueoTotal() || 0;
-            
-            if (salesEl) salesEl.textContent = `Ventas sesión: ${formatMoney(sdel)}`;
-            if (inoutEl) inoutEl.textContent = `Ingresos: ${formatMoney(sin)} · Salidas: ${formatMoney(sout)}`;
-            if (sysEl) sysEl.textContent = `Sistema: ${formatMoney(sys)}`;
-            if (countedEl) countedEl.textContent = `Contado: ${formatMoney(counted)}`;
-            if (diffEl) diffEl.textContent = `Diferencia: ${formatMoney(counted - sys)}`;
           };
           updateArqueoTotal();
           updateSessionTotals();
@@ -6035,14 +6024,7 @@
               </table>
             </div>
             <div class="small" id="arqueo-total">Total contado: $0</div>
-            <div class="cash-row">
-              <div class="small" style="font-weight:700;">Resumen de totales</div>
-            </div>
-            <div class="small" id="cash-session-sales">Ventas sesión: $0</div>
-            <div class="small" id="cash-session-inout">Ingresos: $0 · Salidas: $0</div>
-            <div class="small" id="cash-session-system">Sistema: $0</div>
-            <div class="small" id="cash-session-counted">Contado: $0</div>
-            <div class="small" id="cash-session-diff">Diferencia: $0</div>
+            <!-- Blind Close: Removed live theoretical feedback (Resumen de totales) -->
             <div class="cash-row">
               <label style="display:flex; align-items:center; gap:8px;">
                 <input id="arqueo-use-toggle" type="checkbox" checked disabled /> Usar arqueo para monto de cierre (Requerido)

@@ -152,15 +152,15 @@ def cash_close():
         amt = int(r[2] or 0)
         if mtype == 'entrada':
             entradas += amt
-            if pm == 'pos': breakdown['pos'] += amt
-            elif pm == 'transferencia': breakdown['transferencia'] += amt
-            elif pm == 'otros': breakdown['otros'] += amt
+            if 'pos' in pm or 'qr' in pm or 'tarjeta' in pm: breakdown['pos'] += amt
+            elif 'transferencia' in pm: breakdown['transferencia'] += amt
+            elif 'otros' in pm: breakdown['otros'] += amt
             else: breakdown['efectivo'] += amt
         elif mtype == 'salida':
             salidas += amt
-            if pm == 'pos': breakdown['pos'] -= amt
-            elif pm == 'transferencia': breakdown['transferencia'] -= amt
-            elif pm == 'otros': breakdown['otros'] -= amt
+            if 'pos' in pm or 'qr' in pm or 'tarjeta' in pm: breakdown['pos'] -= amt
+            elif 'transferencia' in pm: breakdown['transferencia'] -= amt
+            elif 'otros' in pm: breakdown['otros'] -= amt
             else: breakdown['efectivo'] -= amt
 
     theoretical_cash = opening_amount + entradas - salidas
@@ -370,6 +370,15 @@ def cash_sessions_list():
                 elif 'otros' in pm: breakdown['otros'] -= amt
                 else: breakdown['efectivo'] -= amt
 
+        declared_breakdown = {}
+        try:
+            meta = s.get('closing_metadata')
+            if meta:
+                meta_obj = json.loads(meta)
+                declared_breakdown = meta_obj.get('declared_breakdown') or {}
+        except:
+            pass
+
         s['summary'] = {
             'delivered_total': delivered_total,
             'delivered_count': delivered_count,
@@ -377,6 +386,7 @@ def cash_sessions_list():
             'salidas': salidas,
             'theoretical_cash': theoretical_cash,
             'theoretical_breakdown': breakdown,
+            'declared_breakdown': declared_breakdown,
             'base_delivered_total': base_delivered_total,
             'tip_total': tip_total,
             'shipping_total': shipping_total,
