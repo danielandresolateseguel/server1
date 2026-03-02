@@ -4669,11 +4669,18 @@
     }
 
     // Carousel Event Bindings
+    if (carouselBox) {
+      // Auto-load when details is expanded (via summary click or JS)
+      carouselBox.addEventListener('toggle', () => {
+        if (carouselBox.open) renderCarousel();
+      });
+    }
+
     const btnOpenCarousel = document.getElementById('carousel-open');
     if (btnOpenCarousel && carouselBox) {
       btnOpenCarousel.addEventListener('click', () => {
         carouselBox.open = !carouselBox.open;
-        if(carouselBox.open) renderCarousel();
+        // The toggle event above will handle rendering
       });
     }
     const btnCarCreate = document.getElementById('car-create-btn');
