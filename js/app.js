@@ -129,8 +129,14 @@ function initHeaderContact() {
                 }
                 instagramLink.href = urlValue;
                 const span = instagramLink.querySelector('span');
-                if (span) span.textContent = handle ? `@${handle}` : instagramValue;
-                instagramLink.setAttribute('data-tooltip', instagramValue);
+                if (span) {
+                    if (instagramLabel) {
+                        span.textContent = instagramLabel;
+                    } else {
+                        span.textContent = handle ? `@${handle}` : instagramValue;
+                    }
+                }
+                instagramLink.setAttribute('data-tooltip', instagramLabel || instagramValue);
             }
         }
         if (locationLabel || locationUrl) {

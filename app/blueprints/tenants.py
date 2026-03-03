@@ -85,7 +85,7 @@ def get_tenant_header():
                 pass
                 
         # Update header fields
-        fields = ['whatsapp', 'instagram', 'location_label', 'location_url', 'opening_hours', 'logo_url']
+        fields = ['whatsapp', 'instagram', 'instagram_label', 'location_label', 'location_url', 'opening_hours', 'logo_url']
         for f in fields:
             if f in payload:
                 current_cfg[f] = payload[f]
@@ -108,6 +108,7 @@ def get_tenant_header():
     return jsonify({
         'whatsapp': cfg.get('whatsapp', ''),
         'instagram': cfg.get('instagram', ''),
+        'instagram_label': cfg.get('instagram_label', ''),
         'location': cfg.get('location', ''),
         'location_label': cfg.get('location_label', '') or cfg.get('location', ''),
         'location_url': cfg.get('location_url', ''),

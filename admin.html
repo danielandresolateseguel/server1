@@ -1508,8 +1508,12 @@
         <input type="text" id="header-whatsapp" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;" placeholder="+54 9 261 000-0000">
       </div>
       <div style="margin-bottom:12px;">
-        <label style="font-size:12px; display:block; margin-bottom:4px;">Instagram</label>
-        <input type="text" id="header-instagram" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;" placeholder="@usuario">
+        <label style="font-size:12px; display:block; margin-bottom:4px;">Instagram (enlace)</label>
+        <input type="text" id="header-instagram" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;" placeholder="@usuario o https://instagram.com/...">
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:12px; display:block; margin-bottom:4px;">Instagram (texto visible)</label>
+        <input type="text" id="header-instagram-label" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;" placeholder="Ej: Lomomania">
       </div>
       <div style="margin-bottom:12px;">
         <label style="font-size:12px; display:block; margin-bottom:4px;">Título de ubicación</label>
@@ -4822,6 +4826,7 @@
           const payload = {
             whatsapp: headerWhatsappInput ? headerWhatsappInput.value.trim() : '',
             instagram: headerInstagramInput ? headerInstagramInput.value.trim() : '',
+            instagram_label: headerInstagramLabelInput ? headerInstagramLabelInput.value.trim() : '',
             location_label: headerLocationLabelInput ? headerLocationLabelInput.value.trim() : '',
             location_url: headerLocationUrlInput ? headerLocationUrlInput.value.trim() : '',
             opening_hours: openingHours,
