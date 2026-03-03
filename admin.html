@@ -4787,6 +4787,7 @@
         const data = await resp.json();
         if (headerWhatsappInput) headerWhatsappInput.value = data.whatsapp || '';
         if (headerInstagramInput) headerInstagramInput.value = data.instagram || '';
+        if (headerInstagramLabelInput) headerInstagramLabelInput.value = data.instagram_label || '';
         if (headerLocationLabelInput) headerLocationLabelInput.value = (data.location_label || data.location || '');
         if (headerLocationUrlInput) headerLocationUrlInput.value = data.location_url || '';
         if (headerLogoInput) headerLogoInput.value = data.logo_url || '';
