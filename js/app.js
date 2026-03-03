@@ -96,6 +96,7 @@ function initHeaderContact() {
         if (!data) return;
         const whatsappValue = (data.whatsapp || '').trim();
         const instagramValue = (data.instagram || '').trim();
+        const instagramLabel = (data.instagram_label || '').trim();
         const locationLabel = (data.location_label || data.location || '').trim();
         const locationUrl = (data.location_url || '').trim();
         const openingHours = data.opening_hours || null;

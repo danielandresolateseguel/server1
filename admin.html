@@ -10,23 +10,23 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script>
     // Global CSRF Token
-    let CSRF_TOKEN = '';
+    window.CSRF_TOKEN = '';
 
     // Function to fetch CSRF token from backend
-    async function fetchCsrfToken() {
+    window.fetchCsrfToken = async function() {
         try {
             const res = await fetch('/api/auth/csrf', { credentials: 'include' });
             if (res.ok) {
                 const data = await res.json();
                 if (data.token) {
-                    CSRF_TOKEN = data.token;
-                    console.log('CSRF Token loaded:', CSRF_TOKEN);
+                    window.CSRF_TOKEN = data.token;
+                    console.log('CSRF Token loaded:', window.CSRF_TOKEN);
                 }
             }
         } catch (e) {
             console.error('Error loading CSRF token:', e);
         }
-    }
+    };
   </script>
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 16px; }
@@ -4697,6 +4697,7 @@
     const btnHeaderConfigOpen = document.getElementById('header-config-open');
     const headerWhatsappInput = document.getElementById('header-whatsapp');
     const headerInstagramInput = document.getElementById('header-instagram');
+    const headerInstagramLabelInput = document.getElementById('header-instagram-label');
     const headerLocationLabelInput = document.getElementById('header-location-label');
     const headerLocationUrlInput = document.getElementById('header-location-url');
     const headerLogoInput = document.getElementById('header-logo-url');
@@ -4817,8 +4818,8 @@
             alert('Requiere sesión de administrador');
             return;
           }
-          if (!csrfToken) {
-            await fetchCSRF();
+          if (!window.CSRF_TOKEN) {
+            await window.fetchCsrfToken();
           }
           const slug = tenantInput.value.trim() || defaultSlug();
           const url = new URL('/api/tenant_header', API_BASE);
@@ -4835,7 +4836,7 @@
           };
           const resp = await wFetch(url.toString(), {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN },
             body: JSON.stringify(payload)
           });
           if (!resp.ok) {
