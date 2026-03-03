@@ -4709,6 +4709,8 @@
     const headerLocationLabelInput = document.getElementById('header-location-label');
     const headerLocationUrlInput = document.getElementById('header-location-url');
     const headerLogoInput = document.getElementById('header-logo-url');
+    const headerAnnouncementActive = document.getElementById('header-announcement-active');
+    const headerAnnouncementText = document.getElementById('header-announcement-text');
     const headerHoursTable = document.getElementById('header-hours-table');
     const headerHoursHeader = document.getElementById('header-hours-header');
     const headerHoursPanel = document.getElementById('header-hours-panel');
@@ -4800,6 +4802,8 @@
         if (headerLocationLabelInput) headerLocationLabelInput.value = (data.location_label || data.location || '');
         if (headerLocationUrlInput) headerLocationUrlInput.value = data.location_url || '';
         if (headerLogoInput) headerLogoInput.value = data.logo_url || '';
+        if (headerAnnouncementActive) headerAnnouncementActive.checked = data.announcement_active || false;
+        if (headerAnnouncementText) headerAnnouncementText.value = data.announcement_text || '';
         if (headerHoursTable) fillHeaderHours(data.opening_hours || {});
         if (headerHoursPanel) {
           const oh = data.opening_hours || {};
