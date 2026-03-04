@@ -113,7 +113,9 @@ def get_tenant_header():
         'location_label': cfg.get('location_label', '') or cfg.get('location', ''),
         'location_url': cfg.get('location_url', ''),
         'opening_hours': cfg.get('opening_hours', ''),
-        'logo_url': cfg.get('logo_url', '')
+        'logo_url': cfg.get('logo_url', ''),
+        'announcement_active': cfg.get('announcement_active', False),
+        'announcement_text': cfg.get('announcement_text', '')
     })
 
 @bp.route('/tenants', methods=['GET'])
