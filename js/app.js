@@ -152,6 +152,17 @@ function initHeaderContact() {
         if (logoImg) {
             logoImg.src = logoUrl || 'Imagenes/Epalogo.png';
         }
+
+        // Dynamic Favicon Update
+        const faviconUrl = logoUrl || 'Imagenes/Epalogo.png';
+        let favicon = document.querySelector('link[rel="icon"]') || document.querySelector('link[rel="shortcut icon"]');
+        if (!favicon) {
+            favicon = document.createElement('link');
+            favicon.rel = 'icon';
+            document.head.appendChild(favicon);
+        }
+        favicon.href = faviconUrl;
+
         if (whatsappValue) {
             const whatsappIcon = headerContact.querySelector('.fa-whatsapp');
             const whatsappLink = whatsappIcon ? whatsappIcon.closest('a') : null;
