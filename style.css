@@ -542,7 +542,7 @@ body {
 
 /* Encabezado */
 header {
-    background: var(--header-bg, linear-gradient(135deg, #667eea 0%, #764ba2 100%));
+    background: var(--header-bg, #333);
     color: white;
     padding: 1rem 0;
     text-align: center;

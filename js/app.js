@@ -129,10 +129,10 @@ function initHeaderContact() {
         };
 
         // Apply Header Background Color
-        const headerBgColor = data.header_bg_color || '#667eea';
+        // Si no hay configuración, usar fallback #333 (gris oscuro) en lugar de violeta
+        const headerBgColor = data.header_bg_color || '#333333';
         if (headerBgColor) {
             // Generate a gradient similar to the original effect
-            // Original was linear-gradient(135deg, #667eea 0%, #764ba2 100%)
             // We'll use the selected color as the start, and a darkened version as the end
             const darkVariant = darken(headerBgColor, -40); 
             const gradient = `linear-gradient(135deg, ${headerBgColor} 0%, ${darkVariant} 100%)`;
