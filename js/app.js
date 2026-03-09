@@ -352,7 +352,7 @@ function initHeaderContact() {
                             }
                         }
                         
-                        span.textContent = 'Abre ' + dayLabel + 'a las ' + hh + ':' + mm;
+                        span.textContent = 'Abre ' + dayLabel + 'a las ' + hh + ':' + mm + ' hs';
                         span.className = 'text-warning fw-bold';
                     } else {
                         span.textContent = 'Cerrado';

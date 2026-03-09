@@ -105,17 +105,22 @@ def get_tenant_header():
             return jsonify({'error': 'error al guardar'}), 500
 
     cfg = get_cached_tenant_config(slug)
+    
+    # Fallback for nested config (legacy format support)
+    meta_branding = cfg.get('meta', {}).get('branding', {})
+    meta_contact = meta_branding.get('contact', {})
+    
     return jsonify({
-        'whatsapp': cfg.get('whatsapp', ''),
-        'instagram': cfg.get('instagram', ''),
-        'instagram_label': cfg.get('instagram_label', ''),
-        'location': cfg.get('location', ''),
-        'location_label': cfg.get('location_label', '') or cfg.get('location', ''),
-        'location_url': cfg.get('location_url', ''),
-        'opening_hours': cfg.get('opening_hours', ''),
-        'logo_url': cfg.get('logo_url', ''),
+        'whatsapp': cfg.get('whatsapp') or meta_contact.get('whatsapp', ''),
+        'instagram': cfg.get('instagram') or meta_contact.get('instagram', ''),
+        'instagram_label': cfg.get('instagram_label') or meta_contact.get('instagram_label', ''),
+        'location': cfg.get('location') or meta_contact.get('location', ''),
+        'location_label': cfg.get('location_label') or cfg.get('location') or meta_contact.get('location_label') or meta_contact.get('location', ''),
+        'location_url': cfg.get('location_url') or meta_contact.get('location_url', ''),
+        'opening_hours': cfg.get('opening_hours') or meta_contact.get('opening_hours', ''),
+        'logo_url': cfg.get('logo_url') or meta_branding.get('logo_url', ''),
         'announcement_active': cfg.get('announcement_active', False),
-        'announcement_text': cfg.get('announcement_text', ''),
+        'announcement_text': cfg.get('announcement_text') or meta_branding.get('announcement_text', ''),
         'theme_color': cfg.get('theme_color', '#ff6a00')
     })
 
