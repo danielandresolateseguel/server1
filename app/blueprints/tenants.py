@@ -154,9 +154,42 @@ def get_tenants():
         
     return jsonify(tenants_list)
 
+@bp.route('/master/tenants', methods=['GET'])
+def master_get_tenants():
+    if not session.get('master_auth'):
+        return jsonify({'error': 'no autorizado'}), 401
+
+    tenants_list = []
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("SELECT tenant_slug, name FROM tenants ORDER BY created_at DESC")
+        rows = cur.fetchall()
+        for r in rows:
+            tenants_list.append({'slug': r[0], 'name': r[1] or r[0]})
+    except Exception:
+        tenants_list = []
+
+    if not tenants_list:
+        try:
+            conn = get_db()
+            cur = conn.cursor()
+            cur.execute("SELECT DISTINCT tenant_slug FROM tenant_config")
+            rows = cur.fetchall()
+            seen = set()
+            for r in rows:
+                slug = r[0]
+                if slug and slug not in seen:
+                    tenants_list.append({'slug': slug, 'name': slug.replace('-', ' ').title()})
+                    seen.add(slug)
+        except Exception:
+            pass
+
+    return jsonify({'tenants': tenants_list})
+
 @bp.route('/tenants/create_demo', methods=['POST'])
 def create_demo_tenant():
-    if not is_authed():
+    if not session.get('master_auth'):
         return jsonify({'error': 'no autorizado'}), 401
     if not check_csrf():
         return jsonify({'error': 'csrf inválido'}), 403

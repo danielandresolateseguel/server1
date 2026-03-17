@@ -162,6 +162,7 @@
     const API_BASE = window.location.origin;
     let CSRF_TOKEN = '';
     let csrfToken = '';
+    let MASTER_AUTHED = false;
 
     async function fetchCsrfToken(){
       try{
@@ -333,11 +334,13 @@
     }
 
     async function loadTenants(){
+      if (!MASTER_AUTHED) return;
       try{
-        const r = await fetch(new URL('/api/tenants', API_BASE).toString(), { cache:'no-store' });
+        const r = await fetch(new URL('/api/master/tenants', API_BASE).toString(), { cache:'no-store', credentials:'include' });
         if (!r.ok){ showToast('No se pudo cargar comercios','error'); return; }
-        const list = await r.json();
-        renderTenants(Array.isArray(list) ? list : []);
+        const j = await r.json();
+        const list = (j && Array.isArray(j.tenants)) ? j.tenants : [];
+        renderTenants(list);
       }catch(e){ showToast('Error de red','error'); }
     }
 
@@ -346,31 +349,66 @@
     document.addEventListener('DOMContentLoaded', async ()=>{
       await fetchCsrfToken();
       const st = await masterStatus();
+      MASTER_AUTHED = !!st.authenticated;
       const btnAuth = document.getElementById('btn-master-auth');
       const btnLogout = document.getElementById('btn-master-logout');
-      if (st.authenticated){ btnAuth.style.display='none'; btnLogout.style.display='inline-flex'; } else { btnAuth.style.display='inline-flex'; btnLogout.style.display='none'; showAuthModal(true); }
+      const main = document.querySelector('main');
+      if (st.authenticated){
+        btnAuth.style.display='none';
+        btnLogout.style.display='inline-flex';
+        if (main) main.style.display = '';
+        loadTenants();
+      } else {
+        btnAuth.style.display='inline-flex';
+        btnLogout.style.display='none';
+        if (main) main.style.display = 'none';
+        showAuthModal(true);
+      }
       document.getElementById('btn-master-auth').addEventListener('click', ()=> showAuthModal(true));
       document.getElementById('btn-master-logout').addEventListener('click', async ()=>{ await masterLogout(); location.reload(); });
       document.getElementById('btn-do-login').addEventListener('click', async ()=>{
         const u = document.getElementById('auth-user').value.trim(); const p = document.getElementById('auth-pass').value;
-        const ok = await masterLogin(u,p); if (ok){ showAuthModal(false); document.getElementById('btn-master-auth').style.display='none'; document.getElementById('btn-master-logout').style.display='inline-flex'; loadTenants(); }
+        const ok = await masterLogin(u,p);
+        if (ok){
+          MASTER_AUTHED = true;
+          showAuthModal(false);
+          document.getElementById('btn-master-auth').style.display='none';
+          document.getElementById('btn-master-logout').style.display='inline-flex';
+          if (main) main.style.display = '';
+          loadTenants();
+        }
       });
       document.getElementById('btn-do-bootstrap').addEventListener('click', async ()=>{
         const u = document.getElementById('auth-user').value.trim(); const p = document.getElementById('auth-pass').value;
-        const ok = await masterBootstrap(u,p); if (ok){ const ok2 = await masterLogin(u,p); if (ok2){ showAuthModal(false); document.getElementById('btn-master-auth').style.display='none'; document.getElementById('btn-master-logout').style.display='inline-flex'; loadTenants(); } }
+        const ok = await masterBootstrap(u,p);
+        if (ok){
+          const ok2 = await masterLogin(u,p);
+          if (ok2){
+            MASTER_AUTHED = true;
+            showAuthModal(false);
+            document.getElementById('btn-master-auth').style.display='none';
+            document.getElementById('btn-master-logout').style.display='inline-flex';
+            if (main) main.style.display = '';
+            loadTenants();
+          }
+        }
       });
-      document.getElementById('btn-auth-close').addEventListener('click', ()=> showAuthModal(false));
+      document.getElementById('btn-auth-close').addEventListener('click', ()=>{
+        if (!MASTER_AUTHED) { location.href = '/'; return; }
+        showAuthModal(false);
+      });
       document.getElementById('btn-refresh').addEventListener('click', ()=>{ fetchCsrfToken(); loadTenants(); });
       document.getElementById('btn-create-tenant').addEventListener('click', createTenant);
       document.getElementById('btn-reload-tenants').addEventListener('click', loadTenants);
       document.getElementById('search').addEventListener('input', async ()=>{
+        if (!MASTER_AUTHED) return;
         try{
-          const r = await fetch(new URL('/api/tenants', API_BASE).toString());
-          const list = await r.json();
-          renderTenants(Array.isArray(list) ? list : []);
+          const r = await fetch(new URL('/api/master/tenants', API_BASE).toString(), { credentials:'include' });
+          const j = await r.json();
+          const list = (j && Array.isArray(j.tenants)) ? j.tenants : [];
+          renderTenants(list);
         }catch(e){}
       });
-      loadTenants();
     });
   </script>
 </body>

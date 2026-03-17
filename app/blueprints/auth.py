@@ -1,4 +1,5 @@
 import secrets
+import os
 from flask import Blueprint, request, jsonify, session
 from werkzeug.security import check_password_hash, generate_password_hash
 from app.database import get_db, is_postgres
@@ -56,6 +57,9 @@ def auth_login():
 
 @bp.route('/auth/login_dev', methods=['POST'])
 def auth_login_dev():
+    allow_dev = str(os.environ.get('ALLOW_DEV_LOGIN') or '').strip().lower() in ('1', 'true', 'yes')
+    if not session.get('master_auth') and not allow_dev:
+        return jsonify({'error': 'no autorizado'}), 401
     payload = request.get_json(silent=True) or {}
     u = str(payload.get('username') or '')
     t = str(payload.get('tenant_slug') or '')
