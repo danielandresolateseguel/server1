@@ -137,7 +137,13 @@ def auth_login_dev():
 
 @bp.route('/auth/logout', methods=['POST'])
 def auth_logout():
-    session.clear()
+    if session.get('master_auth'):
+        session.pop('admin_auth', None)
+        session.pop('admin_user', None)
+        session.pop('tenant_slug', None)
+        session.pop('_last_seen_touch_s', None)
+    else:
+        session.clear()
     return jsonify({'ok': True})
 
 @bp.route('/auth/me', methods=['GET'])
@@ -158,7 +164,7 @@ def auth_csrf():
 
 @bp.route('/auth/master_status', methods=['GET'])
 def master_status():
-    return jsonify({'authenticated': bool(session.get('master_auth')), 'user': session.get('admin_user') or ''})
+    return jsonify({'authenticated': bool(session.get('master_auth')), 'user': session.get('master_user') or ''})
 
 @bp.route('/auth/master_bootstrap', methods=['POST'])
 def master_bootstrap():
@@ -231,15 +237,17 @@ def master_login():
         return jsonify({'error': 'usuario o contraseña inválidos'}), 401
     import secrets as _secrets
     session['master_auth'] = True
-    # Also set admin_auth to reuse existing protections for create_demo
-    session['admin_auth'] = True
-    session['admin_user'] = username
+    session['master_user'] = username
     session['csrf_token'] = _secrets.token_urlsafe(32)
     return jsonify({'ok': True, 'user': username})
 
 @bp.route('/auth/master_logout', methods=['POST'])
 def master_logout():
-    session.clear()
+    if session.get('admin_auth'):
+        session.pop('master_auth', None)
+        session.pop('master_user', None)
+    else:
+        session.clear()
     return jsonify({'ok': True})
 
 @bp.route('/master/admin_users', methods=['GET'])
