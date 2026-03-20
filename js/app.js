@@ -101,6 +101,10 @@ function initHeaderContact() {
         return res.json();
     }).then(data => {
         if (!data) return;
+        const tenantName = (data.name || '').trim();
+        if (tenantName) {
+            document.title = tenantName;
+        }
         const whatsappValue = (data.whatsapp || '').trim();
         const instagramValue = (data.instagram || '').trim();
         const instagramLabel = (data.instagram_label || '').trim();

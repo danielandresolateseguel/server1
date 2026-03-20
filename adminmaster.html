@@ -35,6 +35,17 @@
     .kds-toast.success{background:#2e7d32}
     .kds-toast.error{background:#c62828}
     .kds-toast.info{background:#425b76}
+    .modal-backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.35);z-index:9998}
+    .modal{background:#fff;border:1px solid #e5e7eb;border-radius:8px;width:92%;max-width:760px;padding:16px}
+    .modal-header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .modal-title{font-weight:700}
+    .table{width:100%;border-collapse:collapse}
+    .table th,.table td{border-bottom:1px solid #e5e7eb;padding:8px;text-align:left;font-size:13px}
+    .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700}
+    .badge.on{background:#e8f5e9;color:#1b5e20;border:1px solid #c8e6c9}
+    .badge.off{background:#fafafa;color:#6b7280;border:1px solid #e5e7eb}
+    .btn.icon{padding:8px 10px;display:inline-flex;align-items:center;gap:8px}
+    .btn.icon svg{width:16px;height:16px}
   </style>
 </head>
 <body>
@@ -144,6 +155,49 @@
       </div>
     </div>
   </div>
+  <div id="tenant-settings-modal" class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title" id="tenant-settings-title">Configuración</div>
+        <button id="tenant-settings-close" class="btn muted">Cerrar</button>
+      </div>
+      <div class="sep"></div>
+      <div class="stack">
+        <div class="hint" id="tenant-settings-subtitle"></div>
+        <div class="sep"></div>
+        <strong>Usuarios</strong>
+        <div style="overflow:auto;">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Usuario</th>
+                <th>Estado</th>
+                <th>Última actividad</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tenant-users-body">
+              <tr><td colspan="4" class="hint">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="sep"></div>
+        <strong>Crear usuario</strong>
+        <div class="row">
+          <div class="field">
+            <label>Usuario</label>
+            <input id="tenant-user-new-username" placeholder="nuevo usuario" autocomplete="username" />
+          </div>
+          <div class="field">
+            <label>Clave</label>
+            <input id="tenant-user-new-password" type="password" placeholder="nueva clave" autocomplete="new-password" />
+          </div>
+          <button id="tenant-user-create-btn" class="btn primary">Crear</button>
+        </div>
+        <div class="hint">El estado “online” se calcula por última actividad (si fue en los últimos 2 minutos).</div>
+      </div>
+    </div>
+  </div>
   <script>
     var DEBUG_LOGS=false;
     (function(){
@@ -240,6 +294,105 @@
       }catch(e){ showToast('Error de red','error'); }
     }
 
+    let SETTINGS_TENANT = '';
+
+    function formatLastSeen(s){
+      const v = String(s||'').trim();
+      if (!v) return '';
+      return v.replace('T',' ').replace('Z','');
+    }
+
+    async function loadTenantUsers(){
+      const slug = SETTINGS_TENANT;
+      const body = document.getElementById('tenant-users-body');
+      if (!slug || !body) return;
+      body.innerHTML = '<tr><td colspan="4" class="hint">Cargando...</td></tr>';
+      try{
+        const url = new URL('/api/master/admin_users', API_BASE);
+        url.searchParams.set('tenant_slug', slug);
+        const r = await fetch(url.toString(), { cache:'no-store' });
+        if (!r.ok){
+          let msg = 'No se pudo cargar usuarios';
+          try{ const j = await r.json(); if (j.error) msg = j.error; }catch(_){}
+          body.innerHTML = `<tr><td colspan="4" class="hint" style="color:var(--danger);">${msg}</td></tr>`;
+          return;
+        }
+        const j = await r.json();
+        const users = Array.isArray(j.users) ? j.users : [];
+        if (!users.length){
+          body.innerHTML = '<tr><td colspan="4" class="hint">Sin usuarios.</td></tr>';
+          return;
+        }
+        body.innerHTML = '';
+        users.forEach(u=>{
+          const tr = document.createElement('tr');
+          const on = u.online ? 'on' : 'off';
+          const onText = u.online ? 'Online' : 'Offline';
+          tr.innerHTML = `
+            <td>${String(u.username||'')}</td>
+            <td><span class="badge ${on}">${onText}</span></td>
+            <td>${formatLastSeen(u.last_seen_at)}</td>
+            <td>
+              <button class="btn muted" data-pass="${String(u.username||'')}">Cambiar clave</button>
+              <button class="btn muted" data-rename="${String(u.username||'')}">Renombrar</button>
+            </td>
+          `;
+          body.appendChild(tr);
+        });
+        body.querySelectorAll('button[data-pass]').forEach(b=>{
+          b.addEventListener('click', async ()=>{
+            const user = b.getAttribute('data-pass') || '';
+            const np = prompt('Nueva clave para '+user+':');
+            if (!np) return;
+            try{
+              const rr = await fetch(new URL('/api/master/admin_users', API_BASE).toString(), {
+                method:'PATCH',
+                headers: headersJSON(),
+                body: JSON.stringify({ tenant_slug: slug, username: user, new_password: np })
+              });
+              if (rr.ok){ showToast('Clave actualizada','success'); await loadTenantUsers(); }
+              else { let msg='No se pudo actualizar'; try{ const jj=await rr.json(); if(jj.error) msg=jj.error; }catch(_){} showToast(msg,'error'); }
+            }catch(e){ showToast('Error de red','error'); }
+          });
+        });
+        body.querySelectorAll('button[data-rename]').forEach(b=>{
+          b.addEventListener('click', async ()=>{
+            const user = b.getAttribute('data-rename') || '';
+            const nu = prompt('Nuevo usuario para '+user+':');
+            if (!nu) return;
+            try{
+              const rr = await fetch(new URL('/api/master/admin_users', API_BASE).toString(), {
+                method:'PATCH',
+                headers: headersJSON(),
+                body: JSON.stringify({ tenant_slug: slug, username: user, new_username: nu })
+              });
+              if (rr.ok){ showToast('Usuario actualizado','success'); await loadTenantUsers(); }
+              else { let msg='No se pudo actualizar'; try{ const jj=await rr.json(); if(jj.error) msg=jj.error; }catch(_){} showToast(msg,'error'); }
+            }catch(e){ showToast('Error de red','error'); }
+          });
+        });
+      }catch(e){
+        body.innerHTML = '<tr><td colspan="4" class="hint" style="color:var(--danger);">Error de red</td></tr>';
+      }
+    }
+
+    function openTenantSettings(tenant){
+      SETTINGS_TENANT = String(tenant||'').trim();
+      const modal = document.getElementById('tenant-settings-modal');
+      const title = document.getElementById('tenant-settings-title');
+      const subtitle = document.getElementById('tenant-settings-subtitle');
+      if (title) title.textContent = 'Configuración';
+      if (subtitle) subtitle.textContent = SETTINGS_TENANT ? `Comercio: ${SETTINGS_TENANT}` : '';
+      if (modal) modal.style.display = 'flex';
+      loadTenantUsers();
+    }
+
+    function closeTenantSettings(){
+      SETTINGS_TENANT = '';
+      const modal = document.getElementById('tenant-settings-modal');
+      if (modal) modal.style.display = 'none';
+    }
+
     function validSlug(s){
       if (!s) return false;
       s = s.trim().toLowerCase();
@@ -285,7 +438,11 @@
           })
         });
         if (r.ok){
-          showToast('Comercio creado','success');
+          let j = null;
+          try { j = await r.json(); } catch(_) {}
+          const createdSlug = (j && (j.tenant_slug || j.slug)) ? String(j.tenant_slug || j.slug) : slug;
+          const createdUser = (j && j.admin_username) ? String(j.admin_username) : adminUser;
+          showToast(`Comercio creado: ${createdSlug} (usuario: ${createdUser})`,'success');
           loadTenants();
         } else {
           let msg = 'No se pudo crear';
@@ -324,6 +481,10 @@
             <button class="btn ok" data-login="${t.slug}">Login Dev en tenant</button>
             <button class="btn primary" data-admin="${t.slug}">Abrir Admin de tenant</button>
             <button class="btn primary" data-copy="${t.slug}">Copiar slug</button>
+            <button class="btn muted icon" data-settings="${t.slug}" title="Configuración del comercio">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19.14 12.94c.04-.31.06-.63.06-.94 0-.32-.02-.63-.07-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54A.5.5 0 0 0 14.9 1h-3.8a.5.5 0 0 0-.49.42l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96a.5.5 0 0 0-.6.22L2.72 7.5a.5.5 0 0 0 .12.64l2.03 1.58c-.05.31-.07.62-.07.94 0 .31.02.63.06.94L2.84 14.5a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.39.3.6.22l2.39-.96c.49.38 1.03.7 1.62.94l.36 2.54c.04.24.25.42.49.42h3.8c.24 0 .45-.18.49-.42l.36-2.54c.59-.24 1.12-.56 1.62-.94l2.39.96c.22.08.47 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.56zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg>
+              Config
+            </button>
           </div>
         `;
         cont.appendChild(el);
@@ -343,6 +504,11 @@
           const slug = b.getAttribute('data-admin')||'';
           await loginDevTenant(slug);
           window.open(`/admin.html?slug=${slug}`,'_blank','noopener');
+        });
+      });
+      cont.querySelectorAll('button[data-settings]').forEach(b=>{
+        b.addEventListener('click', ()=>{
+          openTenantSettings(b.getAttribute('data-settings')||'');
         });
       });
     }
@@ -414,6 +580,35 @@
       document.getElementById('btn-refresh').addEventListener('click', ()=>{ fetchCsrfToken(); loadTenants(); });
       document.getElementById('btn-create-tenant').addEventListener('click', createTenant);
       document.getElementById('btn-reload-tenants').addEventListener('click', loadTenants);
+      document.getElementById('tenant-settings-close').addEventListener('click', closeTenantSettings);
+      document.getElementById('tenant-settings-modal').addEventListener('click', (e)=>{ if (e.target && e.target.id === 'tenant-settings-modal') closeTenantSettings(); });
+      document.getElementById('tenant-user-create-btn').addEventListener('click', async ()=>{
+        const slug = SETTINGS_TENANT;
+        const uEl = document.getElementById('tenant-user-new-username');
+        const pEl = document.getElementById('tenant-user-new-password');
+        const u = (uEl && uEl.value || '').trim();
+        const p = pEl ? pEl.value : '';
+        if (!slug){ showToast('Selecciona un comercio','error'); return; }
+        if (!u){ showToast('Usuario requerido','error'); return; }
+        if (!p || String(p).length < 6){ showToast('Clave requerida (mínimo 6 caracteres)','error'); return; }
+        try{
+          const r = await fetch(new URL('/api/master/admin_users', API_BASE).toString(), {
+            method:'POST',
+            headers: headersJSON(),
+            body: JSON.stringify({ tenant_slug: slug, username: u, password: p })
+          });
+          if (r.ok){
+            showToast('Usuario creado','success');
+            if (uEl) uEl.value = '';
+            if (pEl) pEl.value = '';
+            await loadTenantUsers();
+          } else {
+            let msg = 'No se pudo crear';
+            try { const j = await r.json(); if (j.error) msg = j.error; } catch(_) {}
+            showToast(msg,'error');
+          }
+        }catch(e){ showToast('Error de red','error'); }
+      });
       document.getElementById('search').addEventListener('input', async ()=>{
         if (!MASTER_AUTHED) return;
         try{

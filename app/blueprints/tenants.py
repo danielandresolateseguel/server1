@@ -111,8 +111,20 @@ def get_tenant_header():
     # Fallback for nested config (legacy format support)
     meta_branding = cfg.get('meta', {}).get('branding', {})
     meta_contact = meta_branding.get('contact', {})
+
+    tenant_name = ''
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("SELECT name FROM tenants WHERE tenant_slug = ?", (slug,))
+        row = cur.fetchone()
+        if row and row[0]:
+            tenant_name = str(row[0] or '').strip()
+    except Exception:
+        tenant_name = ''
     
     return jsonify({
+        'name': tenant_name or (cfg.get('name') or meta_branding.get('name', '')),
         'whatsapp': cfg.get('whatsapp') or meta_contact.get('whatsapp', ''),
         'instagram': cfg.get('instagram') or meta_contact.get('instagram', ''),
         'instagram_label': cfg.get('instagram_label') or meta_contact.get('instagram_label', ''),
