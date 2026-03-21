@@ -57,6 +57,29 @@ def ensure_admin_users_last_seen_column(db, cur):
     except Exception:
         return
 
+def ensure_tenants_status_message_column(db, cur):
+    if is_postgres():
+        try:
+            cur.execute("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS status_message TEXT DEFAULT ''")
+            db.commit()
+        except Exception:
+            try:
+                db.rollback()
+            except Exception:
+                pass
+        return
+    try:
+        cur.execute("PRAGMA table_info(tenants)")
+        cols = [r[1] for r in cur.fetchall()]
+        if 'status_message' not in cols:
+            cur.execute("ALTER TABLE tenants ADD COLUMN status_message TEXT DEFAULT ''")
+            db.commit()
+    except Exception:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+
 def touch_admin_user_last_seen(db, cur, tenant_slug, username):
     if not tenant_slug or not username:
         return
@@ -112,13 +135,32 @@ def auth_login():
     if not row or not check_password_hash(row[1], password):
         return jsonify({'error': 'usuario o contraseña inválidos'}), 401
     
+    tenant_status = 'active'
+    tenant_message = ''
+    try:
+        ensure_tenants_status_message_column(db, cur)
+    except Exception:
+        pass
+    try:
+        cur.execute("SELECT status, COALESCE(status_message, '') AS status_message FROM tenants WHERE tenant_slug = ?", (tenant_slug,))
+        trow = cur.fetchone()
+        if trow:
+            tenant_status = str(trow[0] or 'active').strip().lower() or 'active'
+            tenant_message = str(trow[1] or '').strip()
+    except Exception:
+        tenant_status = 'active'
+        tenant_message = ''
+    if tenant_status == 'suspended':
+        msg = tenant_message or 'Servicio suspendido. Por favor, regulariza tu situación para reactivar el acceso.'
+        return jsonify({'error': msg, 'tenant_slug': tenant_slug, 'tenant_status': tenant_status}), 403
+
     real_username = str(row[0] or '').strip() or username
     touch_admin_user_last_seen(db, cur, tenant_slug, real_username)
     session['admin_auth'] = True
     session['admin_user'] = real_username
     session['tenant_slug'] = tenant_slug
     session['csrf_token'] = secrets.token_urlsafe(32)
-    return jsonify({'ok': True, 'tenant_slug': tenant_slug})
+    return jsonify({'ok': True, 'tenant_slug': tenant_slug, 'tenant_status': tenant_status, 'tenant_message': tenant_message})
 
 @bp.route('/auth/login_dev', methods=['POST'])
 def auth_login_dev():
@@ -155,7 +197,37 @@ def auth_me():
             touch_admin_user_last_seen(db, cur, session.get('tenant_slug') or '', session.get('admin_user') or '')
         except Exception:
             pass
-    return jsonify({'authenticated': is_authed(), 'user': session.get('admin_user') or '', 'tenant_slug': session.get('tenant_slug') or ''})
+    tenant_status = ''
+    tenant_message = ''
+    suspended = False
+    if is_authed():
+        try:
+            db = get_db()
+            cur = db.cursor()
+            try:
+                ensure_tenants_status_message_column(db, cur)
+            except Exception:
+                pass
+            slug = str(session.get('tenant_slug') or '').strip().lower()
+            if slug:
+                cur.execute("SELECT status, COALESCE(status_message, '') AS status_message FROM tenants WHERE tenant_slug = ?", (slug,))
+                trow = cur.fetchone()
+                if trow:
+                    tenant_status = str(trow[0] or '').strip().lower()
+                    tenant_message = str(trow[1] or '').strip()
+                    suspended = tenant_status == 'suspended'
+        except Exception:
+            tenant_status = ''
+            tenant_message = ''
+            suspended = False
+    return jsonify({
+        'authenticated': is_authed(),
+        'user': session.get('admin_user') or '',
+        'tenant_slug': session.get('tenant_slug') or '',
+        'tenant_status': tenant_status,
+        'tenant_message': tenant_message,
+        'suspended': bool(suspended)
+    })
 
 @bp.route('/auth/csrf', methods=['GET'])
 def auth_csrf():

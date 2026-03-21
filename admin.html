@@ -96,6 +96,8 @@
     .status-action.en_camino:hover, .status-action.mesa:hover { background:#f57c00; }
     .status-action.entregado:hover { background:#4a148c; }
     .status-action.cancelado:hover { background:#b71c1c; }
+    #service-banner{display:none;margin:12px 0 8px;padding:10px 12px;border-radius:8px;border:1px solid #ffeeba;background:#fff3cd;color:#7a5a00;font-weight:600}
+    #service-banner.danger{border-color:#f5c6cb;background:#f8d7da;color:#721c24}
 
     :root { --kds-bg: #f5f7fb; --kds-card-bg: #ffffff; --kds-border: #e6e8ee; --kds-text: #2c3e50; --kds-accent: #4a6fa5; 
       --st-pendiente: #90caf9; --st-preparacion: #ffd54f; --st-listo: #81c784; --st-en_camino: #4fc3f7; --st-entregado: #b0bec5; --st-cancelado: #ef9a9a; --st-overdue: #f44336; }
@@ -691,6 +693,8 @@
     </div>
   </header>
 
+  <div id="service-banner"></div>
+ 
   
 
   <div id="top-controls" style="display:flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom:8px;">
@@ -5188,6 +5192,16 @@
         const resp = await wFetch(new URL('/api/auth/me', API_BASE).toString());
         const data = await resp.json();
         if (data && data.authenticated) {
+          updateServiceBanner(String(data.tenant_status || ''), String(data.tenant_message || ''));
+          if (data.suspended) {
+            try { await wFetch(new URL('/api/auth/logout', API_BASE).toString(), { method: 'POST' }); } catch (_) {}
+            isAuthed = false;
+            currentUserName = '';
+            currentTenantSlug = '';
+            document.getElementById('login-box').style.display = 'block';
+            setAuthUI();
+            return false;
+          }
           isAuthed = true;
           currentUserName = String(data.user || '');
           currentTenantSlug = String(data.tenant_slug || '') || currentTenantSlug;
@@ -5207,9 +5221,32 @@
       isAuthed = false;
       currentUserName = '';
       currentTenantSlug = '';
+      updateServiceBanner('', '');
       document.getElementById('login-box').style.display = 'block';
       setAuthUI();
       return false;
+    }
+
+    function updateServiceBanner(status, message) {
+      const el = document.getElementById('service-banner');
+      if (!el) return;
+      const st = String(status || '').trim().toLowerCase();
+      const msg = String(message || '').trim();
+      if (st === 'warning') {
+        el.classList.remove('danger');
+        el.textContent = msg || 'Aviso de servicio: por favor, regulariza tu situación para evitar la suspensión.';
+        el.style.display = 'block';
+        return;
+      }
+      if (st === 'suspended') {
+        el.classList.add('danger');
+        el.textContent = msg || 'Servicio suspendido. Por favor, regulariza tu situación para reactivar el acceso.';
+        el.style.display = 'block';
+        return;
+      }
+      el.textContent = '';
+      el.style.display = 'none';
+      el.classList.remove('danger');
     }
 
     async function init() {
@@ -5272,8 +5309,16 @@
             body: JSON.stringify({ username: u, tenant_slug: slug })
           });
         }
-        if (!resp.ok) { if (errEl) errEl.style.display = 'block'; return; }
-        if (errEl) errEl.style.display = 'none';
+        if (!resp.ok) {
+          let msg = 'Credenciales inválidas';
+          try { const j = await resp.json(); if (j && j.error) msg = String(j.error); } catch (_) {}
+          if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
+          return;
+        }
+        let j = null;
+        try { j = await resp.json(); } catch (_) {}
+        updateServiceBanner(j && j.tenant_status, j && j.tenant_message);
+        if (errEl) { errEl.style.display = 'none'; errEl.textContent = 'Credenciales inválidas'; }
         await fetchCsrfToken();
         if (typeof csrfToken !== 'undefined') csrfToken = CSRF_TOKEN;
         currentUserName = u;
@@ -5316,6 +5361,7 @@
         try { await wFetch(new URL('/api/auth/logout', API_BASE).toString(), { method: 'POST' }); } catch (_) {}
         isAuthed = false;
         csrfToken = '';
+        updateServiceBanner('', '');
         if (refreshTimer) { try { clearInterval(refreshTimer); } catch (_) {} refreshTimer = null; }
         document.getElementById('login-box').style.display = 'block';
         document.body.classList.add('show-login');

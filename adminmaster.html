@@ -44,6 +44,8 @@
     .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700}
     .badge.on{background:#e8f5e9;color:#1b5e20;border:1px solid #c8e6c9}
     .badge.off{background:#fafafa;color:#6b7280;border:1px solid #e5e7eb}
+    .badge.warn{background:#fff3cd;color:#7a5a00;border:1px solid #ffeeba}
+    .badge.susp{background:#f8d7da;color:#721c24;border:1px solid #f5c6cb}
     .btn.icon{padding:8px 10px;display:inline-flex;align-items:center;gap:8px}
     .btn.icon svg{width:16px;height:16px}
   </style>
@@ -165,6 +167,24 @@
       <div class="stack">
         <div class="hint" id="tenant-settings-subtitle"></div>
         <div class="sep"></div>
+        <strong>Servicio</strong>
+        <div class="row">
+          <div class="field">
+            <label>Estado</label>
+            <select id="tenant-status-select" style="padding:10px 12px; border:1px solid var(--bd); border-radius:6px; min-width:240px;">
+              <option value="active">Activo</option>
+              <option value="warning">Aviso (impago)</option>
+              <option value="suspended">Suspendido</option>
+            </select>
+          </div>
+          <div class="field" style="flex:1; min-width:240px;">
+            <label>Mensaje</label>
+            <input id="tenant-status-message" placeholder="Mensaje a mostrar en el panel del comercio" />
+          </div>
+          <button id="tenant-status-save" class="btn ok">Guardar</button>
+        </div>
+        <div class="hint">“Aviso” muestra un mensaje sin bloquear. “Suspendido” bloquea el acceso al KDS para ese comercio.</div>
+        <div class="sep"></div>
         <strong>Usuarios</strong>
         <div style="overflow:auto;">
           <table class="table">
@@ -225,6 +245,7 @@
     let CSRF_TOKEN = '';
     let csrfToken = '';
     let MASTER_AUTHED = false;
+    let TENANTS_CACHE = [];
 
     async function fetchCsrfToken(){
       try{
@@ -385,6 +406,14 @@
       const subtitle = document.getElementById('tenant-settings-subtitle');
       if (title) title.textContent = 'Configuración';
       if (subtitle) subtitle.textContent = SETTINGS_TENANT ? `Comercio: ${SETTINGS_TENANT}` : '';
+      try{
+        const t = (TENANTS_CACHE || []).find(x => String(x && x.slug || '') === SETTINGS_TENANT) || null;
+        const stSel = document.getElementById('tenant-status-select');
+        const msgEl = document.getElementById('tenant-status-message');
+        const st = t && t.status ? String(t.status).toLowerCase() : 'active';
+        if (stSel) stSel.value = (st === 'warning' || st === 'suspended') ? st : 'active';
+        if (msgEl) msgEl.value = t && t.status_message ? String(t.status_message) : '';
+      }catch(e){}
       if (modal) modal.style.display = 'flex';
       loadTenantUsers();
     }
@@ -473,9 +502,16 @@
         const el = document.createElement('div');
         el.className = 'tenant';
         const name = t.name || t.slug;
+        const st = String(t.status || 'active').toLowerCase();
+        const badge = st === 'warning'
+          ? `<span class="badge warn">Aviso</span>`
+          : (st === 'suspended' ? `<span class="badge susp">Suspendido</span>` : ``);
         el.innerHTML = `
           <div class="t-head">
-            <strong>${name}</strong>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <strong>${name}</strong>
+              ${badge}
+            </div>
             <span class="slug">${t.slug}</span>
           </div>
           <div class="actions">
@@ -522,6 +558,7 @@
         if (!r.ok){ showToast('No se pudo cargar comercios','error'); return; }
         const j = await r.json();
         const list = (j && Array.isArray(j.tenants)) ? j.tenants : [];
+        TENANTS_CACHE = list;
         renderTenants(list);
       }catch(e){ showToast('Error de red','error'); }
     }
@@ -584,6 +621,31 @@
       document.getElementById('btn-reload-tenants').addEventListener('click', loadTenants);
       document.getElementById('tenant-settings-close').addEventListener('click', closeTenantSettings);
       document.getElementById('tenant-settings-modal').addEventListener('click', (e)=>{ if (e.target && e.target.id === 'tenant-settings-modal') closeTenantSettings(); });
+      document.getElementById('tenant-status-save').addEventListener('click', async ()=>{
+        const slug = SETTINGS_TENANT;
+        const stSel = document.getElementById('tenant-status-select');
+        const msgEl = document.getElementById('tenant-status-message');
+        const status = stSel ? String(stSel.value || 'active') : 'active';
+        const status_message = msgEl ? String(msgEl.value || '').trim() : '';
+        if (!slug){ showToast('Selecciona un comercio','error'); return; }
+        try{
+          const r = await fetch(new URL('/api/master/tenants', API_BASE).toString(), {
+            method:'PATCH',
+            headers: headersJSON(),
+            credentials:'include',
+            body: JSON.stringify({ tenant_slug: slug, status: status, status_message: status_message })
+          });
+          if (r.ok){
+            showToast('Servicio actualizado','success');
+            await loadTenants();
+            openTenantSettings(slug);
+          } else {
+            let msg = 'No se pudo actualizar';
+            try { const j = await r.json(); if (j.error) msg = j.error; } catch(_) {}
+            showToast(msg,'error');
+          }
+        }catch(e){ showToast('Error de red','error'); }
+      });
       document.getElementById('tenant-user-create-btn').addEventListener('click', async ()=>{
         const slug = SETTINGS_TENANT;
         const uEl = document.getElementById('tenant-user-new-username');
@@ -618,6 +680,7 @@
           const r = await fetch(new URL('/api/master/tenants', API_BASE).toString(), { credentials:'include' });
           const j = await r.json();
           const list = (j && Array.isArray(j.tenants)) ? j.tenants : [];
+          TENANTS_CACHE = list;
           renderTenants(list);
         }catch(e){}
       });

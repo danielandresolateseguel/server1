@@ -228,11 +228,16 @@ def init_db_postgres(cur):
             contact_email TEXT,
             contact_phone TEXT,
             status TEXT NOT NULL DEFAULT 'active',
+            status_message TEXT DEFAULT '',
             created_at TEXT NOT NULL
         )
         """
     )
     cur.execute("CREATE INDEX IF NOT EXISTS idx_tenants_status ON tenants(status)")
+    try:
+        cur.execute("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS status_message TEXT DEFAULT ''")
+    except Exception:
+        pass
     # Tabla de pedidos
     cur.execute(
         """
@@ -482,11 +487,19 @@ def init_db_sqlite(cur):
             contact_email TEXT,
             contact_phone TEXT,
             status TEXT NOT NULL DEFAULT 'active',
+            status_message TEXT DEFAULT '',
             created_at TEXT NOT NULL
         )
         """
     )
     cur.execute("CREATE INDEX IF NOT EXISTS idx_tenants_status ON tenants(status)")
+    try:
+        cur.execute("PRAGMA table_info(tenants)")
+        cols = [r[1] for r in cur.fetchall()]
+        if 'status_message' not in cols:
+            cur.execute("ALTER TABLE tenants ADD COLUMN status_message TEXT DEFAULT ''")
+    except Exception:
+        pass
     # Tabla de pedidos
     cur.execute(
         """

@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, session, current_app
-from app.database import get_db
+from app.database import get_db, is_postgres
 from app.utils import is_authed, check_csrf, get_cached_tenant_config, invalidate_tenant_config
 import os
 import json
@@ -10,6 +10,29 @@ from werkzeug.security import generate_password_hash
 print("DEBUG: Loading tenants.py blueprint...")
 
 bp = Blueprint('tenants', __name__, url_prefix='/api')
+
+def ensure_tenants_status_message_column(conn, cur):
+    if is_postgres():
+        try:
+            cur.execute("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS status_message TEXT DEFAULT ''")
+            conn.commit()
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        return
+    try:
+        cur.execute("PRAGMA table_info(tenants)")
+        cols = [r[1] for r in cur.fetchall()]
+        if 'status_message' not in cols:
+            cur.execute("ALTER TABLE tenants ADD COLUMN status_message TEXT DEFAULT ''")
+            conn.commit()
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
 
 def calculate_average_times(conn, slug):
     """Calcula tiempos promedio de entrega/servicio basados en historial reciente (últimos 7 días)."""
@@ -172,19 +195,63 @@ def get_tenants():
         
     return jsonify(tenants_list)
 
-@bp.route('/master/tenants', methods=['GET'])
+@bp.route('/master/tenants', methods=['GET', 'PATCH'])
 def master_get_tenants():
     if not session.get('master_auth'):
         return jsonify({'error': 'no autorizado'}), 401
+    if request.method == 'PATCH':
+        if not check_csrf():
+            return jsonify({'error': 'csrf inválido'}), 403
+        payload = request.get_json(silent=True) or {}
+        slug = str(payload.get('tenant_slug') or payload.get('slug') or '').strip().lower()
+        status = str(payload.get('status') or '').strip().lower()
+        status_message = str(payload.get('status_message') or payload.get('message') or '').strip()
+        if not slug:
+            return jsonify({'error': 'tenant_slug requerido'}), 400
+        if status not in ('active', 'warning', 'suspended'):
+            return jsonify({'error': 'estado inválido'}), 400
+        now = datetime.utcnow().isoformat()
+        conn = get_db()
+        cur = conn.cursor()
+        try:
+            ensure_tenants_status_message_column(conn, cur)
+        except Exception:
+            pass
+        try:
+            cur.execute("SELECT id FROM tenants WHERE tenant_slug = ?", (slug,))
+            row = cur.fetchone()
+            if not row:
+                name = slug.replace('-', ' ').replace('_', ' ').title()
+                cur.execute(
+                    "INSERT INTO tenants (tenant_slug, name, contact_email, contact_phone, status, status_message, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (slug, name, None, None, status, status_message, now)
+                )
+            else:
+                cur.execute(
+                    "UPDATE tenants SET status = ?, status_message = ? WHERE tenant_slug = ?",
+                    (status, status_message, slug)
+                )
+            conn.commit()
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            return jsonify({'error': 'no se pudo actualizar el comercio'}), 500
+        return jsonify({'ok': True, 'tenant_slug': slug, 'status': status, 'status_message': status_message})
 
     tenants_list = []
     try:
         conn = get_db()
         cur = conn.cursor()
-        cur.execute("SELECT tenant_slug, name FROM tenants ORDER BY created_at DESC")
+        try:
+            ensure_tenants_status_message_column(conn, cur)
+        except Exception:
+            pass
+        cur.execute("SELECT tenant_slug, name, status, COALESCE(status_message, '') AS status_message FROM tenants ORDER BY created_at DESC")
         rows = cur.fetchall()
         for r in rows:
-            tenants_list.append({'slug': r[0], 'name': r[1] or r[0]})
+            tenants_list.append({'slug': r[0], 'name': r[1] or r[0], 'status': r[2] or 'active', 'status_message': r[3] or ''})
     except Exception:
         tenants_list = []
 
@@ -198,7 +265,7 @@ def master_get_tenants():
             for r in rows:
                 slug = r[0]
                 if slug and slug not in seen:
-                    tenants_list.append({'slug': slug, 'name': slug.replace('-', ' ').title()})
+                    tenants_list.append({'slug': slug, 'name': slug.replace('-', ' ').title(), 'status': 'active', 'status_message': ''})
                     seen.add(slug)
         except Exception:
             pass
