@@ -690,6 +690,7 @@
       <button id="tables-open" style="background:#673ab7; color:#fff;">Gestión Mesas</button>
       <button id="btn-view-carta" style="background:#009688; color:#fff;" onclick="const s=document.getElementById('tenant-input').value||'gastronomia-local1'; window.open('/gastronomia-local1.html?slug='+s, '_blank')">Ver Carta Online</button>
       <button id="carousel-open" style="background:#e91e63; color:#fff;">Editor Carrusel</button>
+      <button id="users-admin-open" style="background:#455a64; color:#fff; display:none;">Usuarios</button>
     </div>
   </header>
 
@@ -849,6 +850,53 @@
         <div style="text-align:right;">
           <button id="cfg-whatsapp-save-btn" style="background:#25D366; color:white; border:none; padding:8px 16px; border-radius:4px; cursor:pointer; font-weight:bold;">Guardar</button>
         </div>
+      </div>
+    </div>
+
+    <div id="users-admin-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:10000; justify-content:center; align-items:center;">
+      <div style="background:white; padding:20px; border-radius:8px; width:min(860px, 96vw); box-shadow:0 2px 10px rgba(0,0,0,0.2); max-height:86vh; overflow-y:auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h3 style="margin:0;">Usuarios</h3>
+          <button id="users-admin-close" style="background:none; border:none; font-size:20px; cursor:pointer;">&times;</button>
+        </div>
+        <div class="small" id="users-admin-subtitle" style="margin-bottom:10px;"></div>
+        <div style="border:1px solid #eee; border-radius:8px; padding:12px; margin-bottom:12px;">
+          <div style="font-weight:700; margin-bottom:8px;">Crear usuario</div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+            <label class="small" style="display:flex; flex-direction:column; gap:4px;">Usuario
+              <input id="users-new-username" type="text" style="height:34px; padding:0 10px; width:180px;">
+            </label>
+            <label class="small" style="display:flex; flex-direction:column; gap:4px;">Clave
+              <input id="users-new-password" type="password" style="height:34px; padding:0 10px; width:220px;">
+            </label>
+            <label class="small" style="display:flex; flex-direction:column; gap:4px;">Rol
+              <select id="users-new-role" style="height:34px; padding:0 10px; width:160px;">
+                <option value="mozo">Mozo</option>
+                <option value="cocina">Cocina</option>
+                <option value="caja">Caja</option>
+                <option value="repartidor">Repartidor</option>
+                <option value="admin">Admin</option>
+              </select>
+            </label>
+            <label class="small" style="display:flex; align-items:center; gap:6px; height:34px;">
+              <input id="users-new-owner" type="checkbox" />
+              Owner
+            </label>
+            <button id="users-new-create" style="height:34px; background:#2e7d32; color:#fff; border:none; padding:0 14px; border-radius:6px; cursor:pointer;">Crear</button>
+          </div>
+          <div class="small" id="users-new-hint" style="margin-top:6px; color:#666;"></div>
+        </div>
+        <table style="width:100%; border-collapse:collapse;">
+          <thead>
+            <tr>
+              <th>Usuario</th>
+              <th>Rol</th>
+              <th>Owner</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="users-admin-tbody"></tbody>
+        </table>
       </div>
     </div>
       <table id="orders-table" class="orders-table">
@@ -2249,6 +2297,8 @@
     let isAuthed = false;
     let currentTenantSlug = '';
     let currentUserName = '';
+    let canManageUsers = false;
+    let isOwnerUser = false;
     const LOGIN_KEY_USER = 'kds_login_user';
     const LOGIN_KEY_PASS = 'kds_login_pass';
     const LOGIN_KEY_REM = 'kds_login_rem';
@@ -5205,6 +5255,12 @@
           isAuthed = true;
           currentUserName = String(data.user || '');
           currentTenantSlug = String(data.tenant_slug || '') || currentTenantSlug;
+          isOwnerUser = !!data.is_owner;
+          canManageUsers = !!(isOwnerUser || (data.permissions && data.permissions.users_manage));
+          try{
+            const btnUsers = document.getElementById('users-admin-open');
+            if (btnUsers) btnUsers.style.display = canManageUsers ? '' : 'none';
+          }catch(_){}
           if (typeof tenantInput !== 'undefined' && tenantInput) {
             const slug = currentTenantSlug || tenantInput.value.trim() || defaultSlug();
             tenantInput.value = slug;
@@ -5221,6 +5277,12 @@
       isAuthed = false;
       currentUserName = '';
       currentTenantSlug = '';
+      canManageUsers = false;
+      isOwnerUser = false;
+      try{
+        const btnUsers = document.getElementById('users-admin-open');
+        if (btnUsers) btnUsers.style.display = 'none';
+      }catch(_){}
       updateServiceBanner('', '');
       document.getElementById('login-box').style.display = 'block';
       setAuthUI();
@@ -7539,13 +7601,309 @@
         }
     }
 
+    function usersRoleDefaults(role){
+      const r = String(role||'').trim().toLowerCase();
+      if (r === 'admin'){
+        return {
+          orders_view:true, orders_update_status:true, orders_cancel:true, orders_create:true,
+          tables_manage:true, cash_view:true, cash_manage:true, products_manage:true,
+          carousel_manage:true, reports_view:true, users_manage:true
+        };
+      }
+      if (r === 'mozo'){
+        return { orders_view:true, orders_update_status:true, orders_create:true, tables_manage:true };
+      }
+      if (r === 'cocina'){
+        return { orders_view:true, orders_update_status:true };
+      }
+      if (r === 'caja'){
+        return { orders_view:true, orders_update_status:true, cash_view:true, cash_manage:true };
+      }
+      if (r === 'repartidor'){
+        return { orders_view:true, orders_update_status:true };
+      }
+      return usersRoleDefaults('admin');
+    }
+
+    function usersHeaders(){
+      const h = { 'Content-Type':'application/json', 'Accept':'application/json' };
+      const t = (typeof csrfToken !== 'undefined' && csrfToken) ? csrfToken : (typeof CSRF_TOKEN !== 'undefined' ? CSRF_TOKEN : '');
+      if (t) h['X-CSRF-Token'] = t;
+      return h;
+    }
+
+    let USERS_OWNERS_COUNT = 0;
+
+    async function loadUsersAdmin(){
+      const slug = currentTenantSlug || (document.getElementById('tenant-input') ? document.getElementById('tenant-input').value : '') || 'gastronomia-local1';
+      const tbody = document.getElementById('users-admin-tbody');
+      const sub = document.getElementById('users-admin-subtitle');
+      const hint = document.getElementById('users-new-hint');
+      if (sub) sub.textContent = `Comercio: ${slug}`;
+      if (!tbody) return;
+      tbody.innerHTML = '<tr><td colspan="4" class="small">Cargando...</td></tr>';
+      try{
+        const url = new URL('/api/admin_users', API_BASE);
+        url.searchParams.set('tenant_slug', slug);
+        const r = await wFetch(url.toString());
+        const j = await r.json().catch(()=>({}));
+        if (!r.ok){
+          tbody.innerHTML = `<tr><td colspan="4" class="small" style="color:#c62828;">${String(j.error||'No se pudo cargar')}</td></tr>`;
+          return;
+        }
+        try{
+          const plan = String(j.plan || '');
+          const maxUsers = parseInt(j.max_users || 0, 10) || 0;
+          const countUsers = parseInt(j.count_users || 0, 10) || 0;
+          if (hint && maxUsers){
+            hint.textContent = `Usuarios: ${countUsers}/${maxUsers}` + (plan ? ` (plan: ${plan})` : '');
+          }
+        }catch(_){}
+        const users = Array.isArray(j.users) ? j.users : [];
+        USERS_OWNERS_COUNT = users.reduce((a, x) => a + (x && x.is_owner ? 1 : 0), 0);
+        try{
+          const rEl = document.getElementById('users-new-role');
+          const oEl = document.getElementById('users-new-owner');
+          if (rEl && oEl){
+            const roleNow = String(rEl.value||'').toLowerCase();
+            const allowOwner = !!isOwnerUser && roleNow === 'admin' && USERS_OWNERS_COUNT < 2;
+            oEl.disabled = !allowOwner;
+            if (!allowOwner) oEl.checked = false;
+          }
+        }catch(_){}
+        if (!users.length){
+          tbody.innerHTML = '<tr><td colspan="4" class="small">Sin usuarios.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = '';
+        users.forEach(u=>{
+          const tr = document.createElement('tr');
+          const uname = String(u.username||'');
+          const role = String(u.role||'admin').toLowerCase();
+          const owner = !!u.is_owner;
+          const ownerDisabled = (!isOwnerUser) || (String(role).toLowerCase() !== 'admin') || (!owner && USERS_OWNERS_COUNT >= 2);
+          tr.innerHTML = `
+            <td>${uname}</td>
+            <td>
+              <select class="u-role" data-user="${uname}" style="height:32px; padding:0 10px;">
+                <option value="mozo" ${role==='mozo'?'selected':''}>Mozo</option>
+                <option value="cocina" ${role==='cocina'?'selected':''}>Cocina</option>
+                <option value="caja" ${role==='caja'?'selected':''}>Caja</option>
+                <option value="repartidor" ${role==='repartidor'?'selected':''}>Repartidor</option>
+                <option value="admin" ${role==='admin'?'selected':''}>Admin</option>
+              </select>
+            </td>
+            <td>
+              <input type="checkbox" class="u-owner" data-user="${uname}" data-role="${role}" ${owner?'checked':''} ${ownerDisabled?'disabled':''} />
+            </td>
+            <td style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="u-pass" data-user="${uname}" style="height:30px;">Clave</button>
+              <button class="u-rename" data-user="${uname}" style="height:30px;">Renombrar</button>
+              <button class="u-perms" data-user="${uname}" data-perms="${encodeURIComponent(String(u.permissions_json||''))}" style="height:30px;">Permisos</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        tbody.querySelectorAll('select.u-role').forEach(sel=>{
+          sel.addEventListener('change', async ()=>{
+            const user = sel.getAttribute('data-user') || '';
+            const r = String(sel.value || 'admin');
+            try{
+              const resp = await wFetch(new URL('/api/admin_users', API_BASE).toString(), {
+                method:'PATCH',
+                headers: usersHeaders(),
+                body: JSON.stringify({ tenant_slug: slug, username: user, role: r, permissions: usersRoleDefaults(r) })
+              });
+              if (!resp.ok){
+                const err = await resp.json().catch(()=>({}));
+                alert(String(err.error || 'No se pudo actualizar'));
+              }
+              await loadUsersAdmin();
+            }catch(e){ alert('Error de red'); }
+          });
+        });
+
+        tbody.querySelectorAll('input.u-owner').forEach(chk=>{
+          chk.addEventListener('change', async ()=>{
+            if (!isOwnerUser){
+              chk.checked = !chk.checked;
+              return;
+            }
+            const rr = String(chk.getAttribute('data-role') || '');
+            if (String(rr).toLowerCase() !== 'admin'){
+              alert('Solo un usuario Admin puede ser owner');
+              chk.checked = false;
+              return;
+            }
+            if (chk.checked && USERS_OWNERS_COUNT >= 2){
+              alert('Límite de owners alcanzado (máx 2)');
+              chk.checked = false;
+              return;
+            }
+            const user = chk.getAttribute('data-user') || '';
+            const val = !!chk.checked;
+            try{
+              const resp = await wFetch(new URL('/api/admin_users', API_BASE).toString(), {
+                method:'PATCH',
+                headers: usersHeaders(),
+                body: JSON.stringify({ tenant_slug: slug, username: user, is_owner: val })
+              });
+              if (!resp.ok){
+                const err = await resp.json().catch(()=>({}));
+                alert(String(err.error || 'No se pudo actualizar'));
+              }
+              await loadUsersAdmin();
+            }catch(e){ alert('Error de red'); }
+          });
+        });
+
+        tbody.querySelectorAll('button.u-pass').forEach(b=>{
+          b.addEventListener('click', async ()=>{
+            const user = b.getAttribute('data-user') || '';
+            const np = prompt('Nueva clave para '+user+':');
+            if (!np) return;
+            try{
+              const resp = await wFetch(new URL('/api/admin_users', API_BASE).toString(), {
+                method:'PATCH',
+                headers: usersHeaders(),
+                body: JSON.stringify({ tenant_slug: slug, username: user, new_password: np })
+              });
+              if (!resp.ok){
+                const err = await resp.json().catch(()=>({}));
+                alert(String(err.error || 'No se pudo actualizar'));
+              } else {
+                alert('Clave actualizada');
+              }
+            }catch(e){ alert('Error de red'); }
+          });
+        });
+
+        tbody.querySelectorAll('button.u-rename').forEach(b=>{
+          b.addEventListener('click', async ()=>{
+            const user = b.getAttribute('data-user') || '';
+            const nu = prompt('Nuevo usuario para '+user+':', user);
+            if (!nu) return;
+            try{
+              const resp = await wFetch(new URL('/api/admin_users', API_BASE).toString(), {
+                method:'PATCH',
+                headers: usersHeaders(),
+                body: JSON.stringify({ tenant_slug: slug, username: user, new_username: nu })
+              });
+              if (!resp.ok){
+                const err = await resp.json().catch(()=>({}));
+                alert(String(err.error || 'No se pudo actualizar'));
+              }
+              await loadUsersAdmin();
+            }catch(e){ alert('Error de red'); }
+          });
+        });
+
+        tbody.querySelectorAll('button.u-perms').forEach(b=>{
+          b.addEventListener('click', async ()=>{
+            const user = b.getAttribute('data-user') || '';
+            const current = decodeURIComponent(String(b.getAttribute('data-perms')||'')) || '';
+            const dflt = JSON.stringify(usersRoleDefaults('admin'));
+            const v = prompt('Pega un JSON de permisos (true/false) para '+user+':', current || dflt);
+            if (!v) return;
+            try{
+              JSON.parse(v);
+            }catch(e){
+              alert('JSON inválido');
+              return;
+            }
+            try{
+              const resp = await wFetch(new URL('/api/admin_users', API_BASE).toString(), {
+                method:'PATCH',
+                headers: usersHeaders(),
+                body: JSON.stringify({ tenant_slug: slug, username: user, permissions_json: v })
+              });
+              if (!resp.ok){
+                const err = await resp.json().catch(()=>({}));
+                alert(String(err.error || 'No se pudo actualizar'));
+              }
+              await loadUsersAdmin();
+            }catch(e){ alert('Error de red'); }
+          });
+        });
+
+      }catch(e){
+        tbody.innerHTML = '<tr><td colspan="4" class="small" style="color:#c62828;">Error de red</td></tr>';
+      }
+    }
+
+    function initUsersAdminUI(){
+      const btnOpen = document.getElementById('users-admin-open');
+      const modal = document.getElementById('users-admin-modal');
+      const close = document.getElementById('users-admin-close');
+      const createBtn = document.getElementById('users-new-create');
+      const hint = document.getElementById('users-new-hint');
+      const uEl = document.getElementById('users-new-username');
+      const pEl = document.getElementById('users-new-password');
+      const rEl = document.getElementById('users-new-role');
+      const oEl = document.getElementById('users-new-owner');
+      if (!btnOpen || !modal) return;
+      const syncOwnerCreate = ()=>{
+        if (!oEl) return;
+        const role = rEl ? String(rEl.value||'') : '';
+        const allow = !!isOwnerUser && String(role).toLowerCase() === 'admin' && USERS_OWNERS_COUNT < 2;
+        oEl.disabled = !allow;
+        if (!allow) oEl.checked = false;
+      };
+      btnOpen.addEventListener('click', async ()=>{
+        if (!isAuthed){ alert('Debes iniciar sesión'); return; }
+        if (!canManageUsers){ alert('Sin permisos'); return; }
+        if (oEl) oEl.disabled = !isOwnerUser;
+        if (hint) hint.textContent = '';
+        modal.style.display = 'flex';
+        syncOwnerCreate();
+        await loadUsersAdmin();
+      });
+      if (close) close.addEventListener('click', ()=>{ modal.style.display = 'none'; });
+      modal.addEventListener('click', (e)=>{ if (e.target === modal) modal.style.display = 'none'; });
+      if (rEl) rEl.addEventListener('change', syncOwnerCreate);
+      if (createBtn){
+        createBtn.addEventListener('click', async ()=>{
+          if (!isAuthed){ alert('Debes iniciar sesión'); return; }
+          if (!canManageUsers){ alert('Sin permisos'); return; }
+          const slug = currentTenantSlug || (document.getElementById('tenant-input') ? document.getElementById('tenant-input').value : '') || 'gastronomia-local1';
+          const u = (uEl && uEl.value || '').trim();
+          const p = pEl ? String(pEl.value||'') : '';
+          const role = rEl ? String(rEl.value||'mozo') : 'mozo';
+          const is_owner = String(role).toLowerCase() === 'admin' && !!isOwnerUser && !!(oEl && oEl.checked);
+          if (!u){ alert('Usuario requerido'); return; }
+          if (!p || p.length < 6){ alert('Clave requerida (mínimo 6 caracteres)'); return; }
+          try{
+            const resp = await wFetch(new URL('/api/admin_users', API_BASE).toString(), {
+              method:'POST',
+              headers: usersHeaders(),
+              body: JSON.stringify({ tenant_slug: slug, username: u, password: p, role: role, permissions: usersRoleDefaults(role), is_owner: is_owner })
+            });
+            const j = await resp.json().catch(()=>({}));
+            if (!resp.ok){
+              if (hint) hint.textContent = String(j.error || 'No se pudo crear');
+              else alert(String(j.error || 'No se pudo crear'));
+              return;
+            }
+            if (uEl) uEl.value = '';
+            if (pEl) pEl.value = '';
+            if (oEl) oEl.checked = false;
+            if (hint) hint.textContent = 'Usuario creado';
+            await loadUsersAdmin();
+          }catch(e){ alert('Error de red'); }
+        });
+      }
+    }
+
     // Call init when DOM is likely ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initOrdersConfigUI);
         document.addEventListener('DOMContentLoaded', initWhatsappConfigUI);
+        document.addEventListener('DOMContentLoaded', initUsersAdminUI);
     } else {
         initOrdersConfigUI();
         initWhatsappConfigUI();
+        initUsersAdminUI();
     }
     // --- NEW ORDER MODAL LOGIC ---
     document.addEventListener('DOMContentLoaded', function() {

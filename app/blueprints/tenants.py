@@ -34,6 +34,91 @@ def ensure_tenants_status_message_column(conn, cur):
         except Exception:
             pass
 
+def ensure_tenants_plan_columns(conn, cur):
+    if is_postgres():
+        try:
+            cur.execute("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS plan TEXT NOT NULL DEFAULT 'standard'")
+            conn.commit()
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        try:
+            cur.execute("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS max_users INTEGER NOT NULL DEFAULT 3")
+            conn.commit()
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        return
+    try:
+        cur.execute("PRAGMA table_info(tenants)")
+        cols = [r[1] for r in cur.fetchall()]
+        changed = False
+        if 'plan' not in cols:
+            cur.execute("ALTER TABLE tenants ADD COLUMN plan TEXT NOT NULL DEFAULT 'standard'")
+            changed = True
+        if 'max_users' not in cols:
+            cur.execute("ALTER TABLE tenants ADD COLUMN max_users INTEGER NOT NULL DEFAULT 3")
+            changed = True
+        if changed:
+            conn.commit()
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+
+def ensure_admin_users_rbac_columns(conn, cur):
+    if is_postgres():
+        try:
+            cur.execute("ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'admin'")
+            conn.commit()
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        try:
+            cur.execute("ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS permissions_json TEXT DEFAULT ''")
+            conn.commit()
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        try:
+            cur.execute("ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS is_owner INTEGER NOT NULL DEFAULT 0")
+            conn.commit()
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        return
+    try:
+        cur.execute("PRAGMA table_info(admin_users)")
+        cols = [r[1] for r in cur.fetchall()]
+        changed = False
+        if 'role' not in cols:
+            cur.execute("ALTER TABLE admin_users ADD COLUMN role TEXT NOT NULL DEFAULT 'admin'")
+            changed = True
+        if 'permissions_json' not in cols:
+            cur.execute("ALTER TABLE admin_users ADD COLUMN permissions_json TEXT DEFAULT ''")
+            changed = True
+        if 'is_owner' not in cols:
+            cur.execute("ALTER TABLE admin_users ADD COLUMN is_owner INTEGER NOT NULL DEFAULT 0")
+            changed = True
+        if changed:
+            conn.commit()
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+
 def calculate_average_times(conn, slug):
     """Calcula tiempos promedio de entrega/servicio basados en historial reciente (últimos 7 días)."""
     avgs = {}
@@ -206,10 +291,21 @@ def master_get_tenants():
         slug = str(payload.get('tenant_slug') or payload.get('slug') or '').strip().lower()
         status = str(payload.get('status') or '').strip().lower()
         status_message = str(payload.get('status_message') or payload.get('message') or '').strip()
+        plan = str(payload.get('plan') or '').strip().lower()
+        max_users = payload.get('max_users')
         if not slug:
             return jsonify({'error': 'tenant_slug requerido'}), 400
         if status not in ('active', 'warning', 'suspended'):
             return jsonify({'error': 'estado inválido'}), 400
+        if plan and plan not in ('standard', 'pro'):
+            return jsonify({'error': 'plan inválido'}), 400
+        if max_users is not None:
+            try:
+                max_users = int(max_users)
+            except Exception:
+                return jsonify({'error': 'max_users inválido'}), 400
+            if max_users < 1 or max_users > 50:
+                return jsonify({'error': 'max_users fuera de rango'}), 400
         now = datetime.utcnow().isoformat()
         conn = get_db()
         cur = conn.cursor()
@@ -218,19 +314,24 @@ def master_get_tenants():
         except Exception:
             pass
         try:
+            ensure_tenants_plan_columns(conn, cur)
+        except Exception:
+            pass
+        try:
             cur.execute("SELECT id FROM tenants WHERE tenant_slug = ?", (slug,))
             row = cur.fetchone()
             if not row:
                 name = slug.replace('-', ' ').replace('_', ' ').title()
                 cur.execute(
-                    "INSERT INTO tenants (tenant_slug, name, contact_email, contact_phone, status, status_message, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                    (slug, name, None, None, status, status_message, now)
+                    "INSERT INTO tenants (tenant_slug, name, contact_email, contact_phone, status, status_message, plan, max_users, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (slug, name, None, None, status, status_message, plan or 'standard', int(max_users) if max_users is not None else 3, now)
                 )
             else:
-                cur.execute(
-                    "UPDATE tenants SET status = ?, status_message = ? WHERE tenant_slug = ?",
-                    (status, status_message, slug)
-                )
+                if plan:
+                    cur.execute("UPDATE tenants SET plan = ? WHERE tenant_slug = ?", (plan, slug))
+                if max_users is not None:
+                    cur.execute("UPDATE tenants SET max_users = ? WHERE tenant_slug = ?", (int(max_users), slug))
+                cur.execute("UPDATE tenants SET status = ?, status_message = ? WHERE tenant_slug = ?", (status, status_message, slug))
             conn.commit()
         except Exception:
             try:
@@ -238,7 +339,7 @@ def master_get_tenants():
             except Exception:
                 pass
             return jsonify({'error': 'no se pudo actualizar el comercio'}), 500
-        return jsonify({'ok': True, 'tenant_slug': slug, 'status': status, 'status_message': status_message})
+        return jsonify({'ok': True, 'tenant_slug': slug, 'status': status, 'status_message': status_message, 'plan': plan or None, 'max_users': max_users})
 
     tenants_list = []
     try:
@@ -248,10 +349,14 @@ def master_get_tenants():
             ensure_tenants_status_message_column(conn, cur)
         except Exception:
             pass
-        cur.execute("SELECT tenant_slug, name, status, COALESCE(status_message, '') AS status_message FROM tenants ORDER BY created_at DESC")
+        try:
+            ensure_tenants_plan_columns(conn, cur)
+        except Exception:
+            pass
+        cur.execute("SELECT tenant_slug, name, status, COALESCE(status_message, '') AS status_message, COALESCE(plan, 'standard') AS plan, COALESCE(max_users, 3) AS max_users FROM tenants ORDER BY created_at DESC")
         rows = cur.fetchall()
         for r in rows:
-            tenants_list.append({'slug': r[0], 'name': r[1] or r[0], 'status': r[2] or 'active', 'status_message': r[3] or ''})
+            tenants_list.append({'slug': r[0], 'name': r[1] or r[0], 'status': r[2] or 'active', 'status_message': r[3] or '', 'plan': r[4] or 'standard', 'max_users': int(r[5] or 3)})
     except Exception:
         tenants_list = []
 
@@ -265,7 +370,7 @@ def master_get_tenants():
             for r in rows:
                 slug = r[0]
                 if slug and slug not in seen:
-                    tenants_list.append({'slug': slug, 'name': slug.replace('-', ' ').title(), 'status': 'active', 'status_message': ''})
+                    tenants_list.append({'slug': slug, 'name': slug.replace('-', ' ').title(), 'status': 'active', 'status_message': '', 'plan': 'standard', 'max_users': 3})
                     seen.add(slug)
         except Exception:
             pass
@@ -301,14 +406,18 @@ def create_demo_tenant():
     now = datetime.utcnow().isoformat()
     conn = get_db()
     cur = conn.cursor()
+    try:
+        ensure_tenants_plan_columns(conn, cur)
+    except Exception:
+        pass
     cur.execute("SELECT id FROM tenants WHERE tenant_slug = ?", (slug,))
     row = cur.fetchone()
     if row:
         return jsonify({'error': 'tenant ya existe', 'tenant_slug': slug}), 409
     
     cur.execute(
-        "INSERT INTO tenants (tenant_slug, name, contact_email, contact_phone, status, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-        (slug, name, contact_email, contact_phone, 'active', now)
+        "INSERT INTO tenants (tenant_slug, name, contact_email, contact_phone, status, plan, max_users, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (slug, name, contact_email, contact_phone, 'active', 'standard', 3, now)
     )
     
     default_cfg = {
@@ -339,6 +448,30 @@ def create_demo_tenant():
         except Exception:
             pass
         return jsonify({'error': 'no se pudo crear el usuario principal (puede existir)'}), 409
+    try:
+        try:
+            ensure_admin_users_rbac_columns(conn, cur)
+        except Exception:
+            pass
+        admin_defaults = {
+            'orders_view': True,
+            'orders_update_status': True,
+            'orders_cancel': True,
+            'orders_create': True,
+            'tables_manage': True,
+            'cash_view': True,
+            'cash_manage': True,
+            'products_manage': True,
+            'carousel_manage': True,
+            'reports_view': True,
+            'users_manage': True
+        }
+        cur.execute(
+            "UPDATE admin_users SET role = ?, is_owner = ?, permissions_json = ? WHERE tenant_slug = ? AND lower(username) = lower(?)",
+            ('admin', 1, json.dumps(admin_defaults, ensure_ascii=False), slug, admin_username)
+        )
+    except Exception:
+        pass
     conn.commit()
     invalidate_tenant_config(slug)
     

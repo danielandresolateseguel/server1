@@ -170,6 +170,17 @@
         <strong>Servicio</strong>
         <div class="row">
           <div class="field">
+            <label>Plan</label>
+            <select id="tenant-plan-select" style="padding:10px 12px; border:1px solid var(--bd); border-radius:6px; min-width:180px;">
+              <option value="standard">Standard</option>
+              <option value="pro">Pro</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Máx. usuarios</label>
+            <input id="tenant-max-users" type="number" min="1" max="50" value="3" style="min-width:140px;" />
+          </div>
+          <div class="field">
             <label>Estado</label>
             <select id="tenant-status-select" style="padding:10px 12px; border:1px solid var(--bd); border-radius:6px; min-width:240px;">
               <option value="active">Activo</option>
@@ -186,18 +197,20 @@
         <div class="hint">“Aviso” muestra un mensaje sin bloquear. “Suspendido” bloquea el acceso al KDS para ese comercio.</div>
         <div class="sep"></div>
         <strong>Usuarios</strong>
+        <div class="hint" id="tenant-users-limit"></div>
         <div style="overflow:auto;">
           <table class="table">
             <thead>
               <tr>
                 <th>Usuario</th>
+                <th>Rol</th>
                 <th>Estado</th>
                 <th>Última actividad</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody id="tenant-users-body">
-              <tr><td colspan="4" class="hint">Cargando...</td></tr>
+              <tr><td colspan="5" class="hint">Cargando...</td></tr>
             </tbody>
           </table>
         </div>
@@ -211,6 +224,23 @@
           <div class="field">
             <label>Clave</label>
             <input id="tenant-user-new-password" type="password" placeholder="nueva clave" autocomplete="new-password" />
+          </div>
+          <div class="field">
+            <label>Rol</label>
+            <select id="tenant-user-new-role" style="padding:10px 12px; border:1px solid var(--bd); border-radius:6px; min-width:160px;">
+              <option value="mozo">Mozo</option>
+              <option value="cocina">Cocina</option>
+              <option value="caja">Caja</option>
+              <option value="repartidor">Repartidor</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <div class="field" style="min-width:140px;">
+            <label style="opacity:.9;">Propietario</label>
+            <label style="display:flex; gap:8px; align-items:center; user-select:none;">
+              <input id="tenant-user-new-owner" type="checkbox" />
+              Owner
+            </label>
           </div>
           <button id="tenant-user-create-btn" class="btn primary">Crear</button>
         </div>
@@ -249,7 +279,7 @@
 
     async function fetchCsrfToken(){
       try{
-        const r = await fetch(new URL('/api/auth/csrf', API_BASE).toString(), { cache:'no-store' });
+        const r = await fetch(new URL('/api/auth/csrf', API_BASE).toString(), { cache:'no-store', credentials:'include' });
         const j = await r.json();
         CSRF_TOKEN = j.token || '';
         csrfToken = CSRF_TOKEN;
@@ -316,6 +346,7 @@
     }
 
     let SETTINGS_TENANT = '';
+    let SETTINGS_OWNERS_COUNT = 0;
 
     function formatLastSeen(s){
       const v = String(s||'').trim();
@@ -323,11 +354,35 @@
       return v.replace('T',' ').replace('Z','');
     }
 
+    function roleDefaults(role){
+      const r = String(role||'').trim().toLowerCase();
+      if (r === 'admin'){
+        return {
+          orders_view:true, orders_update_status:true, orders_cancel:true, orders_create:true,
+          tables_manage:true, cash_view:true, cash_manage:true, products_manage:true,
+          carousel_manage:true, reports_view:true, users_manage:true
+        };
+      }
+      if (r === 'mozo'){
+        return { orders_view:true, orders_update_status:true, orders_create:true, tables_manage:true };
+      }
+      if (r === 'cocina'){
+        return { orders_view:true, orders_update_status:true };
+      }
+      if (r === 'caja'){
+        return { orders_view:true, orders_update_status:true, cash_view:true, cash_manage:true };
+      }
+      if (r === 'repartidor'){
+        return { orders_view:true, orders_update_status:true };
+      }
+      return roleDefaults('admin');
+    }
+
     async function loadTenantUsers(){
       const slug = SETTINGS_TENANT;
       const body = document.getElementById('tenant-users-body');
       if (!slug || !body) return;
-      body.innerHTML = '<tr><td colspan="4" class="hint">Cargando...</td></tr>';
+      body.innerHTML = '<tr><td colspan="5" class="hint">Cargando...</td></tr>';
       try{
         const url = new URL('/api/master/admin_users', API_BASE);
         url.searchParams.set('tenant_slug', slug);
@@ -335,30 +390,86 @@
         if (!r.ok){
           let msg = 'No se pudo cargar usuarios';
           try{ const j = await r.json(); if (j.error) msg = j.error; }catch(_){}
-          body.innerHTML = `<tr><td colspan="4" class="hint" style="color:var(--danger);">${msg}</td></tr>`;
+          body.innerHTML = `<tr><td colspan="5" class="hint" style="color:var(--danger);">${msg}</td></tr>`;
           return;
         }
         const j = await r.json();
         const users = Array.isArray(j.users) ? j.users : [];
+        SETTINGS_OWNERS_COUNT = users.reduce((a, x) => a + (x && x.is_owner ? 1 : 0), 0);
+        try{
+          const rEl = document.getElementById('tenant-user-new-role');
+          const oEl = document.getElementById('tenant-user-new-owner');
+          if (rEl && oEl){
+            const roleNow = String(rEl.value||'').toLowerCase();
+            const allowOwner = roleNow === 'admin' && SETTINGS_OWNERS_COUNT < 2;
+            oEl.disabled = !allowOwner;
+            if (!allowOwner) oEl.checked = false;
+          }
+        }catch(e){}
         if (!users.length){
-          body.innerHTML = '<tr><td colspan="4" class="hint">Sin usuarios.</td></tr>';
+          body.innerHTML = '<tr><td colspan="5" class="hint">Sin usuarios.</td></tr>';
           return;
         }
+        try{
+          const t = (TENANTS_CACHE || []).find(x => String(x && x.slug || '') === slug) || null;
+          const limEl = document.getElementById('tenant-users-limit');
+          const maxUsers = t && t.max_users ? parseInt(t.max_users,10) : 0;
+          const plan = t && t.plan ? String(t.plan) : '';
+          if (limEl){
+            if (maxUsers){
+              limEl.textContent = `Usuarios: ${users.length}/${maxUsers}` + (plan ? ` (plan: ${plan})` : '');
+            } else {
+              limEl.textContent = `Usuarios: ${users.length}`;
+            }
+          }
+        }catch(e){}
         body.innerHTML = '';
         users.forEach(u=>{
           const tr = document.createElement('tr');
           const on = u.online ? 'on' : 'off';
           const onText = u.online ? 'Online' : 'Offline';
+          const uname = String(u.username||'');
+          const role = String(u.role||'admin').toLowerCase();
+          const owner = !!u.is_owner;
+          const ownerBadge = owner ? `<span class="badge on" style="margin-left:8px;">Owner</span>` : '';
+          const ownerBtnDisabled = (!owner && (role !== 'admin' || SETTINGS_OWNERS_COUNT >= 2));
           tr.innerHTML = `
-            <td>${String(u.username||'')}</td>
+            <td>${uname}${ownerBadge}</td>
+            <td>
+              <select class="user-role" data-user="${uname}" style="padding:8px 10px; border:1px solid var(--bd); border-radius:6px;">
+                <option value="mozo" ${role==='mozo'?'selected':''}>Mozo</option>
+                <option value="cocina" ${role==='cocina'?'selected':''}>Cocina</option>
+                <option value="caja" ${role==='caja'?'selected':''}>Caja</option>
+                <option value="repartidor" ${role==='repartidor'?'selected':''}>Repartidor</option>
+                <option value="admin" ${role==='admin'?'selected':''}>Admin</option>
+              </select>
+            </td>
             <td><span class="badge ${on}">${onText}</span></td>
             <td>${formatLastSeen(u.last_seen_at)}</td>
             <td>
-              <button class="btn muted" data-pass="${String(u.username||'')}">Cambiar clave</button>
-              <button class="btn muted" data-rename="${String(u.username||'')}">Renombrar</button>
+              <button class="btn muted" data-pass="${uname}">Cambiar clave</button>
+              <button class="btn muted" data-rename="${uname}">Renombrar</button>
+              <button class="btn muted" data-owner="${uname}" data-role="${role}" ${ownerBtnDisabled?'disabled':''}>${owner ? 'Quitar owner' : 'Hacer owner'}</button>
             </td>
           `;
           body.appendChild(tr);
+        });
+        body.querySelectorAll('select.user-role').forEach(sel=>{
+          sel.addEventListener('change', async ()=>{
+            const user = sel.getAttribute('data-user') || '';
+            const r = String(sel.value || 'admin');
+            try{
+              await fetchCsrfToken();
+              const rr = await fetch(new URL('/api/master/admin_users', API_BASE).toString(), {
+                method:'PATCH',
+                headers: headersJSON(),
+                credentials:'include',
+                body: JSON.stringify({ tenant_slug: slug, username: user, role: r, permissions: roleDefaults(r) })
+              });
+              if (rr.ok){ showToast('Rol actualizado','success'); await loadTenantUsers(); }
+              else { let msg='No se pudo actualizar'; try{ const jj=await rr.json(); if(jj.error) msg=jj.error; }catch(_){} showToast(msg,'error'); await loadTenantUsers(); }
+            }catch(e){ showToast('Error de red','error'); }
+          });
         });
         body.querySelectorAll('button[data-pass]').forEach(b=>{
           b.addEventListener('click', async ()=>{
@@ -366,6 +477,7 @@
             const np = prompt('Nueva clave para '+user+':');
             if (!np) return;
             try{
+              await fetchCsrfToken();
               const rr = await fetch(new URL('/api/master/admin_users', API_BASE).toString(), {
                 method:'PATCH',
                 headers: headersJSON(),
@@ -383,6 +495,7 @@
             const nu = prompt('Nuevo usuario para '+user+':');
             if (!nu) return;
             try{
+              await fetchCsrfToken();
               const rr = await fetch(new URL('/api/master/admin_users', API_BASE).toString(), {
                 method:'PATCH',
                 headers: headersJSON(),
@@ -394,8 +507,34 @@
             }catch(e){ showToast('Error de red','error'); }
           });
         });
+        body.querySelectorAll('button[data-owner]').forEach(b=>{
+          b.addEventListener('click', async ()=>{
+            const user = b.getAttribute('data-owner') || '';
+            const makeOwner = !String(b.textContent||'').toLowerCase().includes('quitar');
+            const rr0 = String(b.getAttribute('data-role') || '');
+            if (makeOwner && String(rr0).toLowerCase() !== 'admin'){
+              showToast('Solo un usuario Admin puede ser owner','error');
+              return;
+            }
+            if (makeOwner && SETTINGS_OWNERS_COUNT >= 2){
+              showToast('Límite de owners alcanzado (máx 2)','error');
+              return;
+            }
+            try{
+              await fetchCsrfToken();
+              const rr = await fetch(new URL('/api/master/admin_users', API_BASE).toString(), {
+                method:'PATCH',
+                headers: headersJSON(),
+                credentials:'include',
+                body: JSON.stringify({ tenant_slug: slug, username: user, is_owner: makeOwner })
+              });
+              if (rr.ok){ showToast('Owner actualizado','success'); await loadTenantUsers(); }
+              else { let msg='No se pudo actualizar'; try{ const jj=await rr.json(); if(jj.error) msg=jj.error; }catch(_){} showToast(msg,'error'); }
+            }catch(e){ showToast('Error de red','error'); }
+          });
+        });
       }catch(e){
-        body.innerHTML = '<tr><td colspan="4" class="hint" style="color:var(--danger);">Error de red</td></tr>';
+        body.innerHTML = '<tr><td colspan="5" class="hint" style="color:var(--danger);">Error de red</td></tr>';
       }
     }
 
@@ -410,9 +549,15 @@
         const t = (TENANTS_CACHE || []).find(x => String(x && x.slug || '') === SETTINGS_TENANT) || null;
         const stSel = document.getElementById('tenant-status-select');
         const msgEl = document.getElementById('tenant-status-message');
+        const planEl = document.getElementById('tenant-plan-select');
+        const maxEl = document.getElementById('tenant-max-users');
         const st = t && t.status ? String(t.status).toLowerCase() : 'active';
         if (stSel) stSel.value = (st === 'warning' || st === 'suspended') ? st : 'active';
         if (msgEl) msgEl.value = t && t.status_message ? String(t.status_message) : '';
+        const plan = t && t.plan ? String(t.plan).toLowerCase() : 'standard';
+        if (planEl) planEl.value = (plan === 'pro') ? 'pro' : 'standard';
+        const mu = t && t.max_users ? parseInt(t.max_users,10) : (plan === 'pro' ? 6 : 3);
+        if (maxEl) maxEl.value = String(mu || 3);
       }catch(e){}
       if (modal) modal.style.display = 'flex';
       loadTenantUsers();
@@ -448,6 +593,7 @@
       if (!adminUser){ showToast('Usuario principal requerido','error'); return; }
       if (!adminPass || String(adminPass).length < 6){ showToast('Clave requerida (mínimo 6 caracteres)','error'); return; }
       try{
+        await fetchCsrfToken();
         const url = new URL('/api/tenants/create_demo', API_BASE).toString() + `?tenant_slug=${encodeURIComponent(slug)}`;
         const r = await fetch(url, {
           method:'POST',
@@ -623,17 +769,22 @@
       document.getElementById('tenant-settings-modal').addEventListener('click', (e)=>{ if (e.target && e.target.id === 'tenant-settings-modal') closeTenantSettings(); });
       document.getElementById('tenant-status-save').addEventListener('click', async ()=>{
         const slug = SETTINGS_TENANT;
+        const planEl = document.getElementById('tenant-plan-select');
+        const maxEl = document.getElementById('tenant-max-users');
         const stSel = document.getElementById('tenant-status-select');
         const msgEl = document.getElementById('tenant-status-message');
         const status = stSel ? String(stSel.value || 'active') : 'active';
         const status_message = msgEl ? String(msgEl.value || '').trim() : '';
+        const plan = planEl ? String(planEl.value || 'standard') : 'standard';
+        const max_users = maxEl ? parseInt(String(maxEl.value || '0'),10) : 0;
         if (!slug){ showToast('Selecciona un comercio','error'); return; }
         try{
+          await fetchCsrfToken();
           const r = await fetch(new URL('/api/master/tenants', API_BASE).toString(), {
             method:'PATCH',
             headers: headersJSON(),
             credentials:'include',
-            body: JSON.stringify({ tenant_slug: slug, status: status, status_message: status_message })
+            body: JSON.stringify({ tenant_slug: slug, status: status, status_message: status_message, plan: plan, max_users: max_users || undefined })
           });
           if (r.ok){
             showToast('Servicio actualizado','success');
@@ -650,22 +801,28 @@
         const slug = SETTINGS_TENANT;
         const uEl = document.getElementById('tenant-user-new-username');
         const pEl = document.getElementById('tenant-user-new-password');
+        const rEl = document.getElementById('tenant-user-new-role');
+        const oEl = document.getElementById('tenant-user-new-owner');
         const u = (uEl && uEl.value || '').trim();
         const p = pEl ? pEl.value : '';
+        const role = rEl ? String(rEl.value || 'mozo') : 'mozo';
+        const is_owner = String(role).toLowerCase() === 'admin' && !!(oEl && oEl.checked);
         if (!slug){ showToast('Selecciona un comercio','error'); return; }
         if (!u){ showToast('Usuario requerido','error'); return; }
         if (!p || String(p).length < 6){ showToast('Clave requerida (mínimo 6 caracteres)','error'); return; }
         try{
+          await fetchCsrfToken();
           const r = await fetch(new URL('/api/master/admin_users', API_BASE).toString(), {
             method:'POST',
             headers: headersJSON(),
             credentials:'include',
-            body: JSON.stringify({ tenant_slug: slug, username: u, password: p })
+            body: JSON.stringify({ tenant_slug: slug, username: u, password: p, role: role, permissions: roleDefaults(role), is_owner: is_owner })
           });
           if (r.ok){
             showToast('Usuario creado','success');
             if (uEl) uEl.value = '';
             if (pEl) pEl.value = '';
+            if (oEl) oEl.checked = false;
             await loadTenantUsers();
           } else {
             let msg = 'No se pudo crear';
@@ -674,6 +831,19 @@
           }
         }catch(e){ showToast('Error de red','error'); }
       });
+      (function(){
+        const rEl = document.getElementById('tenant-user-new-role');
+        const oEl = document.getElementById('tenant-user-new-owner');
+        if (!rEl || !oEl) return;
+        const sync = ()=>{
+          const role = String(rEl.value||'').toLowerCase();
+          const allow = role === 'admin' && SETTINGS_OWNERS_COUNT < 2;
+          oEl.disabled = !allow;
+          if (!allow) oEl.checked = false;
+        };
+        rEl.addEventListener('change', sync);
+        sync();
+      })();
       document.getElementById('search').addEventListener('input', async ()=>{
         if (!MASTER_AUTHED) return;
         try{

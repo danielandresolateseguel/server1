@@ -229,6 +229,8 @@ def init_db_postgres(cur):
             contact_phone TEXT,
             status TEXT NOT NULL DEFAULT 'active',
             status_message TEXT DEFAULT '',
+            plan TEXT NOT NULL DEFAULT 'standard',
+            max_users INTEGER NOT NULL DEFAULT 3,
             created_at TEXT NOT NULL
         )
         """
@@ -236,6 +238,14 @@ def init_db_postgres(cur):
     cur.execute("CREATE INDEX IF NOT EXISTS idx_tenants_status ON tenants(status)")
     try:
         cur.execute("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS status_message TEXT DEFAULT ''")
+    except Exception:
+        pass
+    try:
+        cur.execute("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS plan TEXT NOT NULL DEFAULT 'standard'")
+    except Exception:
+        pass
+    try:
+        cur.execute("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS max_users INTEGER NOT NULL DEFAULT 3")
     except Exception:
         pass
     # Tabla de pedidos
@@ -380,11 +390,31 @@ def init_db_postgres(cur):
             tenant_slug TEXT NOT NULL,
             username TEXT NOT NULL,
             password_hash TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'admin',
+            permissions_json TEXT DEFAULT '',
+            is_owner INTEGER NOT NULL DEFAULT 0,
+            last_seen_at TEXT,
             UNIQUE(tenant_slug, username)
         )
         """
     )
     cur.execute("CREATE INDEX IF NOT EXISTS idx_admin_users_tenant ON admin_users(tenant_slug)")
+    try:
+        cur.execute("ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'admin'")
+    except Exception:
+        pass
+    try:
+        cur.execute("ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS permissions_json TEXT DEFAULT ''")
+    except Exception:
+        pass
+    try:
+        cur.execute("ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS is_owner INTEGER NOT NULL DEFAULT 0")
+    except Exception:
+        pass
+    try:
+        cur.execute("ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS last_seen_at TEXT")
+    except Exception:
+        pass
 
     # Auditoría de eventos
     cur.execute(
@@ -488,6 +518,8 @@ def init_db_sqlite(cur):
             contact_phone TEXT,
             status TEXT NOT NULL DEFAULT 'active',
             status_message TEXT DEFAULT '',
+            plan TEXT NOT NULL DEFAULT 'standard',
+            max_users INTEGER NOT NULL DEFAULT 3,
             created_at TEXT NOT NULL
         )
         """
@@ -634,6 +666,10 @@ def init_db_sqlite(cur):
             tenant_slug TEXT NOT NULL,
             username TEXT NOT NULL,
             password_hash TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'admin',
+            permissions_json TEXT DEFAULT '',
+            is_owner INTEGER NOT NULL DEFAULT 0,
+            last_seen_at TEXT,
             UNIQUE(tenant_slug, username)
         )
         """

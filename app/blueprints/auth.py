@@ -80,6 +80,215 @@ def ensure_tenants_status_message_column(db, cur):
         except Exception:
             pass
 
+def ensure_tenants_plan_columns(db, cur):
+    if is_postgres():
+        try:
+            cur.execute("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS plan TEXT NOT NULL DEFAULT 'standard'")
+            db.commit()
+        except Exception:
+            try:
+                db.rollback()
+            except Exception:
+                pass
+        try:
+            cur.execute("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS max_users INTEGER NOT NULL DEFAULT 3")
+            db.commit()
+        except Exception:
+            try:
+                db.rollback()
+            except Exception:
+                pass
+        return
+    try:
+        cur.execute("PRAGMA table_info(tenants)")
+        cols = [r[1] for r in cur.fetchall()]
+        changed = False
+        if 'plan' not in cols:
+            cur.execute("ALTER TABLE tenants ADD COLUMN plan TEXT NOT NULL DEFAULT 'standard'")
+            changed = True
+        if 'max_users' not in cols:
+            cur.execute("ALTER TABLE tenants ADD COLUMN max_users INTEGER NOT NULL DEFAULT 3")
+            changed = True
+        if changed:
+            db.commit()
+    except Exception:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+
+def ensure_admin_users_rbac_columns(db, cur):
+    if is_postgres():
+        try:
+            cur.execute("ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'admin'")
+            db.commit()
+        except Exception:
+            try:
+                db.rollback()
+            except Exception:
+                pass
+        try:
+            cur.execute("ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS permissions_json TEXT DEFAULT ''")
+            db.commit()
+        except Exception:
+            try:
+                db.rollback()
+            except Exception:
+                pass
+        try:
+            cur.execute("ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS is_owner INTEGER NOT NULL DEFAULT 0")
+            db.commit()
+        except Exception:
+            try:
+                db.rollback()
+            except Exception:
+                pass
+        return
+    try:
+        cur.execute("PRAGMA table_info(admin_users)")
+        cols = [r[1] for r in cur.fetchall()]
+        changed = False
+        if 'role' not in cols:
+            cur.execute("ALTER TABLE admin_users ADD COLUMN role TEXT NOT NULL DEFAULT 'admin'")
+            changed = True
+        if 'permissions_json' not in cols:
+            cur.execute("ALTER TABLE admin_users ADD COLUMN permissions_json TEXT DEFAULT ''")
+            changed = True
+        if 'is_owner' not in cols:
+            cur.execute("ALTER TABLE admin_users ADD COLUMN is_owner INTEGER NOT NULL DEFAULT 0")
+            changed = True
+        if changed:
+            db.commit()
+    except Exception:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+
+def _role_defaults(role):
+    r = str(role or '').strip().lower()
+    if r in ('mozo', 'cocina', 'caja', 'repartidor', 'admin'):
+        role = r
+    else:
+        role = 'admin'
+    perms = {}
+    if role == 'admin':
+        perms = {
+            'orders_view': True,
+            'orders_update_status': True,
+            'orders_cancel': True,
+            'orders_create': True,
+            'tables_manage': True,
+            'cash_view': True,
+            'cash_manage': True,
+            'products_manage': True,
+            'carousel_manage': True,
+            'reports_view': True,
+            'users_manage': True
+        }
+    elif role == 'mozo':
+        perms = {
+            'orders_view': True,
+            'orders_update_status': True,
+            'orders_create': True,
+            'tables_manage': True
+        }
+    elif role == 'cocina':
+        perms = {
+            'orders_view': True,
+            'orders_update_status': True
+        }
+    elif role == 'caja':
+        perms = {
+            'orders_view': True,
+            'orders_update_status': True,
+            'cash_view': True,
+            'cash_manage': True
+        }
+    elif role == 'repartidor':
+        perms = {
+            'orders_view': True,
+            'orders_update_status': True
+        }
+    return role, perms
+
+def _parse_perms_json(s):
+    import json as _json
+    if not s:
+        return {}
+    try:
+        v = _json.loads(s)
+        if isinstance(v, dict):
+            return {str(k): bool(v[k]) for k in v.keys()}
+        if isinstance(v, list):
+            out = {}
+            for it in v:
+                k = str(it or '').strip()
+                if k:
+                    out[k] = True
+            return out
+    except Exception:
+        return {}
+    return {}
+
+def _tenant_plan_limit(db, cur, tenant_slug):
+    plan = 'standard'
+    max_users = 3
+    try:
+        ensure_tenants_plan_columns(db, cur)
+    except Exception:
+        pass
+    try:
+        cur.execute("SELECT COALESCE(plan, 'standard') AS plan, COALESCE(max_users, 3) AS max_users FROM tenants WHERE tenant_slug = ?", (tenant_slug,))
+        row = cur.fetchone()
+        if row:
+            plan = str(row[0] or 'standard').strip().lower() or 'standard'
+            try:
+                max_users = int(row[1] or 0)
+            except Exception:
+                max_users = 0
+    except Exception:
+        plan = 'standard'
+        max_users = 0
+    if max_users <= 0:
+        max_users = 6 if plan == 'pro' else 3
+    if plan not in ('standard', 'pro'):
+        plan = 'standard'
+    return plan, max_users
+
+def _tenant_owner_limit():
+    return 2
+
+def _count_tenant_owners(cur, tenant_slug, exclude_username=None):
+    if not tenant_slug:
+        return 0
+    try:
+        if exclude_username:
+            cur.execute(
+                "SELECT COUNT(*) FROM admin_users WHERE tenant_slug = ? AND COALESCE(is_owner, 0) = 1 AND lower(username) != lower(?)",
+                (tenant_slug, exclude_username),
+            )
+        else:
+            cur.execute(
+                "SELECT COUNT(*) FROM admin_users WHERE tenant_slug = ? AND COALESCE(is_owner, 0) = 1",
+                (tenant_slug,),
+            )
+        row = cur.fetchone()
+        return int(row[0] or 0) if row else 0
+    except Exception:
+        return 0
+
+def _can_manage_users():
+    if not is_authed():
+        return False
+    if session.get('admin_owner'):
+        return True
+    role = str(session.get('admin_role') or '').strip().lower()
+    if role == 'admin':
+        return True
+    perms = _parse_perms_json(session.get('admin_perms') or '')
+    return bool(perms.get('users_manage'))
+
 def touch_admin_user_last_seen(db, cur, tenant_slug, username):
     if not tenant_slug or not username:
         return
@@ -126,8 +335,12 @@ def auth_login():
     
     db = get_db()
     cur = db.cursor()
+    try:
+        ensure_admin_users_rbac_columns(db, cur)
+    except Exception:
+        pass
     cur.execute(
-        "SELECT username, password_hash FROM admin_users WHERE tenant_slug = ? AND lower(username) = lower(?)",
+        "SELECT username, password_hash, COALESCE(role, 'admin') AS role, COALESCE(permissions_json, '') AS permissions_json, COALESCE(is_owner, 0) AS is_owner FROM admin_users WHERE tenant_slug = ? AND lower(username) = lower(?)",
         (tenant_slug, username)
     )
     row = cur.fetchone()
@@ -155,12 +368,27 @@ def auth_login():
         return jsonify({'error': msg, 'tenant_slug': tenant_slug, 'tenant_status': tenant_status}), 403
 
     real_username = str(row[0] or '').strip() or username
+    role = str(row[2] or 'admin').strip().lower() or 'admin'
+    perms_json = str(row[3] or '').strip()
+    is_owner = bool(int(row[4] or 0))
+    perms = _parse_perms_json(perms_json)
+    role, defaults = _role_defaults(role)
+    if not perms:
+        perms = defaults
+        try:
+            import json as _json
+            perms_json = _json.dumps(perms, ensure_ascii=False)
+        except Exception:
+            perms_json = ''
     touch_admin_user_last_seen(db, cur, tenant_slug, real_username)
     session['admin_auth'] = True
     session['admin_user'] = real_username
     session['tenant_slug'] = tenant_slug
+    session['admin_role'] = role
+    session['admin_perms'] = perms_json
+    session['admin_owner'] = bool(is_owner)
     session['csrf_token'] = secrets.token_urlsafe(32)
-    return jsonify({'ok': True, 'tenant_slug': tenant_slug, 'tenant_status': tenant_status, 'tenant_message': tenant_message})
+    return jsonify({'ok': True, 'tenant_slug': tenant_slug, 'tenant_status': tenant_status, 'tenant_message': tenant_message, 'role': role, 'permissions': perms})
 
 @bp.route('/auth/login_dev', methods=['POST'])
 def auth_login_dev():
@@ -174,6 +402,9 @@ def auth_login_dev():
     session['admin_user'] = u or 'admin'
     if t:
         session['tenant_slug'] = t
+    session['admin_role'] = 'admin'
+    session['admin_perms'] = ''
+    session['admin_owner'] = True
     session['csrf_token'] = secrets.token_urlsafe(32)
     return jsonify({'ok': True, 'dev': True, 'tenant_slug': t or None})
 
@@ -184,6 +415,9 @@ def auth_logout():
         session.pop('admin_user', None)
         session.pop('tenant_slug', None)
         session.pop('_last_seen_touch_s', None)
+        session.pop('admin_role', None)
+        session.pop('admin_perms', None)
+        session.pop('admin_owner', None)
     else:
         session.clear()
     return jsonify({'ok': True})
@@ -224,6 +458,9 @@ def auth_me():
         'authenticated': is_authed(),
         'user': session.get('admin_user') or '',
         'tenant_slug': session.get('tenant_slug') or '',
+        'role': session.get('admin_role') or '',
+        'permissions': _parse_perms_json(session.get('admin_perms') or ''),
+        'is_owner': bool(session.get('admin_owner')),
         'tenant_status': tenant_status,
         'tenant_message': tenant_message,
         'suspended': bool(suspended)
@@ -335,8 +572,12 @@ def master_admin_users_list():
         ensure_admin_users_last_seen_column(db, cur)
     except Exception:
         pass
+    try:
+        ensure_admin_users_rbac_columns(db, cur)
+    except Exception:
+        pass
     cur.execute(
-        "SELECT username, COALESCE(last_seen_at, '') AS last_seen_at FROM admin_users WHERE tenant_slug = ? ORDER BY username ASC",
+        "SELECT username, COALESCE(last_seen_at, '') AS last_seen_at, COALESCE(role, 'admin') AS role, COALESCE(permissions_json, '') AS permissions_json, COALESCE(is_owner, 0) AS is_owner FROM admin_users WHERE tenant_slug = ? ORDER BY username ASC",
         (tenant_slug,)
     )
     rows = cur.fetchall() or []
@@ -345,6 +586,9 @@ def master_admin_users_list():
     for r in rows:
         u = str(r[0] or '')
         last_seen = str(r[1] or '')
+        role = str(r[2] or 'admin').strip().lower() or 'admin'
+        perms_json = str(r[3] or '').strip()
+        is_owner = bool(int(r[4] or 0))
         is_online = False
         if last_seen:
             try:
@@ -355,7 +599,7 @@ def master_admin_users_list():
                 is_online = (now - dt) <= timedelta(minutes=2)
             except Exception:
                 is_online = False
-        users.append({'username': u, 'last_seen_at': last_seen, 'online': bool(is_online)})
+        users.append({'username': u, 'last_seen_at': last_seen, 'online': bool(is_online), 'role': role, 'permissions_json': perms_json, 'is_owner': bool(is_owner)})
     return jsonify({'tenant_slug': tenant_slug, 'users': users})
 
 @bp.route('/master/admin_users', methods=['POST'])
@@ -368,6 +612,10 @@ def master_admin_users_create():
     tenant_slug = _norm_slug(payload.get('tenant_slug') or payload.get('slug'))
     username = _norm_user(payload.get('username'))
     password = str(payload.get('password') or '')
+    role = str(payload.get('role') or 'admin').strip().lower()
+    permissions = payload.get('permissions')
+    permissions_json = str(payload.get('permissions_json') or '').strip()
+    is_owner = bool(payload.get('is_owner') or False)
     if not tenant_slug or not username or not password:
         return jsonify({'error': 'datos incompletos'}), 400
     db = get_db()
@@ -377,11 +625,45 @@ def master_admin_users_create():
     except Exception:
         pass
     try:
+        ensure_admin_users_rbac_columns(db, cur)
+    except Exception:
+        pass
+    plan, max_users = _tenant_plan_limit(db, cur, tenant_slug)
+    try:
+        cur.execute("SELECT COUNT(*) FROM admin_users WHERE tenant_slug = ?", (tenant_slug,))
+        c = cur.fetchone()
+        count_users = int(c[0] or 0) if c else 0
+    except Exception:
+        count_users = 0
+    if count_users >= max_users:
+        return jsonify({'error': f'límite de usuarios alcanzado (plan {plan}: {max_users})'}), 403
+    if is_owner:
+        owner_limit = _tenant_owner_limit()
+        owners = _count_tenant_owners(cur, tenant_slug)
+        if owners >= owner_limit:
+            return jsonify({'error': f'límite de owners alcanzado (máx {owner_limit})'}), 403
+    try:
         cur.execute("SELECT 1 FROM admin_users WHERE tenant_slug = ? AND lower(username) = lower(?)", (tenant_slug, username))
         if cur.fetchone():
             return jsonify({'error': 'usuario ya existe'}), 409
         ph = generate_password_hash(password)
-        cur.execute("INSERT INTO admin_users (tenant_slug, username, password_hash) VALUES (?, ?, ?)", (tenant_slug, username, ph))
+        if permissions is not None and not permissions_json:
+            try:
+                import json as _json
+                if isinstance(permissions, dict) or isinstance(permissions, list):
+                    permissions_json = _json.dumps(permissions, ensure_ascii=False)
+            except Exception:
+                permissions_json = ''
+        role, defaults = _role_defaults(role)
+        if role != 'admin':
+            is_owner = False
+        if not permissions_json:
+            try:
+                import json as _json
+                permissions_json = _json.dumps(defaults, ensure_ascii=False)
+            except Exception:
+                permissions_json = ''
+        cur.execute("INSERT INTO admin_users (tenant_slug, username, password_hash, role, permissions_json, is_owner) VALUES (?, ?, ?, ?, ?, ?)", (tenant_slug, username, ph, role, permissions_json, 1 if is_owner else 0))
         db.commit()
     except Exception:
         try:
@@ -406,9 +688,13 @@ def master_admin_users_update():
     username = _norm_user(payload.get('username'))
     new_username = _norm_user(payload.get('new_username'))
     new_password = str(payload.get('new_password') or '')
+    role = str(payload.get('role') or '').strip().lower()
+    permissions = payload.get('permissions')
+    permissions_json = str(payload.get('permissions_json') or '').strip()
+    is_owner = payload.get('is_owner')
     if not tenant_slug or not username:
         return jsonify({'error': 'tenant_slug y username requeridos'}), 400
-    if not new_username and not new_password:
+    if not new_username and not new_password and not role and permissions is None and not permissions_json and is_owner is None:
         return jsonify({'error': 'nada para actualizar'}), 400
     db = get_db()
     cur = db.cursor()
@@ -417,9 +703,33 @@ def master_admin_users_update():
     except Exception:
         pass
     try:
-        cur.execute("SELECT 1 FROM admin_users WHERE tenant_slug = ? AND lower(username) = lower(?)", (tenant_slug, username))
-        if not cur.fetchone():
+        ensure_admin_users_rbac_columns(db, cur)
+    except Exception:
+        pass
+    try:
+        cur.execute("SELECT COALESCE(role, 'admin') AS role FROM admin_users WHERE tenant_slug = ? AND lower(username) = lower(?)", (tenant_slug, username))
+        r0 = cur.fetchone()
+        if not r0:
             return jsonify({'error': 'usuario no encontrado'}), 404
+        current_role = str(r0[0] or 'admin').strip().lower() or 'admin'
+        effective_role = current_role
+        if role:
+            effective_role, _ = _role_defaults(role)
+        if is_owner is not None and bool(is_owner) and effective_role != 'admin':
+            try:
+                db.rollback()
+            except Exception:
+                pass
+            return jsonify({'error': 'solo un usuario con rol admin puede ser owner'}), 400
+        if is_owner is not None and bool(is_owner):
+            owner_limit = _tenant_owner_limit()
+            owners = _count_tenant_owners(cur, tenant_slug, exclude_username=username)
+            if owners >= owner_limit:
+                try:
+                    db.rollback()
+                except Exception:
+                    pass
+                return jsonify({'error': f'límite de owners alcanzado (máx {owner_limit})'}), 403
         if new_username:
             cur.execute("SELECT 1 FROM admin_users WHERE tenant_slug = ? AND lower(username) = lower(?)", (tenant_slug, new_username))
             if cur.fetchone():
@@ -429,6 +739,28 @@ def master_admin_users_update():
         if new_password:
             ph = generate_password_hash(new_password)
             cur.execute("UPDATE admin_users SET password_hash = ? WHERE tenant_slug = ? AND lower(username) = lower(?)", (ph, tenant_slug, username))
+        if role:
+            role, _ = _role_defaults(role)
+            cur.execute("UPDATE admin_users SET role = ? WHERE tenant_slug = ? AND lower(username) = lower(?)", (role, tenant_slug, username))
+            if is_owner is not None and bool(is_owner) and role != 'admin':
+                try:
+                    db.rollback()
+                except Exception:
+                    pass
+                return jsonify({'error': 'solo un usuario con rol admin puede ser owner'}), 400
+            if role != 'admin':
+                cur.execute("UPDATE admin_users SET is_owner = 0 WHERE tenant_slug = ? AND lower(username) = lower(?)", (tenant_slug, username))
+        if permissions is not None and not permissions_json:
+            try:
+                import json as _json
+                if isinstance(permissions, dict) or isinstance(permissions, list):
+                    permissions_json = _json.dumps(permissions, ensure_ascii=False)
+            except Exception:
+                permissions_json = ''
+        if permissions_json:
+            cur.execute("UPDATE admin_users SET permissions_json = ? WHERE tenant_slug = ? AND lower(username) = lower(?)", (permissions_json, tenant_slug, username))
+        if is_owner is not None:
+            cur.execute("UPDATE admin_users SET is_owner = ? WHERE tenant_slug = ? AND lower(username) = lower(?)", (1 if bool(is_owner) else 0, tenant_slug, username))
         db.commit()
     except Exception:
         try:
@@ -446,16 +778,32 @@ def master_admin_users_update():
 def admin_users_list():
     if not is_authed():
         return jsonify({'error': 'no autorizado'}), 401
+    if not _can_manage_users():
+        return jsonify({'error': 'sin permisos'}), 403
     tenant_slug = _norm_slug(request.args.get('tenant_slug') or session.get('tenant_slug'))
     if session.get('tenant_slug') and tenant_slug and session.get('tenant_slug') != tenant_slug:
         return jsonify({'error': 'acceso denegado al tenant'}), 403
     
     db = get_db()
     cur = db.cursor()
-    cur.execute("SELECT username FROM admin_users WHERE tenant_slug = ? ORDER BY username ASC", (tenant_slug,))
+    try:
+        ensure_admin_users_rbac_columns(db, cur)
+    except Exception:
+        pass
+    plan, max_users = _tenant_plan_limit(db, cur, tenant_slug)
+    try:
+        cur.execute("SELECT COUNT(*) FROM admin_users WHERE tenant_slug = ?", (tenant_slug,))
+        c = cur.fetchone()
+        count_users = int(c[0] or 0) if c else 0
+    except Exception:
+        count_users = 0
+    cur.execute("SELECT username, COALESCE(role, 'admin') AS role, COALESCE(permissions_json, '') AS permissions_json, COALESCE(is_owner, 0) AS is_owner FROM admin_users WHERE tenant_slug = ? ORDER BY username ASC", (tenant_slug,))
     rows = cur.fetchall()
     
-    return jsonify({'tenant_slug': tenant_slug, 'users': [r[0] for r in rows]})
+    users = []
+    for r in rows or []:
+        users.append({'username': r[0], 'role': r[1], 'permissions_json': r[2] or '', 'is_owner': bool(int(r[3] or 0))})
+    return jsonify({'tenant_slug': tenant_slug, 'users': users, 'plan': plan, 'max_users': int(max_users), 'count_users': int(count_users)})
 
 @bp.route('/admin_users', methods=['POST'])
 def admin_users_create():
@@ -463,10 +811,16 @@ def admin_users_create():
         return jsonify({'error': 'no autorizado'}), 401
     if not check_csrf():
         return jsonify({'error': 'csrf inválido'}), 403
+    if not _can_manage_users():
+        return jsonify({'error': 'sin permisos'}), 403
     payload = request.get_json(silent=True) or {}
     username = _norm_user(payload.get('username'))
     password = str(payload.get('password') or '')
     tenant_slug = _norm_slug(payload.get('tenant_slug') or session.get('tenant_slug'))
+    role = str(payload.get('role') or 'admin').strip().lower()
+    permissions = payload.get('permissions')
+    permissions_json = str(payload.get('permissions_json') or '').strip()
+    is_owner = bool(payload.get('is_owner') or False)
     if not username or not password or not tenant_slug:
         return jsonify({'error': 'datos incompletos'}), 400
     if session.get('tenant_slug') and session.get('tenant_slug') != tenant_slug:
@@ -474,13 +828,143 @@ def admin_users_create():
     
     db = get_db()
     cur = db.cursor()
+    try:
+        ensure_admin_users_rbac_columns(db, cur)
+    except Exception:
+        pass
+    plan, max_users = _tenant_plan_limit(db, cur, tenant_slug)
+    try:
+        cur.execute("SELECT COUNT(*) FROM admin_users WHERE tenant_slug = ?", (tenant_slug,))
+        c = cur.fetchone()
+        count_users = int(c[0] or 0) if c else 0
+    except Exception:
+        count_users = 0
+    if count_users >= max_users:
+        return jsonify({'error': f'límite de usuarios alcanzado (plan {plan}: {max_users})'}), 403
+    if is_owner:
+        owner_limit = _tenant_owner_limit()
+        owners = _count_tenant_owners(cur, tenant_slug)
+        if owners >= owner_limit:
+            return jsonify({'error': f'límite de owners alcanzado (máx {owner_limit})'}), 403
     cur.execute("SELECT 1 FROM admin_users WHERE tenant_slug = ? AND lower(username) = lower(?)", (tenant_slug, username))
     exists = cur.fetchone()
     if exists:
         return jsonify({'error': 'usuario ya existe'}), 409
     
     ph = generate_password_hash(password)
-    cur.execute("INSERT INTO admin_users (tenant_slug, username, password_hash) VALUES (?, ?, ?)", (tenant_slug, username, ph))
+    if permissions is not None and not permissions_json:
+        try:
+            import json as _json
+            if isinstance(permissions, dict) or isinstance(permissions, list):
+                permissions_json = _json.dumps(permissions, ensure_ascii=False)
+        except Exception:
+            permissions_json = ''
+    role, defaults = _role_defaults(role)
+    if role != 'admin':
+        is_owner = False
+    if not permissions_json:
+        try:
+            import json as _json
+            permissions_json = _json.dumps(defaults, ensure_ascii=False)
+        except Exception:
+            permissions_json = ''
+    cur.execute("INSERT INTO admin_users (tenant_slug, username, password_hash, role, permissions_json, is_owner) VALUES (?, ?, ?, ?, ?, ?)", (tenant_slug, username, ph, role, permissions_json, 1 if is_owner else 0))
     db.commit()
     
-    return jsonify({'ok': True, 'username': username, 'tenant_slug': tenant_slug})
+    return jsonify({'ok': True, 'username': username, 'tenant_slug': tenant_slug, 'role': role})
+
+@bp.route('/admin_users', methods=['PATCH'])
+def admin_users_update():
+    if not is_authed():
+        return jsonify({'error': 'no autorizado'}), 401
+    if not check_csrf():
+        return jsonify({'error': 'csrf inválido'}), 403
+    if not _can_manage_users():
+        return jsonify({'error': 'sin permisos'}), 403
+    payload = request.get_json(silent=True) or {}
+    tenant_slug = _norm_slug(payload.get('tenant_slug') or session.get('tenant_slug'))
+    username = _norm_user(payload.get('username'))
+    new_username = _norm_user(payload.get('new_username'))
+    new_password = str(payload.get('new_password') or '')
+    role = str(payload.get('role') or '').strip().lower()
+    permissions = payload.get('permissions')
+    permissions_json = str(payload.get('permissions_json') or '').strip()
+    is_owner = payload.get('is_owner')
+    if not tenant_slug or not username:
+        return jsonify({'error': 'tenant_slug y username requeridos'}), 400
+    if session.get('tenant_slug') and session.get('tenant_slug') != tenant_slug:
+        return jsonify({'error': 'acceso denegado al tenant'}), 403
+    if not new_username and not new_password and not role and permissions is None and not permissions_json and is_owner is None:
+        return jsonify({'error': 'nada para actualizar'}), 400
+    if is_owner is not None and not session.get('admin_owner'):
+        return jsonify({'error': 'solo el owner puede cambiar owner'}), 403
+
+    db = get_db()
+    cur = db.cursor()
+    try:
+        ensure_admin_users_rbac_columns(db, cur)
+    except Exception:
+        pass
+    try:
+        cur.execute("SELECT COALESCE(role, 'admin') AS role FROM admin_users WHERE tenant_slug = ? AND lower(username) = lower(?)", (tenant_slug, username))
+        r0 = cur.fetchone()
+        if not r0:
+            return jsonify({'error': 'usuario no encontrado'}), 404
+        current_role = str(r0[0] or 'admin').strip().lower() or 'admin'
+        effective_role = current_role
+        if role:
+            effective_role, _ = _role_defaults(role)
+        if is_owner is not None and bool(is_owner) and effective_role != 'admin':
+            try:
+                db.rollback()
+            except Exception:
+                pass
+            return jsonify({'error': 'solo un usuario con rol admin puede ser owner'}), 400
+        if is_owner is not None and bool(is_owner):
+            owner_limit = _tenant_owner_limit()
+            owners = _count_tenant_owners(cur, tenant_slug, exclude_username=username)
+            if owners >= owner_limit:
+                try:
+                    db.rollback()
+                except Exception:
+                    pass
+                return jsonify({'error': f'límite de owners alcanzado (máx {owner_limit})'}), 403
+        if new_username:
+            cur.execute("SELECT 1 FROM admin_users WHERE tenant_slug = ? AND lower(username) = lower(?)", (tenant_slug, new_username))
+            if cur.fetchone():
+                return jsonify({'error': 'el nuevo usuario ya existe'}), 409
+            cur.execute("UPDATE admin_users SET username = ? WHERE tenant_slug = ? AND lower(username) = lower(?)", (new_username, tenant_slug, username))
+            username = new_username
+        if new_password:
+            ph = generate_password_hash(new_password)
+            cur.execute("UPDATE admin_users SET password_hash = ? WHERE tenant_slug = ? AND lower(username) = lower(?)", (ph, tenant_slug, username))
+        if role:
+            role, _ = _role_defaults(role)
+            cur.execute("UPDATE admin_users SET role = ? WHERE tenant_slug = ? AND lower(username) = lower(?)", (role, tenant_slug, username))
+            if is_owner is not None and bool(is_owner) and role != 'admin':
+                try:
+                    db.rollback()
+                except Exception:
+                    pass
+                return jsonify({'error': 'solo un usuario con rol admin puede ser owner'}), 400
+            if role != 'admin':
+                cur.execute("UPDATE admin_users SET is_owner = 0 WHERE tenant_slug = ? AND lower(username) = lower(?)", (tenant_slug, username))
+        if permissions is not None and not permissions_json:
+            try:
+                import json as _json
+                if isinstance(permissions, dict) or isinstance(permissions, list):
+                    permissions_json = _json.dumps(permissions, ensure_ascii=False)
+            except Exception:
+                permissions_json = ''
+        if permissions_json:
+            cur.execute("UPDATE admin_users SET permissions_json = ? WHERE tenant_slug = ? AND lower(username) = lower(?)", (permissions_json, tenant_slug, username))
+        if is_owner is not None:
+            cur.execute("UPDATE admin_users SET is_owner = ? WHERE tenant_slug = ? AND lower(username) = lower(?)", (1 if bool(is_owner) else 0, tenant_slug, username))
+        db.commit()
+    except Exception:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        return jsonify({'error': 'no se pudo actualizar el usuario'}), 500
+    return jsonify({'ok': True, 'tenant_slug': tenant_slug, 'username': username})
