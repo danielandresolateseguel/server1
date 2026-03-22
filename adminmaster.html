@@ -35,8 +35,8 @@
     .kds-toast.success{background:#2e7d32}
     .kds-toast.error{background:#c62828}
     .kds-toast.info{background:#425b76}
-    .modal-backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.35);z-index:9998}
-    .modal{background:#fff;border:1px solid #e5e7eb;border-radius:8px;width:92%;max-width:760px;padding:16px}
+    .modal-backdrop{position:fixed;inset:0;display:none;align-items:flex-start;justify-content:center;background:rgba(0,0,0,.35);z-index:9998;overflow:auto;padding:24px 12px;-webkit-overflow-scrolling:touch}
+    .modal{background:#fff;border:1px solid #e5e7eb;border-radius:8px;width:92%;max-width:760px;padding:16px;max-height:calc(100vh - 48px);overflow:auto;-webkit-overflow-scrolling:touch}
     .modal-header{display:flex;align-items:center;justify-content:space-between;gap:12px}
     .modal-title{font-weight:700}
     .table{width:100%;border-collapse:collapse}

@@ -400,6 +400,25 @@
       #orders-table tbody tr td.items-preview .small { color: #666; }
       #orders-table tbody tr td .order-total-tip { display: block; margin: 4px 0 0 0; }
     }
+    #kitchen-box { margin: 12px 0; }
+    #kitchen-box > summary { cursor: pointer; font-weight: 700; }
+    #kitchen-cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); margin-top: 10px; }
+    .kitchen-card { background: var(--kds-card-bg); border: 1px solid var(--kds-border); border-radius: 12px; padding: 12px; box-shadow: 0 6px 16px rgba(0,0,0,0.08); display: grid; gap: 10px; }
+    .kitchen-card .k-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+    .kitchen-card .k-title { font-weight: 800; color: #1f2937; }
+    .kitchen-card .k-meta { font-size: 12px; color: #6b7280; margin-top: 2px; }
+    .kitchen-card .k-dest { font-size: 13px; color: #374151; }
+    .kitchen-items { display: grid; gap: 6px; }
+    .kitchen-items .k-item { display: grid; grid-template-columns: 56px 1fr; gap: 10px; align-items: baseline; }
+    .kitchen-items .k-qty { font-weight: 800; color: #111827; }
+    .kitchen-items .k-name { color: #111827; font-weight: 600; }
+    .kitchen-items .k-note { grid-column: 2 / -1; color: #e65100; font-size: 12px; font-style: italic; margin-top: 2px; }
+    .kitchen-items .k-mod { grid-column: 2 / -1; color: #6b7280; font-size: 12px; margin-top: 2px; }
+    .kitchen-card .k-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .kitchen-card .k-actions .status-action { width: 42px; height: 34px; border-radius: 8px; }
+    .kitchen-card .k-actions .status-badge { margin-left: auto; }
+    .kitchen-card.card-overdue { border-color: var(--st-overdue); box-shadow: 0 0 0 2px rgba(244, 67, 54, 0.3), 0 6px 16px rgba(0,0,0,0.08); background: rgba(244, 67, 54, 0.06); }
+    .kitchen-card.card-overdue .k-title { color: #b71c1c; }
     @media (min-width: 1600px) {
       #orders-table tbody { grid-template-columns: repeat(5, 280px); max-width: calc(5 * 280px + 4 * 12px); margin: 0; justify-content: start; }
     }
@@ -674,7 +693,7 @@
           <datalist id="tenants-list"></datalist>
         </label>
 
-        <div style="display:flex; align-items:center; border:1px solid #ccc; border-radius:4px; background:#fff; padding-right:4px;">
+        <div id="search-box" style="display:flex; align-items:center; border:1px solid #ccc; border-radius:4px; background:#fff; padding-right:4px;">
           <input id="search-input" type="text" placeholder="Buscar por ID, nombre..." style="border:none; outline:none; height:30px; padding:0 8px; width:250px;" />
           <button id="search-btn" title="Buscar" style="border:none; background:none; cursor:pointer; padding:4px; display:flex; align-items:center; color:#555;">
             <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
@@ -807,7 +826,7 @@
   </div>
 
   <section class="grid">
-    <div style="display:flex; align-items:center; gap:8px;">
+    <div id="orders-header-row" style="display:flex; align-items:center; gap:8px;">
       <h2>Pedidos</h2>
       <button id="orders-reset-btn" title="Limpiar Pedidos Activos" style="background:#f44336; color:#fff;">
         <svg style="width:16px;height:16px;fill:currentColor" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
@@ -899,6 +918,11 @@
         </table>
       </div>
     </div>
+    <details class="kitchen" id="kitchen-box" style="display:none;">
+      <summary>Cocina (Comandas)</summary>
+      <div class="small" id="kitchen-count" style="margin-top:8px; color:#666;"></div>
+      <div id="kitchen-cards"></div>
+    </details>
       <table id="orders-table" class="orders-table">
         <thead>
           <tr>
@@ -2297,8 +2321,11 @@
     let isAuthed = false;
     let currentTenantSlug = '';
     let currentUserName = '';
+    let currentUserRole = '';
+    let currentUserPerms = {};
     let canManageUsers = false;
     let isOwnerUser = false;
+    const ORDER_DETAIL_CACHE = new Map();
     const LOGIN_KEY_USER = 'kds_login_user';
     const LOGIN_KEY_PASS = 'kds_login_pass';
     const LOGIN_KEY_REM = 'kds_login_rem';
@@ -2353,6 +2380,59 @@
       if (tenantInput) {
         tenantInput.disabled = !!isAuthed;
       }
+    }
+
+    function updateKitchenVisibility(){
+      const el = document.getElementById('kitchen-box');
+      if (!el) return;
+      const canSee = !!isAuthed && (String(currentUserRole || '').toLowerCase() === 'cocina') && (!currentUserPerms || !!currentUserPerms.orders_view);
+      el.style.display = canSee ? '' : 'none';
+      try {
+        if (canSee) el.open = true;
+      } catch(_) {}
+    }
+
+    function setRoleVisibilityById(id, show) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (!el.dataset.origDisplay) el.dataset.origDisplay = el.style.display || '';
+      el.style.display = show ? el.dataset.origDisplay : 'none';
+    }
+
+    function applyRoleUI() {
+      const role = String(currentUserRole || '').toLowerCase();
+      const isKitchen = !!isAuthed && role === 'cocina';
+
+      setRoleVisibilityById('top-controls', !isKitchen);
+      setRoleVisibilityById('metrics', !isKitchen);
+      setRoleVisibilityById('cash-box', !isKitchen);
+      setRoleVisibilityById('cash-history', !isKitchen);
+      setRoleVisibilityById('table-management', !isKitchen);
+
+      setRoleVisibilityById('btn-new-order', !isKitchen);
+      setRoleVisibilityById('search-box', !isKitchen);
+
+      setRoleVisibilityById('tables-open', !isKitchen);
+      setRoleVisibilityById('btn-view-carta', !isKitchen);
+      setRoleVisibilityById('carousel-open', !isKitchen);
+      setRoleVisibilityById('users-admin-open', !isKitchen);
+
+      setRoleVisibilityById('orders-header-row', !isKitchen);
+      setRoleVisibilityById('orders-table', !isKitchen);
+      setRoleVisibilityById('orders-mobile', !isKitchen);
+      setRoleVisibilityById('orders-count', !isKitchen);
+      setRoleVisibilityById('delivered-box', !isKitchen);
+      setRoleVisibilityById('canceled-box', !isKitchen);
+      setRoleVisibilityById('inventory-box', !isKitchen);
+      setRoleVisibilityById('carousel-box', !isKitchen);
+      setRoleVisibilityById('archived-box', !isKitchen);
+
+      document.querySelectorAll('.pager').forEach(el => {
+        if (!el.dataset.origDisplay) el.dataset.origDisplay = el.style.display || '';
+        el.style.display = isKitchen ? 'none' : el.dataset.origDisplay;
+      });
+
+      updateKitchenVisibility();
     }
 
     setAuthUI();
@@ -2711,6 +2791,17 @@
       return resp.json();
     }
 
+    async function fetchOrderDetailCached(orderId, maxAgeMs){
+      const k = String(orderId);
+      const now = Date.now();
+      const ttl = Number(maxAgeMs || 2500);
+      const hit = ORDER_DETAIL_CACHE.get(k);
+      if (hit && (now - hit.ts) <= ttl && hit.data) return hit.data;
+      const data = await fetchOrderDetail(orderId);
+      ORDER_DETAIL_CACHE.set(k, { ts: now, data });
+      return data;
+    }
+
     // --- REFACTORED: renderOrderDetailContent (Separated Logic) ---
     function renderOrderDetailContent(detail) {
         const order = detail.order;
@@ -3044,7 +3135,9 @@
         // Construir una firma ligera del estado actual (id, status, total, payment_status) para detectar cambios reales
         const newSignature = JSON.stringify(orders.map(o => ({id:o.id, s:o.status, t:o.total, p:o.payment_status})));
         // Si la firma no cambió y ya hay filas, evitar reconstrucción para prevenir parpadeo
-        if (newSignature === lastOrdersSignature && tbody.children.length > 0) {
+        const kitchenBox = document.getElementById('kitchen-box');
+        const kitchenActive = !!(kitchenBox && kitchenBox.style.display !== 'none' && kitchenBox.open);
+        if (newSignature === lastOrdersSignature && tbody.children.length > 0 && !kitchenActive) {
           countEl.textContent = `Mostrando ${active.length} pedido(s) activos`;
           const pageInfo = document.getElementById('page-info');
           pageInfo.textContent = `Página ${page} de ${totalPages}`;
@@ -3213,9 +3306,10 @@
         frag.appendChild(tr);
         try { if (!window.itemsPreviewTimers) window.itemsPreviewTimers = {}; } catch(_) {}
         const itemsPreviewEl = tr.querySelector('.items-preview .small');
+        let detailPrev = null;
         if (itemsPreviewEl) {
           try {
-            const detailPrev = await fetchOrderDetail(o.id);
+            detailPrev = await fetchOrderDetailCached(o.id, 4000);
             const itemsPrev = Array.isArray(detailPrev.items) ? detailPrev.items : [];
             if (itemsPrev.length) {
               let idxPrev = 0;
@@ -3276,7 +3370,7 @@
           const itemsPreviewEl2 = card.querySelector('.items-preview .small');
           if (itemsPreviewEl2) {
             try {
-              const detailPrev2 = await fetchOrderDetail(o.id);
+              const detailPrev2 = detailPrev || await fetchOrderDetailCached(o.id, 4000);
               const itemsPrev2 = Array.isArray(detailPrev2.items) ? detailPrev2.items : [];
               if (itemsPrev2.length) {
                 let idxPrev2 = 0;
@@ -3674,6 +3768,7 @@
       tbody.replaceChildren(frag);
       if (omobilePtr) omobilePtr.replaceChildren(fragCards);
       initSLAClock();
+      await renderKitchenOrders(active);
       const delivered = orders.filter(o => o.status === 'entregado');
       const canceled = orders.filter(o => o.status === 'cancelado');
       window.deliveredCurrent = delivered;
@@ -3733,6 +3828,126 @@
          }
       }
       window.dispatchEvent(new CustomEvent('kds-orders-updated'));
+    }
+
+    function formatModifiersForKitchen(modifiersJson) {
+      const raw = String(modifiersJson || '').trim();
+      if (!raw || raw === '{}' || raw === 'null' || raw === 'undefined') return '';
+      try {
+        const obj = JSON.parse(raw);
+        if (!obj || typeof obj !== 'object') return raw;
+        const parts = [];
+        for (const k of Object.keys(obj)) {
+          const v = obj[k];
+          if (v === null || typeof v === 'undefined' || v === '') continue;
+          if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') parts.push(`${k}: ${v}`);
+          else if (Array.isArray(v)) parts.push(`${k}: ${v.filter(x => x !== null && typeof x !== 'undefined' && x !== '').join(', ')}`);
+          else if (typeof v === 'object') {
+            const inner = Object.keys(v).map(kk => `${kk}=${v[kk]}`).join(', ');
+            if (inner) parts.push(`${k}: ${inner}`);
+          }
+        }
+        return parts.join(' · ');
+      } catch (_) {
+        return raw;
+      }
+    }
+
+    async function renderKitchenOrders(activeOrders) {
+      const box = document.getElementById('kitchen-box');
+      const cardsEl = document.getElementById('kitchen-cards');
+      const countElK = document.getElementById('kitchen-count');
+      if (!box || !cardsEl || !countElK) return;
+      if (box.style.display === 'none' || !box.open) return;
+      const list = (Array.isArray(activeOrders) ? activeOrders : []).filter(o => ['pendiente','preparacion','listo'].includes(String(o.status || '').toLowerCase()));
+      list.sort((a,b) => parseDateSafe(a.created_at) - parseDateSafe(b.created_at));
+      countElK.textContent = `Mostrando ${list.length} comanda(s)`;
+      const frag = document.createDocumentFragment();
+      for (const o of list) {
+        let detail = null;
+        try { detail = await fetchOrderDetailCached(o.id, 2500); } catch(_) { detail = null; }
+        const items = detail && Array.isArray(detail.items) ? detail.items : [];
+        const orderDetail = detail && detail.order ? detail.order : null;
+        const destLabel = destinoLabelFor(o);
+        const typeRaw = String(o.order_type || '').trim().toLowerCase();
+        const isMesa = (typeRaw === 'mesa');
+        const isEspera = (typeRaw === 'espera');
+        const statusClass = statusClasses[o.status] || 'status-pendiente';
+        const statusLabelText = (isMesa && o.status === 'en_camino') ? 'mesa' : o.status;
+        const s = String(o.status || '').toLowerCase();
+        const isPrepOrLater = ['preparacion', 'listo', 'en_camino', 'entregado'].includes(s);
+        const lDisabled = !isPrepOrLater ? 'disabled style="opacity:0.3;cursor:not-allowed;"' : '';
+        const prepBtn = `<button class="status-action preparacion" data-status="preparacion" aria-label="Preparación" data-tip="Preparación">P</button>`;
+        const listoBtn = `<button class="status-action listo" data-status="listo" aria-label="Listo" data-tip="Listo" ${lDisabled}>L</button>`;
+        const card = document.createElement('div');
+        card.className = `kitchen-card card-${o.status}`;
+        const itemsHtml = items.length ? items.map(it => {
+          const qty = Number(it.qty || 0);
+          const name = String(it.name || '').trim();
+          const note = (it.notes && it.notes !== 'null' && it.notes !== 'undefined') ? String(it.notes) : '';
+          const mods = formatModifiersForKitchen(it.modifiers_json);
+          return `
+            <div class="k-item">
+              <div class="k-qty">${qty}×</div>
+              <div class="k-name">${name}</div>
+              ${note ? `<div class="k-note">Nota: ${note}</div>` : ''}
+              ${mods ? `<div class="k-mod">Opciones: ${mods}</div>` : ''}
+            </div>
+          `;
+        }).join('') : `<div class="small" style="color:#666;">Sin items</div>`;
+        const orderNotes = orderDetail && orderDetail.order_notes ? String(orderDetail.order_notes) : '';
+        card.innerHTML = `
+          <div class="k-head">
+            <div>
+              <div class="k-title">Pedido #${o.id}</div>
+              <div class="k-meta">${formatARDate(o.created_at || '')} · ${o.order_type}</div>
+              <div class="k-dest">Destino: ${(isMesa || isEspera) ? `<span class="pill pill-mesa">${destLabel}</span>` : destLabel}</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="status-badge ${statusClass}">${statusLabelText}</span>
+              ${renderSLA(o)}
+            </div>
+          </div>
+          ${orderNotes ? `<div class="small" style="color:#374151;"><span style="font-weight:700;">Detalle:</span> ${orderNotes}</div>` : ''}
+          <div class="kitchen-items">${itemsHtml}</div>
+          <div class="k-actions">
+            ${prepBtn}
+            ${listoBtn}
+          </div>
+        `;
+        const btns = Array.from(card.querySelectorAll('.status-action'));
+        for (const b of btns) {
+          if (!isAuthed) b.disabled = true;
+          b.addEventListener('mouseenter', () => showStatusTooltipFor(b));
+          b.addEventListener('mouseleave', hideStatusTooltip);
+          b.addEventListener('focus', () => showStatusTooltipFor(b));
+          b.addEventListener('blur', hideStatusTooltip);
+          b.addEventListener('click', async () => {
+            if (!isAuthed) return;
+            const newStatus = b.getAttribute('data-status') || '';
+            if (!newStatus) return;
+            const ok = await askConfirm('¿Confirmar cambio de estado?');
+            if (!ok) return;
+            try {
+              await updateStatus(o.id, newStatus, '');
+            } catch (e) {
+              try {
+                const url = new URL(`/api/orders/${o.id}/status`, API_BASE);
+                const r = await fetch(url.toString(), { method:'PATCH', headers:{ 'Content-Type':'application/json', 'X-CSRF-Token': csrfToken }, body: JSON.stringify({ status: newStatus, reason: '' }) });
+                const j = await r.json().catch(()=>({}));
+                alert(String(j && j.error || 'No se pudo actualizar el estado'));
+              } catch(_) {
+                alert('No se pudo actualizar el estado');
+              }
+            } finally {
+              try { await loadOrdersSafe(); } catch(_) {}
+            }
+          });
+        }
+        frag.appendChild(card);
+      }
+      cardsEl.replaceChildren(frag);
+      initSLAClock();
     }
 
     async function renderDelivered(list) {
@@ -4597,6 +4812,14 @@
           row.classList.remove('card-overdue');
         }
       }
+      const kCard = n.closest('.kitchen-card');
+      if (kCard) {
+        if (mins >= thresholds.critical) {
+          kCard.classList.add('card-overdue');
+        } else {
+          kCard.classList.remove('card-overdue');
+        }
+      }
           if (orderId) {
             const prev = slaStateMap.get(orderId) || '';
             if (stateStr !== prev && soundEnabled) {
@@ -5255,6 +5478,8 @@
           isAuthed = true;
           currentUserName = String(data.user || '');
           currentTenantSlug = String(data.tenant_slug || '') || currentTenantSlug;
+          currentUserRole = String(data.role || '');
+          currentUserPerms = data.permissions || {};
           isOwnerUser = !!data.is_owner;
           canManageUsers = !!(isOwnerUser || (data.permissions && data.permissions.users_manage));
           try{
@@ -5271,12 +5496,16 @@
           await fetchCsrfToken(); // Uses the global function defined at the top
           if (typeof csrfToken !== 'undefined') csrfToken = CSRF_TOKEN;
           document.getElementById('login-box').style.display = 'none';
+          updateKitchenVisibility();
+          applyRoleUI();
           return true;
         }
       } catch (_) {}
       isAuthed = false;
       currentUserName = '';
       currentTenantSlug = '';
+      currentUserRole = '';
+      currentUserPerms = {};
       canManageUsers = false;
       isOwnerUser = false;
       try{
@@ -5286,6 +5515,8 @@
       updateServiceBanner('', '');
       document.getElementById('login-box').style.display = 'block';
       setAuthUI();
+      updateKitchenVisibility();
+      applyRoleUI();
       return false;
     }
 
