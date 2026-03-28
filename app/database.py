@@ -266,7 +266,13 @@ def init_db_postgres(cur):
             tip_amount INTEGER DEFAULT 0,
             created_at TEXT NOT NULL,
             order_notes TEXT,
-            shipping_cost INTEGER DEFAULT 0
+            shipping_cost INTEGER DEFAULT 0,
+            delivery_assigned_to TEXT,
+            delivery_status TEXT DEFAULT 'pending',
+            delivery_sequence INTEGER,
+            delivery_notes TEXT,
+            delivery_assigned_at TEXT,
+            delivered_at TEXT
         )
         """
     )
@@ -292,6 +298,48 @@ def init_db_postgres(cur):
         cur.execute("RELEASE SAVEPOINT add_shipping_cost")
     except Exception:
         cur.execute("ROLLBACK TO SAVEPOINT add_shipping_cost")
+
+    cur.execute("SAVEPOINT add_delivery_assigned_to")
+    try:
+        cur.execute("ALTER TABLE orders ADD COLUMN delivery_assigned_to TEXT")
+        cur.execute("RELEASE SAVEPOINT add_delivery_assigned_to")
+    except Exception:
+        cur.execute("ROLLBACK TO SAVEPOINT add_delivery_assigned_to")
+
+    cur.execute("SAVEPOINT add_delivery_status")
+    try:
+        cur.execute("ALTER TABLE orders ADD COLUMN delivery_status TEXT DEFAULT 'pending'")
+        cur.execute("RELEASE SAVEPOINT add_delivery_status")
+    except Exception:
+        cur.execute("ROLLBACK TO SAVEPOINT add_delivery_status")
+
+    cur.execute("SAVEPOINT add_delivery_sequence")
+    try:
+        cur.execute("ALTER TABLE orders ADD COLUMN delivery_sequence INTEGER")
+        cur.execute("RELEASE SAVEPOINT add_delivery_sequence")
+    except Exception:
+        cur.execute("ROLLBACK TO SAVEPOINT add_delivery_sequence")
+
+    cur.execute("SAVEPOINT add_delivery_notes")
+    try:
+        cur.execute("ALTER TABLE orders ADD COLUMN delivery_notes TEXT")
+        cur.execute("RELEASE SAVEPOINT add_delivery_notes")
+    except Exception:
+        cur.execute("ROLLBACK TO SAVEPOINT add_delivery_notes")
+
+    cur.execute("SAVEPOINT add_delivery_assigned_at")
+    try:
+        cur.execute("ALTER TABLE orders ADD COLUMN delivery_assigned_at TEXT")
+        cur.execute("RELEASE SAVEPOINT add_delivery_assigned_at")
+    except Exception:
+        cur.execute("ROLLBACK TO SAVEPOINT add_delivery_assigned_at")
+
+    cur.execute("SAVEPOINT add_delivered_at")
+    try:
+        cur.execute("ALTER TABLE orders ADD COLUMN delivered_at TEXT")
+        cur.execute("RELEASE SAVEPOINT add_delivered_at")
+    except Exception:
+        cur.execute("ROLLBACK TO SAVEPOINT add_delivered_at")
 
     # Ítems del pedido
     cur.execute(
@@ -440,6 +488,7 @@ def init_db_postgres(cur):
         CREATE TABLE IF NOT EXISTS cash_sessions (
             id SERIAL PRIMARY KEY,
             tenant_slug TEXT NOT NULL,
+            scope TEXT NOT NULL DEFAULT 'tenant',
             opened_at TEXT NOT NULL,
             opened_by TEXT,
             opening_amount INTEGER NOT NULL,
@@ -455,6 +504,13 @@ def init_db_postgres(cur):
     )
     cur.execute("CREATE INDEX IF NOT EXISTS idx_cash_sessions_tenant ON cash_sessions(tenant_slug)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_cash_sessions_open ON cash_sessions(tenant_slug, opened_at)")
+    try:
+        cur.execute("ALTER TABLE cash_sessions ADD COLUMN IF NOT EXISTS scope TEXT NOT NULL DEFAULT 'tenant'")
+    except Exception:
+        try:
+            cur.connection.rollback()
+        except Exception:
+            pass
 
     # Movimientos de caja
     cur.execute(
@@ -550,7 +606,13 @@ def init_db_sqlite(cur):
             tip_amount INTEGER DEFAULT 0,
             created_at TEXT NOT NULL,
             order_notes TEXT,
-            shipping_cost INTEGER DEFAULT 0
+            shipping_cost INTEGER DEFAULT 0,
+            delivery_assigned_to TEXT,
+            delivery_status TEXT DEFAULT 'pending',
+            delivery_sequence INTEGER,
+            delivery_notes TEXT,
+            delivery_assigned_at TEXT,
+            delivered_at TEXT
         )
         """
     )
@@ -565,6 +627,18 @@ def init_db_sqlite(cur):
             cur.execute("ALTER TABLE orders ADD COLUMN tip_amount INTEGER DEFAULT 0")
         if 'shipping_cost' not in cols:
             cur.execute("ALTER TABLE orders ADD COLUMN shipping_cost INTEGER DEFAULT 0")
+        if 'delivery_assigned_to' not in cols:
+            cur.execute("ALTER TABLE orders ADD COLUMN delivery_assigned_to TEXT")
+        if 'delivery_status' not in cols:
+            cur.execute("ALTER TABLE orders ADD COLUMN delivery_status TEXT DEFAULT 'pending'")
+        if 'delivery_sequence' not in cols:
+            cur.execute("ALTER TABLE orders ADD COLUMN delivery_sequence INTEGER")
+        if 'delivery_notes' not in cols:
+            cur.execute("ALTER TABLE orders ADD COLUMN delivery_notes TEXT")
+        if 'delivery_assigned_at' not in cols:
+            cur.execute("ALTER TABLE orders ADD COLUMN delivery_assigned_at TEXT")
+        if 'delivered_at' not in cols:
+            cur.execute("ALTER TABLE orders ADD COLUMN delivered_at TEXT")
     except Exception:
         pass
 
@@ -700,6 +774,7 @@ def init_db_sqlite(cur):
         CREATE TABLE IF NOT EXISTS cash_sessions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             tenant_slug TEXT NOT NULL,
+            scope TEXT NOT NULL DEFAULT 'tenant',
             opened_at TEXT NOT NULL,
             opened_by TEXT,
             opening_amount INTEGER NOT NULL,
@@ -715,6 +790,13 @@ def init_db_sqlite(cur):
     )
     cur.execute("CREATE INDEX IF NOT EXISTS idx_cash_sessions_tenant ON cash_sessions(tenant_slug)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_cash_sessions_open ON cash_sessions(tenant_slug, opened_at)")
+    try:
+        cur.execute("PRAGMA table_info(cash_sessions)")
+        cols = [r[1] for r in cur.fetchall()]
+        if 'scope' not in cols:
+            cur.execute("ALTER TABLE cash_sessions ADD COLUMN scope TEXT NOT NULL DEFAULT 'tenant'")
+    except Exception:
+        pass
 
     # Movimientos de caja
     cur.execute(

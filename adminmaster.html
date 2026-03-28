@@ -364,13 +364,13 @@
         };
       }
       if (r === 'mozo'){
-        return { orders_view:true, orders_update_status:true, orders_create:true, tables_manage:true };
+        return { orders_view:true, orders_update_status:true, orders_create:true, tables_manage:true, cash_view:true, cash_manage:true };
       }
       if (r === 'cocina'){
         return { orders_view:true, orders_update_status:true };
       }
       if (r === 'caja'){
-        return { orders_view:true, orders_update_status:true, cash_view:true, cash_manage:true };
+        return { orders_view:true, orders_update_status:true, orders_create:true, cash_view:true, cash_manage:true };
       }
       if (r === 'repartidor'){
         return { orders_view:true, orders_update_status:true };

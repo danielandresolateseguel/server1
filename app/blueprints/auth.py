@@ -191,7 +191,9 @@ def _role_defaults(role):
             'orders_view': True,
             'orders_update_status': True,
             'orders_create': True,
-            'tables_manage': True
+            'tables_manage': True,
+            'cash_view': True,
+            'cash_manage': True
         }
     elif role == 'cocina':
         perms = {
@@ -202,13 +204,17 @@ def _role_defaults(role):
         perms = {
             'orders_view': True,
             'orders_update_status': True,
+            'orders_create': True,
             'cash_view': True,
             'cash_manage': True
         }
     elif role == 'repartidor':
         perms = {
             'orders_view': True,
-            'orders_update_status': True
+            'orders_update_status': True,
+            'delivery_manage': True,
+            'cash_view': True,
+            'cash_manage': True
         }
     return role, perms
 
@@ -375,11 +381,18 @@ def auth_login():
     role, defaults = _role_defaults(role)
     if not perms:
         perms = defaults
+    else:
         try:
-            import json as _json
-            perms_json = _json.dumps(perms, ensure_ascii=False)
+            merged = dict(defaults or {})
+            merged.update(perms)
+            perms = merged
         except Exception:
-            perms_json = ''
+            pass
+    try:
+        import json as _json
+        perms_json = _json.dumps(perms, ensure_ascii=False)
+    except Exception:
+        perms_json = ''
     touch_admin_user_last_seen(db, cur, tenant_slug, real_username)
     session['admin_auth'] = True
     session['admin_user'] = real_username
@@ -431,6 +444,23 @@ def auth_me():
             touch_admin_user_last_seen(db, cur, session.get('tenant_slug') or '', session.get('admin_user') or '')
         except Exception:
             pass
+    role_raw = str(session.get('admin_role') or '').strip().lower()
+    effective_role, defaults = _role_defaults(role_raw)
+    perms_raw = _parse_perms_json(session.get('admin_perms') or '')
+    if not perms_raw:
+        perms = defaults
+    else:
+        try:
+            perms = dict(defaults or {})
+            perms.update(perms_raw)
+        except Exception:
+            perms = perms_raw
+    try:
+        import json as _json
+        session['admin_role'] = effective_role
+        session['admin_perms'] = _json.dumps(perms, ensure_ascii=False)
+    except Exception:
+        pass
     tenant_status = ''
     tenant_message = ''
     suspended = False
@@ -459,7 +489,7 @@ def auth_me():
         'user': session.get('admin_user') or '',
         'tenant_slug': session.get('tenant_slug') or '',
         'role': session.get('admin_role') or '',
-        'permissions': _parse_perms_json(session.get('admin_perms') or ''),
+        'permissions': perms,
         'is_owner': bool(session.get('admin_owner')),
         'tenant_status': tenant_status,
         'tenant_message': tenant_message,

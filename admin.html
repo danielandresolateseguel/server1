@@ -354,6 +354,16 @@
       .status-quick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
       .status-quick .status-action { width: 100%; height: 36px; font-size: 14px; border-radius: 8px; }
       .ver-detalle { width: 100%; }
+      #delivery-list .actions { gap: 6px; }
+      #delivery-list .actions button { width: auto; }
+      #delivery-list .actions .delivery-status { flex: 1 1 calc(50% - 6px); }
+      #delivery-list .actions .delivery-pay,
+      #delivery-list .actions .delivery-map,
+      #delivery-list .actions .delivery-notes,
+      #delivery-list .actions .delivery-view,
+      #delivery-list .actions .delivery-take-route { flex: 1 1 calc(33.333% - 6px); }
+      #delivery-list .actions .delivery-up,
+      #delivery-list .actions .delivery-down { width: 44px; padding: 0; flex: 0 0 auto; }
 
       #orders-table { display: none !important; }
       #orders-mobile { display: grid; grid-template-columns: 1fr; gap: 12px; }
@@ -710,6 +720,7 @@
       <button id="btn-view-carta" style="background:#009688; color:#fff;" onclick="const s=document.getElementById('tenant-input').value||'gastronomia-local1'; window.open('/gastronomia-local1.html?slug='+s, '_blank')">Ver Carta Online</button>
       <button id="carousel-open" style="background:#e91e63; color:#fff;">Editor Carrusel</button>
       <button id="users-admin-open" style="background:#455a64; color:#fff; display:none;">Usuarios</button>
+      <button id="delivery-open" style="background:#ff6f00; color:#fff; display:none;">Repartos</button>
     </div>
   </header>
 
@@ -945,6 +956,38 @@
       <span id="page-info" class="small"></span>
       <button id="next-page">Siguiente</button>
     </div>
+    <details class="delivered" id="delivery-box" style="display:none;">
+      <summary>Repartos</summary>
+      <div class="pager" style="margin:8px 0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <label>Ver
+            <select id="delivery-filter">
+              <option value="mine">Mis pedidos</option>
+              <option value="unassigned">Sin asignar</option>
+              <option value="assigned">Asignados</option>
+              <option value="open">Abiertos</option>
+              <option value="all">Todos</option>
+            </select>
+          </label>
+          <label>Estado
+            <select id="delivery-status-filter">
+              <option value="">Todos</option>
+              <option value="pending">Pendiente</option>
+              <option value="assigned">Asignado</option>
+              <option value="en_route">En camino</option>
+              <option value="delivered">Entregado</option>
+              <option value="failed">Falló</option>
+            </select>
+          </label>
+          <button id="delivery-mine" style="background:#1976d2; color:#fff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer;">Mi ruta</button>
+          <button id="delivery-unassigned" style="background:#ff6f00; color:#fff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer;">Sin asignar</button>
+          <button id="delivery-start-route" style="background:#2e7d32; color:#fff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer;">Empezar ruta</button>
+          <button id="delivery-reload">Recargar</button>
+          <span id="delivery-count" class="small" style="color:#666;"></span>
+        </div>
+      </div>
+      <div id="delivery-list" class="orders-mobile"></div>
+    </details>
     <details class="delivered" id="delivered-box">
       <summary>Entregados</summary>
       <div class="pager" style="margin:8px 0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
@@ -1176,7 +1219,7 @@
       <div id="archived-mobile-reset" class="archived-mobile"></div>
     </details>
 
-    <div style="margin: 12px 0; border: 1px solid #ddd; border-radius: 8px; padding: 12px; background: #fff;">
+    <div id="orders-filters-export" style="margin: 12px 0; border: 1px solid #ddd; border-radius: 8px; padding: 12px; background: #fff;">
       <h3 style="margin: 0 0 8px 0; font-size: 1rem; color: #425b76;">Filtros y Exportación</h3>
       <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-start;">
         <details class="mobile-filters" id="more-filters" style="flex: 1; min-width: 280px;">
@@ -2396,41 +2439,100 @@
       const el = document.getElementById(id);
       if (!el) return;
       if (!el.dataset.origDisplay) el.dataset.origDisplay = el.style.display || '';
-      el.style.display = show ? el.dataset.origDisplay : 'none';
+      if (show) {
+        el.style.display = (el.dataset.origDisplay === 'none') ? '' : el.dataset.origDisplay;
+      } else {
+        el.style.display = 'none';
+      }
     }
 
     function applyRoleUI() {
       const role = String(currentUserRole || '').toLowerCase();
       const isKitchen = !!isAuthed && role === 'cocina';
+      const isMozo = !!isAuthed && role === 'mozo';
+      const isRepartidor = !!isAuthed && role === 'repartidor';
+      const mozoTablesOnly = isMozo;
+      const isAdmin = !!isAuthed && (role === 'admin' || !!isOwnerUser);
+      const perms = currentUserPerms || {};
+      const can = (k) => !!isAuthed && (isAdmin || !!perms[k]);
+      const canOrdersView = can('orders_view');
+      const canOrdersCreate = can('orders_create');
+      const canTables = can('tables_manage');
+      const canCash = can('cash_view') || can('cash_manage');
+      const canUsers = can('users_manage');
+      const canInventory = can('products_manage');
+      const canCarousel = can('carousel_manage');
+      const canReports = can('reports_view');
+      const canDelivery = isRepartidor || can('delivery_manage');
 
-      setRoleVisibilityById('top-controls', !isKitchen);
-      setRoleVisibilityById('metrics', !isKitchen);
-      setRoleVisibilityById('cash-box', !isKitchen);
-      setRoleVisibilityById('cash-history', !isKitchen);
-      setRoleVisibilityById('table-management', !isKitchen);
+      setRoleVisibilityById('top-controls', !isKitchen && (canOrdersView || canCash));
+      setRoleVisibilityById('metrics', !isKitchen && !mozoTablesOnly && canOrdersView && !isRepartidor);
+      setRoleVisibilityById('cash-box', !isKitchen && canCash);
+      setRoleVisibilityById('cash-history', !isKitchen && canCash);
+      setRoleVisibilityById('table-management', !isKitchen && canTables);
 
-      setRoleVisibilityById('btn-new-order', !isKitchen);
-      setRoleVisibilityById('search-box', !isKitchen);
+      setRoleVisibilityById('btn-new-order', !isKitchen && canOrdersCreate);
+      setRoleVisibilityById('search-box', !isKitchen && !mozoTablesOnly);
 
-      setRoleVisibilityById('tables-open', !isKitchen);
-      setRoleVisibilityById('btn-view-carta', !isKitchen);
-      setRoleVisibilityById('carousel-open', !isKitchen);
-      setRoleVisibilityById('users-admin-open', !isKitchen);
+      setRoleVisibilityById('tables-open', !isKitchen && canTables);
+      setRoleVisibilityById('btn-view-carta', !isKitchen && canOrdersCreate);
+      setRoleVisibilityById('carousel-open', !isKitchen && canCarousel);
+      setRoleVisibilityById('users-admin-open', !isKitchen && canUsers);
+      setRoleVisibilityById('delivery-open', !isKitchen && canDelivery);
 
-      setRoleVisibilityById('orders-header-row', !isKitchen);
-      setRoleVisibilityById('orders-table', !isKitchen);
-      setRoleVisibilityById('orders-mobile', !isKitchen);
-      setRoleVisibilityById('orders-count', !isKitchen);
-      setRoleVisibilityById('delivered-box', !isKitchen);
-      setRoleVisibilityById('canceled-box', !isKitchen);
-      setRoleVisibilityById('inventory-box', !isKitchen);
-      setRoleVisibilityById('carousel-box', !isKitchen);
-      setRoleVisibilityById('archived-box', !isKitchen);
+      setRoleVisibilityById('orders-header-row', !isKitchen && !mozoTablesOnly && canOrdersView && !isRepartidor);
+      setRoleVisibilityById('orders-table', !isKitchen && !mozoTablesOnly && canOrdersView && !isRepartidor);
+      setRoleVisibilityById('orders-mobile', !isKitchen && !mozoTablesOnly && canOrdersView && !isRepartidor);
+      setRoleVisibilityById('orders-count', !isKitchen && !mozoTablesOnly && canOrdersView && !isRepartidor);
+      setRoleVisibilityById('delivered-box', !isKitchen && !mozoTablesOnly && canOrdersView);
+      setRoleVisibilityById('canceled-box', !isKitchen && !mozoTablesOnly && canOrdersView && !isRepartidor);
+      setRoleVisibilityById('orders-filters-export', !isKitchen && !mozoTablesOnly && canOrdersView && !isRepartidor);
+      setRoleVisibilityById('orders-export-btn', !isKitchen && !mozoTablesOnly && canReports && !isRepartidor);
+      setRoleVisibilityById('inventory-box', !isKitchen && canInventory);
+      setRoleVisibilityById('carousel-box', !isKitchen && canCarousel);
+      setRoleVisibilityById('archived-box', !isKitchen && canReports);
+      setRoleVisibilityById('delivery-box', !isKitchen && canDelivery);
+
+      if (isRepartidor && canDelivery) {
+        try {
+          const sel = document.getElementById('delivery-filter');
+          if (sel && !sel.dataset.lockedDefault) {
+            sel.dataset.lockedDefault = '1';
+            sel.value = 'unassigned';
+            deliveryFilter = 'unassigned';
+          }
+        } catch (_) {}
+        try {
+          if (!window.__repartidorDeliveryAutoOpened) {
+            window.__repartidorDeliveryAutoOpened = true;
+            const box = document.getElementById('delivery-box');
+            if (box) box.open = true;
+          }
+        } catch (_) {}
+      }
 
       document.querySelectorAll('.pager').forEach(el => {
         if (!el.dataset.origDisplay) el.dataset.origDisplay = el.style.display || '';
-        el.style.display = isKitchen ? 'none' : el.dataset.origDisplay;
+        if (el.closest && el.closest('#delivery-box')) {
+          el.style.display = el.dataset.origDisplay;
+        } else {
+          el.style.display = (isKitchen || isRepartidor) ? 'none' : el.dataset.origDisplay;
+        }
       });
+
+      if (mozoTablesOnly) {
+        try {
+          if (!window.__mozoTmAutoOpened) {
+            window.__mozoTmAutoOpened = true;
+            const b = document.getElementById('tables-open');
+            if (b) b.click();
+            const sec = document.getElementById('table-management');
+            if (sec) sec.style.display = 'block';
+          }
+        } catch(_) {}
+      } else {
+        try { window.__mozoTmAutoOpened = false; } catch(_) {}
+      }
 
       updateKitchenVisibility();
     }
@@ -2616,6 +2718,27 @@
       const resp = await wFetch(url.toString());
       if (!resp.ok) throw new Error('Error al obtener pedidos');
       return resp.json();
+    }
+
+    let lastTablesOrdersFetchAt = 0;
+    async function fetchOrdersForTables(force) {
+      const now = Date.now();
+      if (!force && (now - lastTablesOrdersFetchAt) < 4000 && Array.isArray(window.currentOrdersForTables)) {
+        return { orders: window.currentOrdersForTables };
+      }
+      lastTablesOrdersFetchAt = now;
+      const slug = tenantInput.value.trim() || defaultSlug();
+      const url = new URL('/api/orders', API_BASE);
+      url.searchParams.set('tenant_slug', slug);
+      url.searchParams.set('exclude_archived', 'true');
+      url.searchParams.set('limit', '500');
+      url.searchParams.set('offset', '0');
+      const resp = await wFetch(url.toString());
+      if (!resp.ok) throw new Error('Error al obtener pedidos (mesas)');
+      const data = await resp.json();
+      const orders = Array.isArray(data && data.orders) ? data.orders : [];
+      window.currentOrdersForTables = orders;
+      return { orders };
     }
 
     async function updateStatus(orderId, status, reason) {
@@ -3013,8 +3136,35 @@
           const newBound = computeDailyResetUTC();
           if (newBound !== dailyResetFrom) applyDailyReset(newBound);
         }
+        const r0 = String(currentUserRole || '').trim().toLowerCase();
+        if (r0 === 'repartidor') {
+          try {
+            const data = await fetchDeliveryOrders();
+            await renderDeliveryOrders(data);
+          } catch (e) {
+            const list = document.getElementById('delivery-list');
+            const countEl = document.getElementById('delivery-count');
+            if (countEl) countEl.textContent = '';
+            if (list) {
+              const msg = String(e && e.message ? e.message : e || 'No se pudo cargar repartos');
+              list.innerHTML = `<div class="small">${msg}</div>`;
+            }
+          }
+          if (!cashCollapsed && !isCashEditing) await renderCashBox();
+          if (!cashHistoryCollapsed) await renderCashHistory();
+          return;
+        }
         const data = await fetchOrders();
         await renderOrders(data);
+        try {
+          const r = String(currentUserRole || '').trim().toLowerCase();
+          if (r === 'mozo') {
+            await fetchOrdersForTables(false);
+          } else {
+            window.currentOrdersForTables = null;
+          }
+        } catch (_) {}
+        try { window.dispatchEvent(new CustomEvent('kds-orders-updated')); } catch (_) {}
         await renderMetricsBox();
         if (!cashCollapsed && !isCashEditing) await renderCashBox();
         if (!cashHistoryCollapsed) await renderCashHistory();
@@ -3402,6 +3552,11 @@
               const action = qb.getAttribute('data-action');
               if (action === 'pay') {
                   if (qb.classList.contains('paid')) return;
+                  if (qb.dataset.busy === '1') return;
+                  qb.dataset.busy = '1';
+                  qb.disabled = true;
+                  qb.style.opacity = '0.6';
+                  qb.style.cursor = 'wait';
                   const methodData = await askPaymentMethod(o.total, (o.order_type || '').toLowerCase() === 'mesa', o.shipping_cost || 0);
                   if (!methodData) return;
                   try {
@@ -3440,6 +3595,14 @@
                           }
                       }
                   } catch(e) { alert(e.message); }
+                  finally {
+                      qb.dataset.busy = '';
+                      if (!qb.classList.contains('paid')) {
+                          qb.disabled = false;
+                          qb.style.opacity = '';
+                          qb.style.cursor = '';
+                      }
+                  }
                   return;
               }
               const newStatus = qb.getAttribute('data-status') || '';
@@ -3565,6 +3728,11 @@
             const action = qb.getAttribute('data-action');
             if (action === 'pay') {
                 if (qb.classList.contains('paid')) return;
+                if (qb.dataset.busy === '1') return;
+                qb.dataset.busy = '1';
+                qb.disabled = true;
+                qb.style.opacity = '0.6';
+                qb.style.cursor = 'wait';
                 const methodData = await askPaymentMethod(o.total, (o.order_type || '').toLowerCase() === 'mesa', o.shipping_cost || 0);
                 if (!methodData) return;
                 try {
@@ -3609,6 +3777,14 @@
                         }
                     }
                 } catch(e) { alert(e.message); }
+                finally {
+                    qb.dataset.busy = '';
+                    if (!qb.classList.contains('paid')) {
+                        qb.disabled = false;
+                        qb.style.opacity = '';
+                        qb.style.cursor = '';
+                    }
+                }
                 return;
             }
             const newStatus = qb.getAttribute('data-status') || '';
@@ -3769,7 +3945,15 @@
       if (omobilePtr) omobilePtr.replaceChildren(fragCards);
       initSLAClock();
       await renderKitchenOrders(active);
-      const delivered = orders.filter(o => o.status === 'entregado');
+      const role0 = String(currentUserRole || '').trim().toLowerCase();
+      const me0 = String(currentUserName || '').trim().toLowerCase();
+      const isRepartidor0 = role0 === 'repartidor';
+      const delivered = orders.filter(o => {
+        if (o.status !== 'entregado') return false;
+        if (!isRepartidor0) return true;
+        if (String(o.order_type || '').trim().toLowerCase() !== 'direccion') return false;
+        return !!me0 && String(o.delivery_assigned_to || '').trim().toLowerCase() === me0;
+      });
       const canceled = orders.filter(o => o.status === 'cancelado');
       window.deliveredCurrent = delivered;
       window.canceledCurrent = canceled;
@@ -3828,6 +4012,431 @@
          }
       }
       window.dispatchEvent(new CustomEvent('kds-orders-updated'));
+    }
+
+    let deliveryFilter = 'unassigned';
+    let deliveryStatusFilter = '';
+    let lastDeliverySignature = '';
+
+    async function fetchDeliveryOrders() {
+      const slug = tenantInput.value.trim() || defaultSlug();
+      const url = new URL('/api/delivery/orders', API_BASE);
+      url.searchParams.set('tenant_slug', slug);
+      url.searchParams.set('exclude_archived', 'true');
+      url.searchParams.set('filter', deliveryFilter || 'unassigned');
+      if (deliveryStatusFilter) url.searchParams.set('delivery_status', deliveryStatusFilter);
+      if (currentSearch) url.searchParams.set('q', currentSearch);
+      url.searchParams.set('limit', '200');
+      url.searchParams.set('offset', '0');
+      const resp = await wFetch(url.toString());
+      if (!resp.ok) {
+        let msg = 'No se pudo cargar repartos';
+        try { const j = await resp.json(); if (j && j.error) msg = String(j.error); } catch (_) {}
+        if (resp.status === 404 && String(msg || '').toLowerCase().includes('ruta de api no válida')) {
+          msg = 'API de repartos no disponible en el servidor. Reinicia el backend y valida que exista /api/delivery/orders en /api/routes.';
+        }
+        throw new Error(msg);
+      }
+      return await resp.json();
+    }
+
+    function _deliveryMine(o) {
+      const a = String(o && o.delivery_assigned_to || '').trim().toLowerCase();
+      const me = String(currentUserName || '').trim().toLowerCase();
+      return !!me && a === me;
+    }
+
+    async function assignDelivery(orderId) {
+      if (!csrfToken) await fetchCSRF();
+      const url = new URL(`/api/delivery/orders/${orderId}/assign`, API_BASE);
+      const resp = await wFetch(url.toString(), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+        body: JSON.stringify({ assigned_to: String(currentUserName || '').trim() })
+      });
+      if (!resp.ok) {
+        let msg = 'No se pudo asignar';
+        try { const j = await resp.json(); if (j && j.error) msg = String(j.error); } catch (_) {}
+        throw new Error(msg);
+      }
+      return await resp.json();
+    }
+
+    async function setDeliveryStatus(orderId, newStatus, extras) {
+      if (!csrfToken) await fetchCSRF();
+      const url = new URL(`/api/delivery/orders/${orderId}/delivery_status`, API_BASE);
+      const body = Object.assign({ delivery_status: newStatus }, (extras && typeof extras === 'object') ? extras : {});
+      const resp = await wFetch(url.toString(), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+        body: JSON.stringify(body)
+      });
+      if (!resp.ok) {
+        let msg = 'No se pudo actualizar estado';
+        try { const j = await resp.json(); if (j && j.error) msg = String(j.error); } catch (_) {}
+        throw new Error(msg);
+      }
+      return await resp.json();
+    }
+
+    async function saveDeliveryRoute(orders) {
+      if (!csrfToken) await fetchCSRF();
+      const slug = tenantInput.value.trim() || defaultSlug();
+      const url = new URL('/api/delivery/route', API_BASE);
+      const bodyOrders = (orders || []).map((o, idx) => ({ id: o.id, sequence: idx + 1 }));
+      const resp = await wFetch(url.toString(), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+        body: JSON.stringify({ tenant_slug: slug, orders: bodyOrders })
+      });
+      if (!resp.ok) {
+        let msg = 'No se pudo guardar ruta';
+        try { const j = await resp.json(); if (j && j.error) msg = String(j.error); } catch (_) {}
+        throw new Error(msg);
+      }
+      return await resp.json();
+    }
+
+    async function renderDeliveryOrders(data) {
+      let orders = (data && data.orders) ? data.orders : [];
+      const role = String(currentUserRole || '').trim().toLowerCase();
+      if (role === 'repartidor' && String(deliveryFilter || '').trim().toLowerCase() === 'mine' && !String(deliveryStatusFilter || '').trim()) {
+        orders = orders.filter(o => String(o && o.delivery_status || 'pending').trim().toLowerCase() !== 'delivered');
+      }
+      window.currentDeliveryOrders = orders;
+      const list = document.getElementById('delivery-list');
+      const countEl = document.getElementById('delivery-count');
+      if (countEl) countEl.textContent = `(${orders.length})`;
+      if (!list) return;
+      const sig = JSON.stringify(orders.map(o => ({ id: o.id, ds: o.delivery_status, a: o.delivery_assigned_to, s: o.status, seq: o.delivery_sequence })));
+      if (sig === lastDeliverySignature && list.children.length > 0) return;
+      lastDeliverySignature = sig;
+      list.innerHTML = '';
+      if (!orders.length) {
+        list.innerHTML = '<div class="small">Sin resultados</div>';
+        return;
+      }
+      const canReorder = (o) => role !== 'repartidor' || _deliveryMine(o);
+      const ensureCashOpen = async () => {
+        try {
+          const cs = await fetchCashSession();
+          if (cs && cs.active) return true;
+          const openReq = await askConfirm('No hay caja abierta. ¿Abrir ahora?');
+          if (!openReq) return false;
+          let amtRaw = null;
+          try { amtRaw = prompt('Monto inicial en $:', ''); } catch(_) { amtRaw = null; }
+          if (amtRaw === null) return false;
+          const amt = parseInt(String(amtRaw).trim(), 10);
+          if (Number.isNaN(amt) || amt < 0) { alert('Ingresa un monto válido'); return false; }
+          let notes = '';
+          try { notes = String(prompt('Notas de apertura (opcional):') || '').trim(); } catch(_) {}
+          return !!(await openCash({ opening_amount: amt, notes }));
+        } catch(_) {
+          return true;
+        }
+      };
+
+      orders.forEach((o, idx) => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        const reorderOk = canReorder(o);
+        card.draggable = !!reorderOk;
+        if (reorderOk) {
+          card.style.cursor = 'grab';
+          card.dataset.dragOk = '1';
+        } else {
+          card.dataset.dragOk = '';
+        }
+        const addr = (typeof getAddressText === 'function') ? getAddressText(o.address_json) : String(o.address_json || '');
+        const phoneRaw = String(o.customer_phone || '').trim();
+        const phoneDigits = phoneRaw.replace(/\D+/g, '');
+        const waUrl = (typeof getWaLink === 'function') ? getWaLink(o, phoneDigits) : '';
+        const assigned = String(o.delivery_assigned_to || '').trim();
+        const dStatus = String(o.delivery_status || '').trim() || 'pending';
+        const seq = (o.delivery_sequence === null || typeof o.delivery_sequence === 'undefined') ? '' : String(o.delivery_sequence);
+        let stopNum = null;
+        if (_deliveryMine(o)) {
+          if (!seq) stopNum = idx + 1;
+          else {
+            const n = parseInt(seq, 10);
+            stopNum = Number.isFinite(n) ? n : (idx + 1);
+          }
+        }
+        const stopPill = stopNum ? `<span class="pill" style="margin-left:6px; background:#e3f2fd; color:#0d47a1;">Parada ${stopNum}</span>` : '';
+        const pay = String(o.payment_status || '').trim();
+        const payText = pay ? `Pago: ${pay}` : '';
+        const who = assigned ? `Asignado: ${assigned}` : 'Sin asignar';
+        const seqText = seq ? `Ruta: ${seq}` : '';
+        const metaBits = [who, seqText, payText].filter(Boolean).join(' · ');
+
+        const assignBtn = (!assigned && role === 'repartidor') ? `<button class="delivery-take-route" data-id="${o.id}" style="background:#ff6f00; color:#fff; border:none; padding:6px 10px; border-radius:6px; cursor:pointer;">Tomar + ruta</button>` : '';
+        const upBtn = (idx > 0 && canReorder(o)) ? `<button class="delivery-up" data-id="${o.id}" style="padding:6px 10px;">↑</button>` : '';
+        const downBtn = (idx < orders.length - 1 && canReorder(o)) ? `<button class="delivery-down" data-id="${o.id}" style="padding:6px 10px;">↓</button>` : '';
+        const enRouteBtn = (role !== 'repartidor' || _deliveryMine(o)) ? `<button class="delivery-status" data-id="${o.id}" data-st="en_route">En camino</button>` : '';
+        const deliveredBtn = (role !== 'repartidor' || _deliveryMine(o)) ? `<button class="delivery-status" data-id="${o.id}" data-st="delivered" style="background:#2e7d32; color:#fff;">Entregado</button>` : '';
+        const failedBtn = (role !== 'repartidor' || _deliveryMine(o)) ? `<button class="delivery-status" data-id="${o.id}" data-st="failed" style="background:#b71c1c; color:#fff;">Falló</button>` : '';
+        const isPaid = String(o.payment_status || '').trim().toLowerCase() === 'paid';
+        const payBtn = isPaid
+          ? `<button class="delivery-pay" data-id="${o.id}" disabled style="opacity:0.35; cursor:default; background:#9e9e9e; color:#fff; border:none; padding:6px 10px; border-radius:6px;">Pagado</button>`
+          : ((role !== 'repartidor' || _deliveryMine(o)) ? `<button class="delivery-pay" data-id="${o.id}" style="background:#1976d2; color:#fff; border:none; padding:6px 10px; border-radius:6px; cursor:pointer;">Cobrar</button>` : '');
+        const addrOneLine = String(addr || '').replace(/\n+/g, ' ').trim();
+        const mapBtn = addrOneLine ? `<button class="delivery-map" data-id="${o.id}" style="background:#455a64; color:#fff; border:none; padding:6px 10px; border-radius:6px; cursor:pointer;">Mapa</button>` : '';
+        const notesBtn = (role !== 'repartidor' || _deliveryMine(o)) ? `<button class="delivery-notes" data-id="${o.id}" style="background:#f3f4f6; color:#374151; border:1px solid #cbd5e1; padding:6px 10px; border-radius:6px; cursor:pointer;">Notas</button>` : '';
+        const viewBtn = `<button class="delivery-view" data-id="${o.id}">Ver</button>`;
+
+        card.innerHTML = `
+          <div class="card-content">
+            <div class="title">Pedido #${o.id} <span class="pill" style="margin-left:6px;">${dStatus}</span>${stopPill}</div>
+            <div class="meta">${formatARDate(o.created_at || '')} · $${o.total || 0}</div>
+            <div class="meta">Destino: ${addrOneLine.slice(0,120) || '-'}</div>
+            <div class="meta">${phoneRaw ? `Tel: ${phoneRaw}` : ''} ${waUrl ? `<a href="${waUrl}" target="_blank" rel="noopener" style="margin-left:6px;">WhatsApp</a>` : ''}</div>
+            <div class="meta">${metaBits || ''}</div>
+          </div>
+          <div class="actions" style="display:flex; gap:8px; flex-wrap:wrap;">
+            ${assignBtn}
+            ${upBtn}
+            ${downBtn}
+            ${enRouteBtn}
+            ${deliveredBtn}
+            ${failedBtn}
+            ${payBtn}
+            ${mapBtn}
+            ${notesBtn}
+            ${viewBtn}
+          </div>
+        `;
+        list.appendChild(card);
+      });
+
+      const dragState = { dragId: 0 };
+      list.querySelectorAll('.card').forEach(card => {
+        card.addEventListener('dragstart', (e) => {
+          if (card.dataset.dragOk !== '1') { e.preventDefault(); return; }
+          const btn = card.querySelector('[data-id]');
+          const oid = btn ? Number(btn.getAttribute('data-id') || 0) : 0;
+          if (!oid) { e.preventDefault(); return; }
+          dragState.dragId = oid;
+          card.style.opacity = '0.6';
+          try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(oid)); } catch(_) {}
+        });
+        card.addEventListener('dragend', () => {
+          card.style.opacity = '';
+        });
+        card.addEventListener('dragover', (e) => {
+          if (!dragState.dragId) return;
+          e.preventDefault();
+          try { e.dataTransfer.dropEffect = 'move'; } catch(_) {}
+        });
+        card.addEventListener('drop', async (e) => {
+          e.preventDefault();
+          const fromId = Number(dragState.dragId || 0);
+          dragState.dragId = 0;
+          if (!fromId) return;
+          const btn = card.querySelector('[data-id]');
+          const toId = btn ? Number(btn.getAttribute('data-id') || 0) : 0;
+          if (!toId || toId === fromId) return;
+          const arr = (window.currentDeliveryOrders || []).slice();
+          const fromIdx = arr.findIndex(x => Number(x.id) === fromId);
+          const toIdx = arr.findIndex(x => Number(x.id) === toId);
+          if (fromIdx < 0 || toIdx < 0) return;
+          const fromOrder = arr[fromIdx];
+          const toOrder = arr[toIdx];
+          if (!canReorder(fromOrder) || !canReorder(toOrder)) return;
+          const moved = arr.splice(fromIdx, 1)[0];
+          arr.splice(toIdx, 0, moved);
+          try {
+            await saveDeliveryRoute(arr);
+            lastDeliverySignature = '';
+            await loadOrdersSafe();
+          } catch (err) {
+            alert(String(err && err.message || 'No se pudo guardar ruta'));
+          }
+        });
+      });
+
+      list.querySelectorAll('.delivery-view').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          const oid = Number(btn.dataset.id || 0);
+          if (oid) openOrderDetailModal(oid);
+        });
+      });
+      list.querySelectorAll('.delivery-take-route').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          const oid = Number(btn.dataset.id || 0);
+          if (!oid) return;
+          if (btn.dataset.busy === '1') return;
+          btn.dataset.busy = '1';
+          const originalText = btn.textContent;
+          btn.disabled = true;
+          btn.style.opacity = '0.6';
+          btn.style.cursor = 'wait';
+          btn.textContent = 'Tomando...';
+          try {
+            await assignDelivery(oid);
+            const slug = tenantInput.value.trim() || defaultSlug();
+            const url = new URL('/api/delivery/orders', API_BASE);
+            url.searchParams.set('tenant_slug', slug);
+            url.searchParams.set('exclude_archived', 'true');
+            url.searchParams.set('exclude_canceled', 'true');
+            url.searchParams.set('filter', 'mine');
+            url.searchParams.set('limit', '200');
+            url.searchParams.set('offset', '0');
+            const r = await wFetch(url.toString());
+            const j = await r.json().catch(() => ({}));
+            let mine = Array.isArray(j && j.orders) ? j.orders : [];
+            mine = mine.filter(x => String(x && x.delivery_status || 'pending').trim().toLowerCase() !== 'delivered');
+            mine.sort((a, b) => {
+              const sa = (a.delivery_sequence === null || typeof a.delivery_sequence === 'undefined') ? 999999 : Number(a.delivery_sequence);
+              const sb = (b.delivery_sequence === null || typeof b.delivery_sequence === 'undefined') ? 999999 : Number(b.delivery_sequence);
+              if (sa !== sb) return sa - sb;
+              return Number(a.id) - Number(b.id);
+            });
+            const idx = mine.findIndex(x => Number(x.id) === oid);
+            if (idx >= 0) {
+              const moved = mine.splice(idx, 1)[0];
+              mine.push(moved);
+            }
+            try { await saveDeliveryRoute(mine); } catch (_) {}
+            try {
+              const filterSel = document.getElementById('delivery-filter');
+              if (filterSel) filterSel.value = 'mine';
+            } catch (_) {}
+            deliveryFilter = 'mine';
+            deliveryStatusFilter = '';
+            lastDeliverySignature = '';
+            await loadOrdersSafe();
+          } catch (err) {
+            alert(String(err && err.message || 'No se pudo asignar'));
+          } finally {
+            btn.dataset.busy = '';
+            btn.disabled = false;
+            btn.style.opacity = '';
+            btn.style.cursor = '';
+            btn.textContent = originalText;
+          }
+        });
+      });
+      list.querySelectorAll('.delivery-status').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          const oid = Number(btn.dataset.id || 0);
+          const st = String(btn.dataset.st || '').trim();
+          if (!oid || !st) return;
+          try {
+            if (st === 'delivered') {
+              const ok = await ensureCashOpen();
+              if (!ok) return;
+            }
+            await setDeliveryStatus(oid, st);
+            await loadOrdersSafe();
+          } catch (err) {
+            alert(String(err && err.message || 'No se pudo actualizar'));
+          }
+        });
+      });
+      list.querySelectorAll('.delivery-pay').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          const oid = Number(btn.dataset.id || 0);
+          if (!oid || btn.disabled) return;
+          const o = (orders || []).find(x => Number(x.id) === oid) || null;
+          if (!o) return;
+          const originalText = btn.textContent;
+          btn.disabled = true;
+          btn.style.opacity = '0.6';
+          btn.textContent = 'Cobrando...';
+          try {
+            const ok = await ensureCashOpen();
+            if (!ok) return;
+            const methodData = await askPaymentMethod(Number(o.total || 0), false, Number(o.shipping_cost || 0));
+            if (!methodData) return;
+            await payOrder(oid, methodData);
+            if (methodData.print) {
+              try { window.printBill(oid); } catch(_) {}
+            }
+            lastDeliverySignature = '';
+            await loadOrdersSafe();
+          } catch (err) {
+            alert(String(err && err.message || 'No se pudo cobrar'));
+          } finally {
+            btn.disabled = false;
+            btn.style.opacity = '';
+            btn.textContent = originalText;
+          }
+        });
+      });
+      list.querySelectorAll('.delivery-map').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          const oid = Number(btn.dataset.id || 0);
+          if (!oid) return;
+          const o = (orders || []).find(x => Number(x.id) === oid) || null;
+          if (!o) return;
+          const a = (typeof getAddressText === 'function') ? getAddressText(o.address_json) : String(o.address_json || '');
+          const addrOneLine = String(a || '').replace(/\n+/g, ' ').trim();
+          if (!addrOneLine) return;
+          const url = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(addrOneLine) + '&travelmode=driving';
+          window.open(url, '_blank', 'noopener');
+        });
+      });
+      list.querySelectorAll('.delivery-notes').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          const oid = Number(btn.dataset.id || 0);
+          if (!oid) return;
+          const o = (orders || []).find(x => Number(x.id) === oid) || null;
+          if (!o) return;
+          let notes = '';
+          try { notes = String(prompt('Notas de entrega (opcional):', String(o.delivery_notes || '')) || '').trim(); } catch(_) { notes = ''; }
+          try {
+            await setDeliveryStatus(oid, String(o.delivery_status || 'pending') || 'pending', { delivery_notes: notes });
+            lastDeliverySignature = '';
+            await loadOrdersSafe();
+          } catch (err) {
+            alert(String(err && err.message || 'No se pudo guardar notas'));
+          }
+        });
+      });
+      list.querySelectorAll('.delivery-up').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          const oid = Number(btn.dataset.id || 0);
+          const arr = (window.currentDeliveryOrders || []).slice();
+          const i = arr.findIndex(x => Number(x.id) === oid);
+          if (i <= 0) return;
+          const tmp = arr[i - 1];
+          arr[i - 1] = arr[i];
+          arr[i] = tmp;
+          try {
+            await saveDeliveryRoute(arr);
+            lastDeliverySignature = '';
+            await loadOrdersSafe();
+          } catch (err) {
+            alert(String(err && err.message || 'No se pudo guardar ruta'));
+          }
+        });
+      });
+      list.querySelectorAll('.delivery-down').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          const oid = Number(btn.dataset.id || 0);
+          const arr = (window.currentDeliveryOrders || []).slice();
+          const i = arr.findIndex(x => Number(x.id) === oid);
+          if (i < 0 || i >= arr.length - 1) return;
+          const tmp = arr[i + 1];
+          arr[i + 1] = arr[i];
+          arr[i] = tmp;
+          try {
+            await saveDeliveryRoute(arr);
+            lastDeliverySignature = '';
+            await loadOrdersSafe();
+          } catch (err) {
+            alert(String(err && err.message || 'No se pudo guardar ruta'));
+          }
+        });
+      });
     }
 
     function formatModifiersForKitchen(modifiersJson) {
@@ -3953,8 +4562,11 @@
     async function renderDelivered(list) {
       const dtbody = document.getElementById('delivered-tbody');
       const dmobile = document.getElementById('delivered-mobile');
+      const role = String(currentUserRole || '').trim().toLowerCase();
+      const isRepartidor = role === 'repartidor';
+      const canArchive = !isRepartidor;
       let archDelList = [];
-      try { archDelList = await fetchArchived('delivered'); } catch (_) { archDelList = []; }
+      try { if (canArchive) archDelList = await fetchArchived('delivered'); } catch (_) { archDelList = []; }
       const archDeliveredIds = new Set(archDelList.map(x => x.id));
       const filtered = list.filter(x => !archDeliveredIds.has(x.id));
       const total = filtered.length;
@@ -3992,7 +4604,7 @@
           <td><span class="status-badge ${statusClass}">${o.status}</span></td>
           <td class="actions">
             <button class="ver-detalle">Ver</button>
-            <button class="archivar">Archivar</button>
+            ${canArchive ? '<button class="archivar">Archivar</button>' : ''}
           </td>
         `;
         fragRows.appendChild(tr);
@@ -4013,7 +4625,7 @@
               }
             }
           } catch(_) { destTextD = String(o.address_json || '').trim(); }
-          const destLabel = o.order_type === 'mesa' ? `Mesa ${o.table_number || ''}` : destTextD.replace(/\n+/g,' ').slice(0,64);
+          const destLabel = destinoLabelFor(o);
           const phoneRaw = (o.order_type === 'direccion' && o.customer_phone) ? String(o.customer_phone) : '';
           const phoneDigits = phoneRaw.replace(/\D/g, '');
           const waUrl = getWaLink(o, phoneDigits);
@@ -4034,7 +4646,7 @@
             <div class="state-line"><span class="status-badge ${statusClass}">${o.status}</span></div>
             <div class="actions">
               <button class="ver-detalle" data-id="${o.id}">Ver</button>
-              <button class="archivar" data-id="${o.id}">Archivar</button>
+              ${canArchive ? `<button class="archivar" data-id="${o.id}">Archivar</button>` : ''}
             </div>
           `;
           fragCards.appendChild(card);
@@ -4046,20 +4658,21 @@
           });
         }
         const viewBtn = tr.querySelector('.ver-detalle');
-        const archiveBtn = tr.querySelector('.archivar');
-        if (!isAuthed) { archiveBtn.disabled = true; }
-        if (!isAuthed) { archiveBtn.disabled = true; }
         viewBtn.addEventListener('click', () => openOrderDetailModal(o.id));
-        archiveBtn.addEventListener('click', async () => {
-          try {
-            await archiveSnapshot(o, 'delivered');
-            tr.remove();
-            try { await renderArchived(); } catch (_) {}
-            try { await renderMetricsBox(); } catch (_) {}
-          } catch (_) {
-            alert('No se pudo archivar el pedido');
-          }
-        });
+        const archiveBtn = tr.querySelector('.archivar');
+        if (archiveBtn) {
+          if (!isAuthed) { archiveBtn.disabled = true; }
+          archiveBtn.addEventListener('click', async () => {
+            try {
+              await archiveSnapshot(o, 'delivered');
+              tr.remove();
+              try { await renderArchived(); } catch (_) {}
+              try { await renderMetricsBox(); } catch (_) {}
+            } catch (_) {
+              alert('No se pudo archivar el pedido');
+            }
+          });
+        }
       }
       // Reemplazar contenido al final para minimizar parpadeo
       dtbody.replaceChildren(fragRows);
@@ -4071,18 +4684,20 @@
             openOrderDetailModal(id);
           });
         });
-        dmobile.querySelectorAll('.archivar').forEach(btn => {
-          btn.addEventListener('click', async () => {
-            const id = parseInt(btn.getAttribute('data-id')||'0',10);
-            const found = pageList.find(x => x.id === id);
-            try {
-              await archiveSnapshot(found, 'delivered');
-              try { await renderArchived(); } catch (_) {}
-              try { await renderMetricsBox(); } catch (_) {}
-              await renderDelivered(list);
-            } catch (_) { alert('No se pudo archivar el pedido'); }
+        if (canArchive) {
+          dmobile.querySelectorAll('.archivar').forEach(btn => {
+            btn.addEventListener('click', async () => {
+              const id = parseInt(btn.getAttribute('data-id')||'0',10);
+              const found = pageList.find(x => x.id === id);
+              try {
+                await archiveSnapshot(found, 'delivered');
+                try { await renderArchived(); } catch (_) {}
+                try { await renderMetricsBox(); } catch (_) {}
+                await renderDelivered(list);
+              } catch (_) { alert('No se pudo archivar el pedido'); }
+            });
           });
-        });
+        }
       }
       const pageNum = Math.floor(deliveredOffset / deliveredLimit) + 1;
       const totalPages = Math.max(1, Math.ceil(total / deliveredLimit));
@@ -4149,7 +4764,7 @@
               }
             }
           } catch(_) { destTextC = String(o.address_json || '').trim(); }
-          const destLabel = o.order_type === 'mesa' ? `Mesa ${o.table_number || ''}` : destTextC.replace(/\n+/g,' ').slice(0,64);
+          const destLabel = destinoLabelFor(o);
           card.className = 'card';
           card.innerHTML = `
             <div class="card-content">
@@ -4401,7 +5016,7 @@
       for (const o of archDel) {
         let dest = '';
         if (o.order_type === 'mesa') {
-          dest = `Mesa ${o.table_number || ''}`;
+          dest = destinoLabelFor(o);
         } else {
           const a = o.address_json;
           try {
@@ -4446,7 +5061,7 @@
             <div class="card-content">
               <div class="title">Pedido #${o.id}</div>
               <div class="meta">${formatARDate(o.created_at||'')} · ${o.order_type}</div>
-              <div class="meta">Destino: ${o.order_type==='mesa'?`<span class='pill pill-mesa'>Mesa ${o.table_number||''}</span>`:dest}</div>
+              <div class="meta">Destino: ${o.order_type==='mesa'?`<span class='pill pill-mesa'>${dest}</span>`:dest}</div>
               <div class="meta">${phoneRaw ? `Tel: ${phoneRaw}` : ''} ${waUrl ? `<a href='${waUrl}' target='_blank' rel='noopener'>WhatsApp</a>`:''}</div>
               <div class="grid"><div>Total: $${o.total}</div></div>
             </div>
@@ -5344,6 +5959,15 @@
         }
         const data = await fetchOrders();
         await renderOrders(data);
+        try {
+          const r = String(currentUserRole || '').trim().toLowerCase();
+          if (r === 'mozo') {
+            await fetchOrdersForTables(true);
+          } else {
+            window.currentOrdersForTables = null;
+          }
+        } catch (_) {}
+        try { window.dispatchEvent(new CustomEvent('kds-orders-updated')); } catch (_) {}
         await renderMetricsBox();
         if (!cashCollapsed && !isCashEditing) await renderCashBox();
       } catch (e) {
@@ -5637,10 +6261,12 @@
         const box = document.getElementById('login-box');
         if (box) box.style.display = 'none';
         document.body.classList.remove('show-login');
+        try { await ensureAuth(); } catch (_) {}
         setAuthUI();
         await loadSlaThresholds();
         await load();
         try { if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } await audioCtx.resume(); } catch (_) {}
+        if (refreshTimer) { try { clearInterval(refreshTimer); } catch (_) {} refreshTimer = null; }
         refreshTimer = setInterval(loadOrdersSafe, POLL_MS);
       } catch (_) {
         if (errEl) errEl.style.display = 'block';
@@ -5689,6 +6315,108 @@
     });
 
     document.addEventListener('DOMContentLoaded', init);
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const btn = document.getElementById('delivery-open');
+      const box = document.getElementById('delivery-box');
+      const reloadBtn = document.getElementById('delivery-reload');
+      const filterSel = document.getElementById('delivery-filter');
+      const statusSel = document.getElementById('delivery-status-filter');
+      const mineBtn = document.getElementById('delivery-mine');
+      const unassignedBtn = document.getElementById('delivery-unassigned');
+      const startRouteBtn = document.getElementById('delivery-start-route');
+      if (btn && box) {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          try { box.open = true; } catch (_) {}
+          try { box.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (_) {}
+        });
+      }
+      if (filterSel) {
+        filterSel.addEventListener('change', async () => {
+          deliveryFilter = String(filterSel.value || 'mine');
+          lastDeliverySignature = '';
+          await loadOrdersSafe();
+        });
+      }
+      if (statusSel) {
+        statusSel.addEventListener('change', async () => {
+          deliveryStatusFilter = String(statusSel.value || '');
+          lastDeliverySignature = '';
+          await loadOrdersSafe();
+        });
+      }
+      if (mineBtn && filterSel) {
+        mineBtn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          filterSel.value = 'mine';
+          deliveryFilter = 'mine';
+          lastDeliverySignature = '';
+          await loadOrdersSafe();
+        });
+      }
+      if (unassignedBtn && filterSel) {
+        unassignedBtn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          filterSel.value = 'unassigned';
+          deliveryFilter = 'unassigned';
+          lastDeliverySignature = '';
+          await loadOrdersSafe();
+        });
+      }
+      if (startRouteBtn) {
+        startRouteBtn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          if (!isAuthed) return;
+          const role = String(currentUserRole || '').trim().toLowerCase();
+          if (role !== 'repartidor') return;
+          const me = String(currentUserName || '').trim().toLowerCase();
+          if (!me) return;
+          const arr = (window.currentDeliveryOrders || []).slice();
+          const mine = arr.filter(o => String(o && o.delivery_assigned_to || '').trim().toLowerCase() === me);
+          const toStart = mine.filter(o => {
+            const ds = String(o && o.delivery_status || 'pending').trim().toLowerCase();
+            return ds === 'assigned' || ds === 'pending';
+          });
+          if (!toStart.length) {
+            alert('No hay pedidos asignados para iniciar');
+            return;
+          }
+          const ok = await askConfirm(`¿Marcar ${toStart.length} pedido(s) como "En camino"?`);
+          if (!ok) return;
+          const originalText = startRouteBtn.textContent;
+          startRouteBtn.disabled = true;
+          startRouteBtn.style.opacity = '0.6';
+          startRouteBtn.style.cursor = 'wait';
+          try {
+            for (let i = 0; i < toStart.length; i++) {
+              startRouteBtn.textContent = `Iniciando ${i + 1}/${toStart.length}...`;
+              await setDeliveryStatus(Number(toStart[i].id), 'en_route');
+            }
+            lastDeliverySignature = '';
+            await loadOrdersSafe();
+          } catch (err) {
+            alert(String(err && err.message || 'No se pudo iniciar ruta'));
+          } finally {
+            startRouteBtn.disabled = false;
+            startRouteBtn.style.opacity = '';
+            startRouteBtn.style.cursor = '';
+            startRouteBtn.textContent = originalText;
+          }
+        });
+      }
+      if (reloadBtn) {
+        reloadBtn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          lastDeliverySignature = '';
+          try {
+            const list = document.getElementById('delivery-list');
+            if (list) list.innerHTML = '<div class="small">Cargando...</div>';
+          } catch (_) {}
+          await loadOrdersSafe();
+        });
+      }
+    });
     window.addEventListener('afterprint', () => {
       document.body.classList.remove('print-modal');
       document.body.classList.remove('print-ticket');
@@ -6409,9 +7137,6 @@
     }
     async function renderCashBox() {
       try {
-        if (cashCollapsed) return;
-        const box = document.getElementById('cash-box');
-        if (!box) return;
         const data = await fetchCashSession();
         if (cashStatusLabel) {
           if (data && data.active) {
@@ -6422,6 +7147,9 @@
             cashStatusLabel.style.background = '#b0bec5';
           }
         }
+        if (cashCollapsed) return;
+        const box = document.getElementById('cash-box');
+        if (!box) return;
         if (!data || !data.active) {
           box.innerHTML = `
             <div class="cash-card">
@@ -7842,13 +8570,13 @@
         };
       }
       if (r === 'mozo'){
-        return { orders_view:true, orders_update_status:true, orders_create:true, tables_manage:true };
+        return { orders_view:true, orders_update_status:true, orders_create:true, tables_manage:true, cash_view:true, cash_manage:true };
       }
       if (r === 'cocina'){
         return { orders_view:true, orders_update_status:true };
       }
       if (r === 'caja'){
-        return { orders_view:true, orders_update_status:true, cash_view:true, cash_manage:true };
+        return { orders_view:true, orders_update_status:true, orders_create:true, cash_view:true, cash_manage:true };
       }
       if (r === 'repartidor'){
         return { orders_view:true, orders_update_status:true };
@@ -8174,7 +8902,7 @@
       }
       
       // Events
-      if (openBtn) openBtn.addEventListener('click', () => {
+      if (openBtn) openBtn.addEventListener('click', async () => {
         if (!modal) return;
         
         // Sync with current tenant before opening
@@ -8186,7 +8914,7 @@
 
         modal.classList.add('active');
         modal.style.display = 'flex'; // Ensure display flex
-        populateTableSelect(); // Load tables from storage
+        await populateTableSelect(undefined, true);
         loadProducts();
         renderCart();
       });
@@ -8202,11 +8930,11 @@
       if (closeBtn) closeBtn.addEventListener('click', closeModal);
       if (overlay) overlay.addEventListener('click', closeModal);
       
-      if (typeSelect) typeSelect.addEventListener('change', () => {
+      if (typeSelect) typeSelect.addEventListener('change', async () => {
         const val = typeSelect.value;
         if (fieldMesa) {
             fieldMesa.style.display = (val === 'mesa') ? 'block' : 'none';
-            if (val === 'mesa') populateTableSelect();
+            if (val === 'mesa') await populateTableSelect(undefined, true);
         }
         if (fieldAddress) fieldAddress.style.display = (val === 'direccion') ? 'block' : 'none';
         if (fieldContact) fieldContact.style.display = (val !== 'mesa') ? 'block' : 'none';
@@ -8215,11 +8943,11 @@
       if (tenantSelect) tenantSelect.addEventListener('change', loadProducts);
       if (searchInput) searchInput.addEventListener('input', renderProducts);
 
-      function populateTableSelect() {
+      async function populateTableSelect(preselectValue, forceRefresh) {
         const tableSelect = document.getElementById('new-order-table');
         if (!tableSelect || tableSelect.tagName !== 'SELECT') return;
         
-        const currentVal = tableSelect.value;
+        const currentVal = (preselectValue != null ? String(preselectValue) : tableSelect.value);
         tableSelect.innerHTML = '<option value="">Seleccionar Mesa...</option>';
         
         const slug = (typeof currentTenantSlug !== 'undefined' && currentTenantSlug) ? currentTenantSlug : 
@@ -8229,10 +8957,58 @@
         if (!stored) stored = localStorage.getItem('kds_tables');
 
         if (!stored) {
+            try {
+                const url = new URL('/api/tenant_tables', window.location.origin);
+                url.searchParams.set('tenant_slug', slug);
+                const res = await fetch(url.toString(), { cache: 'no-store', credentials: 'include' });
+                if (res && res.ok) {
+                    const serverData = await res.json();
+                    const zones = (serverData && serverData.zones) ? serverData.zones : [];
+                    const hasTables = Array.isArray(zones) && zones.some(z => Array.isArray(z.tables) && z.tables.length > 0);
+                    if (hasTables) {
+                        stored = JSON.stringify(serverData);
+                        try { localStorage.setItem('kds_tables_' + slug, stored); } catch (_) {}
+                    }
+                }
+            } catch (_) {}
+        }
+
+        if (!stored) {
              tableSelect.innerHTML += '<option value="" disabled>Sin mesas configuradas</option>';
              return;
         }
         
+        let activeOrders = [];
+        try {
+          if (typeof fetchOrdersForTables === 'function') {
+            const r = await fetchOrdersForTables(!!forceRefresh);
+            activeOrders = (r && Array.isArray(r.orders)) ? r.orders : (Array.isArray(window.currentOrdersForTables) ? window.currentOrdersForTables : []);
+          } else {
+            activeOrders = Array.isArray(window.currentOrders) ? window.currentOrders : [];
+          }
+        } catch (_) {
+          activeOrders = Array.isArray(window.currentOrdersForTables) ? window.currentOrdersForTables : (Array.isArray(window.currentOrders) ? window.currentOrders : []);
+        }
+
+        const findOrderForTable = (tableLabel) => {
+          const tLbl = String(tableLabel || '').trim().toLowerCase();
+          const nLbl = (tLbl.match(/\d+/) || [null])[0];
+          return activeOrders.find(o => {
+            if ((o.order_type || '').toLowerCase() !== 'mesa') return false;
+            if (String(o.status || '').toLowerCase() === 'cancelado') return false;
+            if (String(o.status || '').toLowerCase() === 'entregado' && String(o.payment_status || '').toLowerCase() === 'paid') return false;
+            const tNum = String(o.table_number || '').trim().toLowerCase();
+            if (!tNum) return false;
+            if (tNum === tLbl) return true;
+            const nNum = (tNum.match(/\d+/) || [null])[0];
+            if (nLbl && nNum && parseInt(nLbl, 10) === parseInt(nNum, 10)) return true;
+            if (!nLbl && !nNum) {
+              if (tLbl.includes(tNum) || tNum.includes(tLbl)) return true;
+            }
+            return false;
+          });
+        };
+
         try {
             const data = JSON.parse(stored);
             const zones = data.zones || [];
@@ -8250,7 +9026,14 @@
                     const opt = document.createElement('option');
                     opt.value = table.label; 
                     const statusMap = { 'free': 'Libre', 'occupied': 'Ocupada', 'reserved': 'Reservada', 'bill': 'Cuenta' };
-                    opt.textContent = `${table.label} (${statusMap[table.status] || table.status})`;
+                    const matched = findOrderForTable(table.label);
+                    let effectiveStatus = table.status;
+                    if (matched) {
+                      effectiveStatus = (String(matched.status || '').toLowerCase() === 'entregado' && String(matched.payment_status || '').toLowerCase() !== 'paid') ? 'bill' : 'occupied';
+                    } else if (effectiveStatus === 'occupied' || effectiveStatus === 'bill') {
+                      effectiveStatus = 'free';
+                    }
+                    opt.textContent = `${table.label} (${statusMap[effectiveStatus] || effectiveStatus})`;
                     group.appendChild(opt);
                 });
                 
@@ -8266,6 +9049,8 @@
             console.error('Error parsing tables for select:', e);
         }
       }
+      
+      try { window.kdsPopulateTableSelect = populateTableSelect; } catch (_) {}
       
       async function loadProducts() {
         productsGrid.innerHTML = '<div class="small">Cargando...</div>';
@@ -8395,6 +9180,7 @@
           const total = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
           
           let address = '';
+          let locality = '';
           let table = '';
           
           if (type === 'mesa') {
@@ -8402,6 +9188,7 @@
             if (!table) { alert('Ingrese número de mesa'); confirmBtn.disabled=false; confirmBtn.textContent='Confirmar Pedido'; return; }
           } else if (type === 'direccion') {
             address = document.getElementById('new-order-address').value;
+            locality = (document.getElementById('new-order-locality')?.value || '').trim();
             if (!address) { alert('Ingrese dirección'); confirmBtn.disabled=false; confirmBtn.textContent='Confirmar Pedido'; return; }
           }
           
@@ -8429,7 +9216,8 @@
           };
           
           if (type === 'mesa') payload.table_number = table;
-          if (type === 'direccion' || type === 'espera') payload.address = address || 'Retiro en local';
+          if (type === 'direccion') payload.address = { address: address, locality: locality };
+          if (type === 'espera') payload.address = address || 'Retiro en local';
           
           // Ensure CSRF
           if (!CSRF_TOKEN || CSRF_TOKEN === '') {
@@ -8847,6 +9635,8 @@
             <div id="field-address" class="order-type-field" style="display: none;">
               <label style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #888; margin-bottom: 4px;">Dirección</label>
               <input type="text" id="new-order-address" placeholder="Calle y número" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
+              <label style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #888; margin-bottom: 4px; margin-top: 8px;">Localidad</label>
+              <input type="text" id="new-order-locality" placeholder="Ej: Las Heras, Mendoza" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
             </div>
 
             <div id="field-contact" class="order-type-field" style="display: none;">
@@ -8933,14 +9723,20 @@
         renderTables();
       });
 
-      window.addEventListener('kds-orders-updated', () => {
+      window.addEventListener('kds-orders-updated', async () => {
+         try {
+           const r = String(currentUserRole || '').trim().toLowerCase();
+           if (r === 'mozo') {
+             await (typeof fetchOrdersForTables === 'function' ? fetchOrdersForTables(true) : Promise.resolve());
+           }
+         } catch(_) {}
          if (tmSection.style.display !== 'none') {
              renderTables();
          }
       });
 
       // Navigation
-      tmBtn.addEventListener('click', () => {
+      tmBtn.addEventListener('click', async () => {
         // Keep section.grid visible so Entregados/Cancelados/etc are accessible
         const analytics = document.getElementById('analytics');
         if (analytics) analytics.style.display = 'none';
@@ -8975,6 +9771,13 @@
             mapContainer.style.width = '100%';
           }
         }
+
+        try {
+          const r = String(currentUserRole || '').trim().toLowerCase();
+          if (r === 'mozo' && typeof fetchOrdersForTables === 'function') {
+            await fetchOrdersForTables(true);
+          }
+        } catch(_) {}
 
         renderZones();
         renderTables();
@@ -9958,6 +10761,11 @@
                  if (action === 'pay') {
                       if (qb.classList.contains('paid')) return;
                       if (typeof askPaymentMethod === 'function' && typeof payOrder === 'function') {
+                          if (qb.dataset.busy === '1') return;
+                          qb.dataset.busy = '1';
+                          qb.disabled = true;
+                          qb.style.opacity = '0.6';
+                          qb.style.cursor = 'wait';
                           const methodData = await askPaymentMethod(o.total, (o.order_type || '').toLowerCase() === 'mesa', o.shipping_cost || 0);
                           if (!methodData) return;
                           try {
@@ -9983,6 +10791,14 @@
                                   }
                               }
                           } catch(err) { alert(err.message); }
+                          finally {
+                              qb.dataset.busy = '';
+                              if (!qb.classList.contains('paid')) {
+                                  qb.disabled = false;
+                                  qb.style.opacity = '';
+                                  qb.style.cursor = '';
+                              }
+                          }
                       }
                       return;
                  }
@@ -10141,7 +10957,7 @@
         
         container.innerHTML = '<div class="small" style="text-align: center; color: #888; padding: 20px;">Buscando pedido...</div>';
         
-        const activeOrders = window.currentOrders || [];
+        const activeOrders = window.currentOrdersForTables || window.currentOrders || [];
         const order = activeOrders.find(o => {
             if ((o.order_type || '').toLowerCase() !== 'mesa') return false;
             // Permitir ver pedidos entregados si la mesa sigue ocupada/cuenta (opcional, pero por ahora mantenemos filtro activo)
@@ -10199,12 +11015,14 @@
                         typeSelect.value = 'mesa';
                         typeSelect.dispatchEvent(new Event('change'));
                     }
-                    const tableSelect = document.getElementById('new-order-table');
-                    if(tableSelect) {
-                         // Attempt to set table
-                         // Options values are strictly table.label
-                         tableSelect.value = table.label;
-                    }
+                    try {
+                        if (window.kdsPopulateTableSelect) {
+                            window.kdsPopulateTableSelect(table.label, true);
+                        } else {
+                            const tableSelect = document.getElementById('new-order-table');
+                            if (tableSelect) tableSelect.value = table.label;
+                        }
+                    } catch (_) {}
                 }, 200);
             };
             container.appendChild(createBtn);
@@ -10218,7 +11036,7 @@
       const zone = data.zones.find(z => z.id === currentZoneId);
       if (!zone) return;
 
-      const activeOrders = window.currentOrders || [];
+      const activeOrders = window.currentOrdersForTables || window.currentOrders || [];
       const isMobile = window.matchMedia('(max-width: 768px)').matches;
 
       zone.tables.forEach(table => {

@@ -17,6 +17,7 @@ export function handleCheckout() {
     
     const mesaNumber = (document.getElementById('mesa-number')?.value || '').trim();
     const address = (document.getElementById('delivery-address')?.value || '').trim();
+    const locality = (document.getElementById('delivery-locality')?.value || '').trim();
     const contactPhone = (document.getElementById('contact-phone')?.value || '').trim();
     const deliveryName = (document.getElementById('delivery-name')?.value || '').trim();
     const esperaName = (document.getElementById('espera-name')?.value || '').trim();
@@ -39,7 +40,7 @@ export function handleCheckout() {
     // 1. Prepare Data Strings
     let pedidoInfo = '';
     if (orderType === 'mesa') pedidoInfo = `\uD83D\uDCCD Modalidad: Mesa\n   \uD83C\uDF7D Mesa N°: ${mesaNumber}`;
-    else if (orderType === 'direccion') pedidoInfo = `\uD83D\uDCCD Modalidad: Dirección\n   \uD83C\uDFE0 Dirección: ${address}\n   \uD83D\uDC64 Nombre: ${deliveryName}`;
+    else if (orderType === 'direccion') pedidoInfo = `\uD83D\uDCCD Modalidad: Dirección\n   \uD83C\uDFE0 Dirección: ${address}${locality ? `\n   \uD83D\uDCCD Localidad: ${locality}` : ''}\n   \uD83D\uDC64 Nombre: ${deliveryName}`;
     else if (orderType === 'espera') pedidoInfo = `\uD83D\uDCCD Modalidad: Espera en local\n   \uD83D\uDC64 Nombre: ${esperaName}\n   \uD83D\uDCDE Teléfono: ${esperaPhone}`;
 
     let itemsList = '';
@@ -138,7 +139,7 @@ ${notas}`;
     }
 
     // Enviar al backend (background)
-    sendOrderToBackend(orderType, { mesaNumber, address, contactPhone, esperaName, esperaPhone, deliveryName, orderNotes }, totalNumber);
+    sendOrderToBackend(orderType, { mesaNumber, address, locality, contactPhone, esperaName, esperaPhone, deliveryName, orderNotes }, totalNumber);
 
     // Vaciar carrito tras iniciar proceso de pedido
     clearCart();
@@ -165,7 +166,7 @@ function sendOrderToBackend(orderType, data, total) {
             tenant_slug: getTenantSlug(),
             order_type: orderType,
             table_number: orderType === 'mesa' ? data.mesaNumber : '',
-            address: orderType === 'direccion' ? { address: data.address } : {},
+            address: orderType === 'direccion' ? { address: data.address, locality: data.locality } : {},
             customer_phone: orderType === 'direccion' ? data.contactPhone : (orderType === 'espera' ? data.esperaPhone : ''),
             customer_name: orderType === 'espera' ? data.esperaName : (orderType === 'direccion' ? data.deliveryName : ''),
             items: cart.map(it => ({ id: it.id, name: it.name, price: it.price, quantity: it.quantity, notes: it.notes || '' })),

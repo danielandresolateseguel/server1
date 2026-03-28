@@ -8,29 +8,145 @@ from app.utils import is_authed, check_csrf
 
 bp = Blueprint('cash', __name__, url_prefix='/api/cash')
 
+def _parse_perms_json(s):
+    if not s:
+        return {}
+    try:
+        v = json.loads(s)
+        if isinstance(v, dict):
+            return {str(k): bool(v[k]) for k in v.keys()}
+        if isinstance(v, list):
+            out = {}
+            for it in v:
+                k = str(it or '').strip()
+                if k:
+                    out[k] = True
+            return out
+    except Exception:
+        return {}
+    return {}
+
+def _ctx():
+    role = str(session.get('admin_role') or '').strip().lower()
+    actor = str(session.get('admin_user') or '').strip()
+    perms = _parse_perms_json(session.get('admin_perms') or '')
+    tenant = str(session.get('tenant_slug') or '').strip()
+    owner = bool(session.get('admin_owner'))
+    return tenant, actor, role, perms, owner
+
+def _scope_for(role, owner=False):
+    if owner or role == 'admin':
+        return 'tenant'
+    if role in ('mozo', 'caja', 'repartidor'):
+        return 'user'
+    return 'tenant'
+
+def _has_perm(perms, owner, role, key):
+    if owner or role == 'admin':
+        return True
+    return bool(perms.get(key))
+
+def _enforce_tenant(tenant_slug, session_tenant):
+    if session_tenant and tenant_slug and session_tenant != tenant_slug:
+        return False
+    return True
+
+def _session_where(tenant_slug, scope, actor=None):
+    q = "tenant_slug = ? AND scope = ?"
+    params = [tenant_slug, scope]
+    if scope == 'user':
+        q += " AND lower(opened_by) = lower(?)"
+        params.append(actor or '')
+    return q, params
+
+def _aggregate_sales_by_payments(cur, tenant_slug, actor, start_at, end_at):
+    base_total = 0
+    tip_total = 0
+    shipping_total = 0
+    order_ids = set()
+    cur.execute(
+        "SELECT e.order_id, e.payload_json, COALESCE(o.shipping_cost, 0) "
+        "FROM order_events e JOIN orders o ON e.order_id = o.id "
+        "WHERE o.tenant_slug = ? AND e.event_type = 'payment' AND lower(e.actor) = lower(?) AND e.created_at >= ? AND e.created_at <= ? "
+        "ORDER BY e.id ASC",
+        (tenant_slug, actor or '', start_at, end_at),
+    )
+    for r in cur.fetchall() or []:
+        try:
+            oid = int(r[0])
+        except Exception:
+            continue
+        payload_json = r[1] or ''
+        try:
+            meta = json.loads(payload_json) if payload_json else {}
+        except Exception:
+            meta = {}
+        try:
+            base_total += int(meta.get('amount') or 0)
+        except Exception:
+            pass
+        try:
+            tip_total += int(meta.get('tip') or 0)
+        except Exception:
+            pass
+        try:
+            shipping_total += int(r[2] or 0)
+        except Exception:
+            pass
+        order_ids.add(oid)
+    return {
+        'delivered_count': len(order_ids),
+        'base_delivered_total': int(base_total),
+        'tip_total': int(tip_total),
+        'shipping_total': int(shipping_total),
+        'delivered_total': int(base_total) + int(tip_total),
+    }
+
 @bp.route('/session', methods=['GET'])
 def cash_session_get():
+    if not is_authed():
+        return jsonify({'active': False})
     tenant_slug = request.args.get('tenant_slug') or request.args.get('slug') or 'gastronomia-local1'
+    session_tenant, actor, role, perms, owner = _ctx()
+    if not _enforce_tenant(tenant_slug, session_tenant):
+        return jsonify({'error': 'acceso denegado al tenant'}), 403
+    if not (_has_perm(perms, owner, role, 'cash_view') or _has_perm(perms, owner, role, 'cash_manage')):
+        return jsonify({'error': 'sin permisos'}), 403
+    scope = _scope_for(role, owner=owner)
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("SELECT id, tenant_slug, opened_at, opened_by, opening_amount, notes_open, closed_at, closed_by, closing_amount, notes_close FROM cash_sessions WHERE tenant_slug = ? AND closed_at IS NULL ORDER BY opened_at DESC LIMIT 1", (tenant_slug,))
+    where, params = _session_where(tenant_slug, scope, actor=actor)
+    cur.execute(
+        "SELECT id, tenant_slug, scope, opened_at, opened_by, opening_amount, notes_open, closed_at, closed_by, closing_amount, notes_close "
+        f"FROM cash_sessions WHERE {where} AND closed_at IS NULL ORDER BY opened_at DESC LIMIT 1",
+        params,
+    )
     row = cur.fetchone()
     if not row:
         return jsonify({'active': False})
     sess = dict(row)
     opened_at = sess['opened_at']
-    cur.execute(
-        "SELECT COALESCE(SUM(o.total),0), COALESCE(SUM(COALESCE(o.tip_amount, 0)),0), COALESCE(COUNT(*),0), COALESCE(SUM(COALESCE(o.shipping_cost, 0)),0) FROM orders o "
-        "JOIN (SELECT order_id, MAX(changed_at) AS last_change FROM order_status_history WHERE status = 'entregado' GROUP BY order_id) h ON h.order_id = o.id "
-        "WHERE o.tenant_slug = ? AND o.status = 'entregado' AND h.last_change >= ?",
-        (tenant_slug, opened_at)
-    )
-    agg = cur.fetchone() or (0, 0, 0, 0)
-    base_delivered_total = int(agg[0] or 0)
-    tip_total = int(agg[1] or 0)
-    delivered_total = base_delivered_total + tip_total
-    delivered_count = int(agg[2] or 0)
-    shipping_total = int(agg[3] or 0)
+    now = datetime.utcnow().isoformat()
+    if scope == 'user':
+        sales = _aggregate_sales_by_payments(cur, tenant_slug, actor, opened_at, now)
+        base_delivered_total = int(sales['base_delivered_total'])
+        tip_total = int(sales['tip_total'])
+        delivered_total = int(sales['delivered_total'])
+        delivered_count = int(sales['delivered_count'])
+        shipping_total = int(sales['shipping_total'])
+    else:
+        cur.execute(
+            "SELECT COALESCE(SUM(o.total),0), COALESCE(SUM(COALESCE(o.tip_amount, 0)),0), COALESCE(COUNT(*),0), COALESCE(SUM(COALESCE(o.shipping_cost, 0)),0) FROM orders o "
+            "JOIN (SELECT order_id, MAX(changed_at) AS last_change FROM order_status_history WHERE status = 'entregado' GROUP BY order_id) h ON h.order_id = o.id "
+            "WHERE o.tenant_slug = ? AND o.status = 'entregado' AND h.last_change >= ?",
+            (tenant_slug, opened_at)
+        )
+        agg = cur.fetchone() or (0, 0, 0, 0)
+        base_delivered_total = int(agg[0] or 0)
+        tip_total = int(agg[1] or 0)
+        delivered_total = base_delivered_total + tip_total
+        delivered_count = int(agg[2] or 0)
+        shipping_total = int(agg[3] or 0)
     
     cur.execute("SELECT type, payment_method, SUM(amount), COUNT(*) FROM cash_movements WHERE session_id = ? GROUP BY type, payment_method", (sess['id'],))
     rows_mov = cur.fetchall()
@@ -109,19 +225,28 @@ def cash_open():
     if not check_csrf(): return jsonify({'error': 'csrf inválido'}), 403
     payload = request.get_json(silent=True) or {}
     tenant_slug = (payload.get('tenant_slug') or request.args.get('tenant_slug') or 'gastronomia-local1')
+    session_tenant, actor, role, perms, owner = _ctx()
+    if not _enforce_tenant(tenant_slug, session_tenant):
+        return jsonify({'error': 'acceso denegado al tenant'}), 403
+    if not _has_perm(perms, owner, role, 'cash_manage'):
+        return jsonify({'error': 'sin permisos'}), 403
+    scope = _scope_for(role, owner=owner)
     opening_amount = int(payload.get('opening_amount') or 0)
     notes_open = (payload.get('notes') or '').strip()
-    actor = session.get('admin_user') or ''
     now = datetime.utcnow().isoformat()
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("SELECT id FROM cash_sessions WHERE tenant_slug = ? AND closed_at IS NULL ORDER BY opened_at DESC LIMIT 1", (tenant_slug,))
+    where, params = _session_where(tenant_slug, scope, actor=actor)
+    cur.execute(f"SELECT id FROM cash_sessions WHERE {where} AND closed_at IS NULL ORDER BY opened_at DESC LIMIT 1", params)
     if cur.fetchone():
         return jsonify({'error': 'ya existe una sesión de caja abierta'}), 400
-    cur.execute("INSERT INTO cash_sessions (tenant_slug, opened_at, opened_by, opening_amount, notes_open) VALUES (?, ?, ?, ?, ?)", (tenant_slug, now, actor, opening_amount, notes_open))
+    cur.execute(
+        "INSERT INTO cash_sessions (tenant_slug, scope, opened_at, opened_by, opening_amount, notes_open) VALUES (?, ?, ?, ?, ?, ?)",
+        (tenant_slug, scope, now, actor, opening_amount, notes_open),
+    )
     conn.commit()
     sid = cur.lastrowid
-    return jsonify({'session_id': sid, 'tenant_slug': tenant_slug, 'opened_at': now, 'opening_amount': opening_amount})
+    return jsonify({'session_id': sid, 'tenant_slug': tenant_slug, 'scope': scope, 'opened_at': now, 'opening_amount': opening_amount})
 
 @bp.route('/close', methods=['POST'])
 def cash_close():
@@ -129,13 +254,23 @@ def cash_close():
     if not check_csrf(): return jsonify({'error': 'csrf inválido'}), 403
     payload = request.get_json(silent=True) or {}
     tenant_slug = (payload.get('tenant_slug') or request.args.get('tenant_slug') or 'gastronomia-local1')
+    session_tenant, actor, role, perms, owner = _ctx()
+    if not _enforce_tenant(tenant_slug, session_tenant):
+        return jsonify({'error': 'acceso denegado al tenant'}), 403
+    if not _has_perm(perms, owner, role, 'cash_manage'):
+        return jsonify({'error': 'sin permisos'}), 403
+    scope = _scope_for(role, owner=owner)
     closing_amount = int(payload.get('closing_amount') or 0)
     notes_close = (payload.get('notes') or '').strip()
-    actor = session.get('admin_user') or ''
     now = datetime.utcnow().isoformat()
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("SELECT id, opened_at, opening_amount FROM cash_sessions WHERE tenant_slug = ? AND closed_at IS NULL ORDER BY opened_at DESC LIMIT 1", (tenant_slug,))
+    where, params = _session_where(tenant_slug, scope, actor=actor)
+    cur.execute(
+        "SELECT id, opened_at, opening_amount FROM cash_sessions "
+        f"WHERE {where} AND closed_at IS NULL ORDER BY opened_at DESC LIMIT 1",
+        params,
+    )
     row = cur.fetchone()
     if not row:
         return jsonify({'error': 'no hay sesión de caja abierta'}), 400
@@ -143,17 +278,24 @@ def cash_close():
     opened_at = str(row[1])
     opening_amount = int(row[2] or 0)
     
-    cur.execute(
-        "SELECT COALESCE(SUM(o.total),0), COALESCE(SUM(COALESCE(o.tip_amount, 0)),0), COALESCE(SUM(COALESCE(o.shipping_cost, 0)),0) FROM orders o "
-        "JOIN (SELECT order_id, MAX(changed_at) AS last_change FROM order_status_history WHERE status = 'entregado' GROUP BY order_id) h ON h.order_id = o.id "
-        "WHERE o.tenant_slug = ? AND o.status = 'entregado' AND h.last_change >= ? AND h.last_change <= ?",
-        (tenant_slug, opened_at, now)
-    )
-    row_totals = cur.fetchone() or (0, 0, 0)
-    base_delivered_total = int(row_totals[0] or 0)
-    tip_total = int(row_totals[1] or 0)
-    shipping_total = int(row_totals[2] or 0)
-    delivered_total = base_delivered_total + tip_total
+    if scope == 'user':
+        sales = _aggregate_sales_by_payments(cur, tenant_slug, actor, opened_at, now)
+        base_delivered_total = int(sales['base_delivered_total'])
+        tip_total = int(sales['tip_total'])
+        shipping_total = int(sales['shipping_total'])
+        delivered_total = int(sales['delivered_total'])
+    else:
+        cur.execute(
+            "SELECT COALESCE(SUM(o.total),0), COALESCE(SUM(COALESCE(o.tip_amount, 0)),0), COALESCE(SUM(COALESCE(o.shipping_cost, 0)),0) FROM orders o "
+            "JOIN (SELECT order_id, MAX(changed_at) AS last_change FROM order_status_history WHERE status = 'entregado' GROUP BY order_id) h ON h.order_id = o.id "
+            "WHERE o.tenant_slug = ? AND o.status = 'entregado' AND h.last_change >= ? AND h.last_change <= ?",
+            (tenant_slug, opened_at, now)
+        )
+        row_totals = cur.fetchone() or (0, 0, 0)
+        base_delivered_total = int(row_totals[0] or 0)
+        tip_total = int(row_totals[1] or 0)
+        shipping_total = int(row_totals[2] or 0)
+        delivered_total = base_delivered_total + tip_total
     
     cur.execute("SELECT type, payment_method, SUM(amount), COUNT(*) FROM cash_movements WHERE session_id = ? GROUP BY type, payment_method", (sid,))
     rows_mov = cur.fetchall()
@@ -231,7 +373,15 @@ def cash_close():
 
 @bp.route('/movements', methods=['GET'])
 def cash_movements_list():
+    if not is_authed():
+        return jsonify({'tenant_slug': (request.args.get('tenant_slug') or request.args.get('slug') or ''), 'session_id': 0, 'movements': []})
     tenant_slug = request.args.get('tenant_slug') or request.args.get('slug') or 'gastronomia-local1'
+    session_tenant, actor, role, perms, owner = _ctx()
+    if not _enforce_tenant(tenant_slug, session_tenant):
+        return jsonify({'error': 'acceso denegado al tenant'}), 403
+    if not _has_perm(perms, owner, role, 'cash_view'):
+        return jsonify({'error': 'sin permisos'}), 403
+    scope = _scope_for(role, owner=owner)
     session_id = request.args.get('session_id')
     from_date = request.args.get('from')
     to_date = request.args.get('to')
@@ -243,15 +393,28 @@ def cash_movements_list():
     cur = conn.cursor()
     movements = []
     if sid > 0:
+        cur.execute("SELECT scope, opened_by FROM cash_sessions WHERE id = ? AND tenant_slug = ?", (sid, tenant_slug))
+        srow = cur.fetchone()
+        if not srow:
+            return jsonify({'error': 'sesión no encontrada'}), 404
+        sess_scope = str(srow[0] or 'tenant')
+        sess_opened_by = str(srow[1] or '')
+        if scope == 'user' and (sess_scope != 'user' or sess_opened_by.lower() != (actor or '').lower()):
+            return jsonify({'error': 'acceso denegado a la sesión'}), 403
+        if scope == 'tenant' and sess_scope != 'tenant':
+            return jsonify({'error': 'acceso denegado a la sesión'}), 403
         cur.execute("SELECT id, session_id, type, amount, note, actor, created_at FROM cash_movements WHERE session_id = ? ORDER BY id ASC", (sid,))
         movements = [dict(r) for r in cur.fetchall()]
     elif from_date or to_date:
         q = (
             "SELECT m.id, m.session_id, m.type, m.amount, m.note, m.actor, m.created_at "
             "FROM cash_movements m JOIN cash_sessions s ON m.session_id = s.id "
-            "WHERE s.tenant_slug = ?"
+            "WHERE s.tenant_slug = ? AND s.scope = ?"
         )
-        params = [tenant_slug]
+        params = [tenant_slug, scope]
+        if scope == 'user':
+            q += " AND lower(s.opened_by) = lower(?)"
+            params.append(actor or '')
         if from_date:
             q += " AND m.created_at >= ?"
             params.append(from_date)
@@ -269,16 +432,22 @@ def cash_movement():
     if not check_csrf(): return jsonify({'error': 'csrf inválido'}), 403
     payload = request.get_json(silent=True) or {}
     tenant_slug = (payload.get('tenant_slug') or request.args.get('tenant_slug') or 'gastronomia-local1')
+    session_tenant, actor, role, perms, owner = _ctx()
+    if not _enforce_tenant(tenant_slug, session_tenant):
+        return jsonify({'error': 'acceso denegado al tenant'}), 403
+    if not _has_perm(perms, owner, role, 'cash_manage'):
+        return jsonify({'error': 'sin permisos'}), 403
+    scope = _scope_for(role, owner=owner)
     mtype = (payload.get('type') or '').strip().lower()
     amount = int(payload.get('amount') or 0)
     note = (payload.get('note') or '').strip()
     if mtype not in ('entrada','salida'): return jsonify({'error': 'tipo inválido'}), 400
     if amount <= 0: return jsonify({'error': 'monto inválido'}), 400
-    actor = session.get('admin_user') or ''
     now = datetime.utcnow().isoformat()
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("SELECT id FROM cash_sessions WHERE tenant_slug = ? AND closed_at IS NULL ORDER BY opened_at DESC LIMIT 1", (tenant_slug,))
+    where, params = _session_where(tenant_slug, scope, actor=actor)
+    cur.execute(f"SELECT id FROM cash_sessions WHERE {where} AND closed_at IS NULL ORDER BY opened_at DESC LIMIT 1", params)
     row = cur.fetchone()
     if not row: return jsonify({'error': 'no hay sesión de caja abierta'}), 400
     sid = int(row[0])
@@ -288,7 +457,15 @@ def cash_movement():
 
 @bp.route('/session/orders', methods=['GET'])
 def cash_session_orders():
+    if not is_authed():
+        return jsonify({'orders': []})
     tenant_slug = request.args.get('tenant_slug') or request.args.get('slug') or 'gastronomia-local1'
+    session_tenant, actor, role, perms, owner = _ctx()
+    if not _enforce_tenant(tenant_slug, session_tenant):
+        return jsonify({'error': 'acceso denegado al tenant'}), 403
+    if not _has_perm(perms, owner, role, 'cash_view'):
+        return jsonify({'error': 'sin permisos'}), 403
+    scope = _scope_for(role, owner=owner)
     session_id = request.args.get('session_id')
     to_date = request.args.get('to')
     try:
@@ -299,36 +476,89 @@ def cash_session_orders():
     cur = conn.cursor()
     opened_at = None
     closed_at = None
+    sess_scope = None
+    sess_opened_by = None
     if sid > 0:
-        cur.execute("SELECT opened_at, closed_at FROM cash_sessions WHERE id = ? AND tenant_slug = ?", (sid, tenant_slug))
+        cur.execute("SELECT opened_at, closed_at, scope, opened_by FROM cash_sessions WHERE id = ? AND tenant_slug = ?", (sid, tenant_slug))
         row = cur.fetchone()
         if row:
             opened_at = str(row[0] or '')
             closed_at = str(row[1] or '')
+            sess_scope = str(row[2] or 'tenant')
+            sess_opened_by = str(row[3] or '')
     else:
-        cur.execute("SELECT id, opened_at FROM cash_sessions WHERE tenant_slug = ? AND closed_at IS NULL ORDER BY opened_at DESC LIMIT 1", (tenant_slug,))
+        where, params = _session_where(tenant_slug, scope, actor=actor)
+        cur.execute(
+            "SELECT id, opened_at, closed_at, scope, opened_by FROM cash_sessions "
+            f"WHERE {where} AND closed_at IS NULL ORDER BY opened_at DESC LIMIT 1",
+            params,
+        )
         row = cur.fetchone()
         if row:
             sid = int(row[0])
             opened_at = str(row[1] or '')
+            closed_at = str(row[2] or '')
+            sess_scope = str(row[3] or scope)
+            sess_opened_by = str(row[4] or '')
             
     if not opened_at:
         return jsonify({'orders': []})
+    if scope == 'user':
+        if sess_scope != 'user' or (sess_opened_by or '').lower() != (actor or '').lower():
+            return jsonify({'error': 'acceso denegado a la sesión'}), 403
+    if scope == 'tenant' and sess_scope != 'tenant':
+        return jsonify({'error': 'acceso denegado a la sesión'}), 403
         
     end_at = to_date if to_date else (closed_at or datetime.utcnow().isoformat())
-    base = (
-        "SELECT o.id, o.created_at, o.total, o.payment_method FROM orders o "
-        "JOIN (SELECT order_id, MAX(changed_at) AS last_change FROM order_status_history WHERE status = 'entregado' GROUP BY order_id) h ON h.order_id = o.id "
-        "WHERE o.tenant_slug = ? AND o.status = 'entregado' AND h.last_change >= ? AND h.last_change <= ? "
-        "ORDER BY o.id DESC"
-    )
-    cur.execute(base, (tenant_slug, opened_at, end_at))
-    rows = cur.fetchall()
-    return jsonify({'orders': [ {'id': int(r[0]), 'created_at': r[1], 'total': int(r[2] or 0), 'payment_method': r[3] } for r in rows ], 'session_id': sid, 'from': opened_at, 'to': end_at})
+    if scope == 'user':
+        cur.execute(
+            "SELECT o.id, o.created_at, e.payload_json "
+            "FROM order_events e JOIN orders o ON e.order_id = o.id "
+            "WHERE o.tenant_slug = ? AND e.event_type = 'payment' AND lower(e.actor) = lower(?) AND e.created_at >= ? AND e.created_at <= ? "
+            "ORDER BY o.id DESC",
+            (tenant_slug, actor or '', opened_at, end_at),
+        )
+        out = []
+        for r in cur.fetchall() or []:
+            try:
+                oid = int(r[0])
+            except Exception:
+                continue
+            created_at = r[1]
+            payload_json = r[2] or ''
+            try:
+                meta = json.loads(payload_json) if payload_json else {}
+            except Exception:
+                meta = {}
+            method = meta.get('method') or ''
+            try:
+                amt = int(meta.get('amount') or 0) + int(meta.get('tip') or 0)
+            except Exception:
+                amt = 0
+            out.append({'id': oid, 'created_at': created_at, 'total': int(amt), 'payment_method': method})
+        return jsonify({'orders': out, 'session_id': sid, 'from': opened_at, 'to': end_at})
+    else:
+        base = (
+            "SELECT o.id, o.created_at, o.total, o.payment_method FROM orders o "
+            "JOIN (SELECT order_id, MAX(changed_at) AS last_change FROM order_status_history WHERE status = 'entregado' GROUP BY order_id) h ON h.order_id = o.id "
+            "WHERE o.tenant_slug = ? AND o.status = 'entregado' AND h.last_change >= ? AND h.last_change <= ? "
+            "ORDER BY o.id DESC"
+        )
+        cur.execute(base, (tenant_slug, opened_at, end_at))
+        rows = cur.fetchall()
+        return jsonify({'orders': [ {'id': int(r[0]), 'created_at': r[1], 'total': int(r[2] or 0), 'payment_method': r[3] } for r in rows ], 'session_id': sid, 'from': opened_at, 'to': end_at})
 
 @bp.route('/sessions', methods=['GET'])
 def cash_sessions_list():
+    if not is_authed():
+        return jsonify({'sessions': [], 'limit': int(request.args.get('limit') or 50), 'offset': int(request.args.get('offset') or 0), 'count': 0})
     tenant_slug = request.args.get('tenant_slug') or request.args.get('slug') or 'gastronomia-local1'
+    session_tenant, actor, role, perms, owner = _ctx()
+    if not _enforce_tenant(tenant_slug, session_tenant):
+        return jsonify({'error': 'acceso denegado al tenant'}), 403
+    if not _has_perm(perms, owner, role, 'cash_view'):
+        return jsonify({'error': 'sin permisos'}), 403
+    scope = _scope_for(role, owner=owner)
     limit = int(request.args.get('limit') or 50)
     offset = int(request.args.get('offset') or 0)
     date_field = (request.args.get('date_field') or 'closed').strip().lower()
@@ -347,8 +577,11 @@ def cash_sessions_list():
     
     conn = get_db()
     cur = conn.cursor()
-    base = "SELECT id, tenant_slug, opened_at, opened_by, opening_amount, notes_open, closed_at, closed_by, closing_amount, notes_close, closing_diff, closing_metadata FROM cash_sessions WHERE tenant_slug = ? AND closed_at IS NOT NULL"
-    params = [tenant_slug]
+    base = "SELECT id, tenant_slug, scope, opened_at, opened_by, opening_amount, notes_open, closed_at, closed_by, closing_amount, notes_close, closing_diff, closing_metadata FROM cash_sessions WHERE tenant_slug = ? AND scope = ? AND closed_at IS NOT NULL"
+    params = [tenant_slug, scope]
+    if scope == 'user':
+        base += " AND lower(opened_by) = lower(?)"
+        params.append(actor or '')
     col = 'closed_at' if date_field == 'closed' else 'opened_at'
     if from_date:
         base += f" AND {col} >= ?"
@@ -368,19 +601,28 @@ def cash_sessions_list():
         sid = int(s['id'])
         opened_at = s.get('opened_at')
         closed_at = s.get('closed_at')
-        
-        cur.execute(
-            "SELECT COALESCE(SUM(o.total),0), COALESCE(SUM(COALESCE(o.tip_amount, 0)),0), COALESCE(COUNT(*),0), COALESCE(SUM(COALESCE(o.shipping_cost, 0)),0) FROM orders o "
-            "JOIN (SELECT order_id, MAX(changed_at) AS last_change FROM order_status_history WHERE status = 'entregado' GROUP BY order_id) h ON h.order_id = o.id "
-            "WHERE o.tenant_slug = ? AND o.status = 'entregado' AND h.last_change >= ? AND h.last_change <= ?",
-            (tenant_slug, opened_at, closed_at)
-        )
-        trow = cur.fetchone() or (0,0,0,0)
-        base_delivered_total = int(trow[0] or 0)
-        tip_total = int(trow[1] or 0)
-        delivered_total = base_delivered_total + tip_total
-        delivered_count = int(trow[2] or 0)
-        shipping_total = int(trow[3] or 0)
+        sess_scope = str(s.get('scope') or scope)
+        sess_opened_by = str(s.get('opened_by') or '')
+        if sess_scope == 'user':
+            sales = _aggregate_sales_by_payments(cur, tenant_slug, sess_opened_by, opened_at, closed_at)
+            base_delivered_total = int(sales['base_delivered_total'])
+            tip_total = int(sales['tip_total'])
+            delivered_total = int(sales['delivered_total'])
+            delivered_count = int(sales['delivered_count'])
+            shipping_total = int(sales['shipping_total'])
+        else:
+            cur.execute(
+                "SELECT COALESCE(SUM(o.total),0), COALESCE(SUM(COALESCE(o.tip_amount, 0)),0), COALESCE(COUNT(*),0), COALESCE(SUM(COALESCE(o.shipping_cost, 0)),0) FROM orders o "
+                "JOIN (SELECT order_id, MAX(changed_at) AS last_change FROM order_status_history WHERE status = 'entregado' GROUP BY order_id) h ON h.order_id = o.id "
+                "WHERE o.tenant_slug = ? AND o.status = 'entregado' AND h.last_change >= ? AND h.last_change <= ?",
+                (tenant_slug, opened_at, closed_at)
+            )
+            trow = cur.fetchone() or (0,0,0,0)
+            base_delivered_total = int(trow[0] or 0)
+            tip_total = int(trow[1] or 0)
+            delivered_total = base_delivered_total + tip_total
+            delivered_count = int(trow[2] or 0)
+            shipping_total = int(trow[3] or 0)
         
         cur.execute("SELECT COALESCE(SUM(CASE WHEN type='entrada' THEN amount ELSE 0 END),0), COALESCE(SUM(CASE WHEN type='salida' THEN amount ELSE 0 END),0) FROM cash_movements WHERE session_id = ?", (sid,))
         mrow = cur.fetchone() or (0,0)
@@ -453,7 +695,15 @@ def cash_sessions_list():
 
 @bp.route('/sessions/export.csv', methods=['GET'])
 def cash_sessions_export_csv():
+    if not is_authed():
+        return jsonify({'error': 'no autorizado'}), 401
     tenant_slug = request.args.get('tenant_slug') or request.args.get('slug') or 'gastronomia-local1'
+    session_tenant, actor, role, perms, owner = _ctx()
+    if not _enforce_tenant(tenant_slug, session_tenant):
+        return jsonify({'error': 'acceso denegado al tenant'}), 403
+    if not _has_perm(perms, owner, role, 'cash_view'):
+        return jsonify({'error': 'sin permisos'}), 403
+    scope = _scope_for(role, owner=owner)
     date_field = (request.args.get('date_field') or 'closed').strip().lower()
     if date_field not in ('closed', 'opened'): date_field = 'closed'
     from_date = request.args.get('from')
@@ -470,8 +720,11 @@ def cash_sessions_export_csv():
     
     conn = get_db()
     cur = conn.cursor()
-    base = "SELECT id, tenant_slug, opened_at, opened_by, opening_amount, notes_open, closed_at, closed_by, closing_amount, notes_close, closing_diff FROM cash_sessions WHERE tenant_slug = ? AND closed_at IS NOT NULL"
-    params = [tenant_slug]
+    base = "SELECT id, tenant_slug, scope, opened_at, opened_by, opening_amount, notes_open, closed_at, closed_by, closing_amount, notes_close, closing_diff FROM cash_sessions WHERE tenant_slug = ? AND scope = ? AND closed_at IS NOT NULL"
+    params = [tenant_slug, scope]
+    if scope == 'user':
+        base += " AND lower(opened_by) = lower(?)"
+        params.append(actor or '')
     col = 'closed_at' if date_field == 'closed' else 'opened_at'
     if from_date:
         base += f" AND {col} >= ?"
@@ -492,18 +745,26 @@ def cash_sessions_export_csv():
         sid = int(s['id'])
         opened_at = s.get('opened_at')
         closed_at = s.get('closed_at')
-        
-        cur.execute(
-            "SELECT COALESCE(SUM(o.total),0), COALESCE(SUM(COALESCE(o.tip_amount, 0)),0), COALESCE(SUM(COALESCE(o.shipping_cost, 0)),0) FROM orders o "
-            "JOIN (SELECT order_id, MAX(changed_at) AS last_change FROM order_status_history WHERE status = 'entregado' GROUP BY order_id) h ON h.order_id = o.id "
-            "WHERE o.tenant_slug = ? AND o.status = 'entregado' AND h.last_change >= ? AND h.last_change <= ?",
-            (tenant_slug, opened_at, closed_at)
-        )
-        trow = cur.fetchone() or (0,0,0)
-        base_delivered_total = int(trow[0] or 0)
-        tip_total = int(trow[1] or 0)
-        shipping_total = int(trow[2] or 0)
-        delivered_total = base_delivered_total + tip_total
+        sess_scope = str(s.get('scope') or scope)
+        sess_opened_by = str(s.get('opened_by') or '')
+        if sess_scope == 'user':
+            sales = _aggregate_sales_by_payments(cur, tenant_slug, sess_opened_by, opened_at, closed_at)
+            base_delivered_total = int(sales['base_delivered_total'])
+            tip_total = int(sales['tip_total'])
+            shipping_total = int(sales['shipping_total'])
+            delivered_total = int(sales['delivered_total'])
+        else:
+            cur.execute(
+                "SELECT COALESCE(SUM(o.total),0), COALESCE(SUM(COALESCE(o.tip_amount, 0)),0), COALESCE(SUM(COALESCE(o.shipping_cost, 0)),0) FROM orders o "
+                "JOIN (SELECT order_id, MAX(changed_at) AS last_change FROM order_status_history WHERE status = 'entregado' GROUP BY order_id) h ON h.order_id = o.id "
+                "WHERE o.tenant_slug = ? AND o.status = 'entregado' AND h.last_change >= ? AND h.last_change <= ?",
+                (tenant_slug, opened_at, closed_at)
+            )
+            trow = cur.fetchone() or (0,0,0)
+            base_delivered_total = int(trow[0] or 0)
+            tip_total = int(trow[1] or 0)
+            shipping_total = int(trow[2] or 0)
+            delivered_total = base_delivered_total + tip_total
         
         cur.execute("SELECT COALESCE(SUM(CASE WHEN type='entrada' THEN amount ELSE 0 END),0), COALESCE(SUM(CASE WHEN type='salida' THEN amount ELSE 0 END),0) FROM cash_movements WHERE session_id = ?", (sid,))
         mrow = cur.fetchone() or (0,0)

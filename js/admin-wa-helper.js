@@ -4,20 +4,31 @@
  */
 
 function getAddressText(val) {
+  const formatObj = (obj) => {
+    const address = String(obj && (obj.address || obj.street || obj.line1) || '').trim();
+    const locality = String(obj && (obj.locality || obj.city || obj.town || obj.municipality) || '').trim();
+    const province = String(obj && (obj.province || obj.state) || '').trim();
+    const country = String(obj && obj.country || '').trim();
+    const tail = [locality, province, country].filter(Boolean).join(', ');
+    if (address && tail) return `${address}, ${tail}`;
+    if (address) return address;
+    if (tail) return tail;
+    return '';
+  };
   try {
-    if (val && typeof val === 'object') return String(val.address || val.street || val.line1 || '').trim();
+    if (val && typeof val === 'object') return formatObj(val);
     const raw = String(val || '').trim();
     if (!raw) return '';
     if (raw.startsWith('{')) {
       try {
         const j = JSON.parse(raw);
-        return String(j.address || j.street || j.line1 || '').trim();
+        return formatObj(j);
       } catch (_) {
         try {
            // Try replacing single quotes with double quotes for Python-style dict strings
            const fixed = raw.replace(/'/g, '"');
            const j = JSON.parse(fixed);
-           return String(j.address || j.street || j.line1 || '').trim();
+           return formatObj(j);
         } catch(__) {}
       }
     }
@@ -33,7 +44,15 @@ function getAddressText(val) {
 }
 
 function destinoLabelFor(order) {
-  if (order.order_type === 'mesa') return `Mesa ${order.table_number || ''}`;
+  if (order.order_type === 'mesa') {
+    const raw = String(order.table_number || '').trim();
+    if (!raw) return 'Mesa';
+    const lc = raw.toLowerCase();
+    if (lc.startsWith('mesa ')) return 'Mesa ' + raw.slice(5).trim();
+    if (lc.startsWith('barra ')) return 'Barra ' + raw.slice(6).trim();
+    if (/^\d+$/.test(raw)) return `Mesa ${raw}`;
+    return raw;
+  }
   if (order.order_type === 'espera') return `Espera: ${order.customer_name || ''}`;
   return getAddressText(order.address_json).replace(/\n+/g,' ').slice(0,64);
 }

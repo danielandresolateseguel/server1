@@ -1,12 +1,99 @@
 import json
 from datetime import datetime, timedelta, timezone
 from flask import Blueprint, request, jsonify, session, Response
-from app.database import get_db
+from app.database import get_db, is_postgres
 from app.utils import is_authed, check_csrf, get_cached_tenant_config, invalidate_tenant_config
 import io
 import csv
 
 bp = Blueprint('orders', __name__, url_prefix='/api')
+
+def _parse_perms_json(s):
+    if not s:
+        return {}
+    try:
+        v = json.loads(s)
+        if isinstance(v, dict):
+            return {str(k): bool(v[k]) for k in v.keys()}
+        if isinstance(v, list):
+            out = {}
+            for it in v:
+                k = str(it or '').strip()
+                if k:
+                    out[k] = True
+            return out
+    except Exception:
+        return {}
+    return {}
+
+def _ctx():
+    role = str(session.get('admin_role') or '').strip().lower()
+    actor = str(session.get('admin_user') or '').strip()
+    perms = _parse_perms_json(session.get('admin_perms') or '')
+    tenant = str(session.get('tenant_slug') or '').strip()
+    owner = bool(session.get('admin_owner'))
+    return tenant, actor, role, perms, owner
+
+def _has_perm(perms, owner, role, key):
+    if owner or role == 'admin':
+        return True
+    return bool(perms.get(key))
+
+def _scope_for(role, owner=False):
+    if owner or role == 'admin':
+        return 'tenant'
+    if role in ('mozo', 'caja', 'repartidor'):
+        return 'user'
+    return 'tenant'
+
+def ensure_orders_delivery_columns(conn, cur):
+    try:
+        cur.execute("PRAGMA table_info(orders)")
+        cols = [r[1] for r in (cur.fetchall() or [])]
+        stmts = []
+        if 'delivery_assigned_to' not in cols:
+            stmts.append("ALTER TABLE orders ADD COLUMN delivery_assigned_to TEXT")
+        if 'delivery_status' not in cols:
+            stmts.append("ALTER TABLE orders ADD COLUMN delivery_status TEXT DEFAULT 'pending'")
+        if 'delivery_sequence' not in cols:
+            stmts.append("ALTER TABLE orders ADD COLUMN delivery_sequence INTEGER")
+        if 'delivery_notes' not in cols:
+            stmts.append("ALTER TABLE orders ADD COLUMN delivery_notes TEXT")
+        if 'delivery_assigned_at' not in cols:
+            stmts.append("ALTER TABLE orders ADD COLUMN delivery_assigned_at TEXT")
+        if 'delivered_at' not in cols:
+            stmts.append("ALTER TABLE orders ADD COLUMN delivered_at TEXT")
+        if stmts:
+            for s in stmts:
+                cur.execute(s)
+            conn.commit()
+        return
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+
+    pg_cols = [
+        ("delivery_assigned_to", "delivery_assigned_to TEXT"),
+        ("delivery_status", "delivery_status TEXT DEFAULT 'pending'"),
+        ("delivery_sequence", "delivery_sequence INTEGER"),
+        ("delivery_notes", "delivery_notes TEXT"),
+        ("delivery_assigned_at", "delivery_assigned_at TEXT"),
+        ("delivered_at", "delivered_at TEXT"),
+    ]
+    for _, ddl in pg_cols:
+        try:
+            cur.execute(f"ALTER TABLE orders ADD COLUMN IF NOT EXISTS {ddl}")
+        except Exception:
+            pass
+    try:
+        conn.commit()
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
 
 def compute_total(items):
     total = 0
@@ -256,7 +343,7 @@ def list_orders():
     
     conn = get_db()
     cur = conn.cursor()
-    base = "SELECT id, tenant_slug, order_type, table_number, address_json, status, total, created_at, customer_phone, customer_name, payment_status, payment_method, tip_amount, shipping_cost FROM orders WHERE tenant_slug = ?"
+    base = "SELECT id, tenant_slug, order_type, table_number, address_json, status, total, created_at, customer_phone, customer_name, payment_status, payment_method, tip_amount, shipping_cost, delivery_assigned_to, delivery_status, delivery_sequence, delivery_notes, delivery_assigned_at, delivered_at FROM orders WHERE tenant_slug = ?"
     params = [tenant_slug]
     if exclude_archived == 'true':
         base += " AND id NOT IN (SELECT order_id FROM archived_orders)"
@@ -318,7 +405,7 @@ def get_order_detail(order_id):
     cur = conn.cursor()
     cur.execute(
         """
-        SELECT id, tenant_slug, customer_name, customer_phone, order_type, table_number, address_json, status, total, payment_method, payment_status, created_at, order_notes, tip_amount, shipping_cost
+        SELECT id, tenant_slug, customer_name, customer_phone, order_type, table_number, address_json, status, total, payment_method, payment_status, created_at, order_notes, tip_amount, shipping_cost, delivery_assigned_to, delivery_status, delivery_sequence, delivery_notes, delivery_assigned_at, delivered_at
         FROM orders WHERE id = ?
         """,
         (order_id,)
@@ -369,6 +456,9 @@ def get_order_detail(order_id):
 def update_order_status(order_id):
     if not is_authed(): return jsonify({'error': 'no autorizado'}), 401
     if not check_csrf(): return jsonify({'error': 'csrf inválido'}), 403
+    session_tenant, actor, role, perms, owner = _ctx()
+    if not _has_perm(perms, owner, role, 'orders_update_status'):
+        return jsonify({'error': 'sin permisos'}), 403
     
     payload = request.get_json(silent=True) or {}
     new_status = payload.get('status')
@@ -390,7 +480,16 @@ def update_order_status(order_id):
         row = cur.fetchone()
         if not row: return jsonify({'error': 'orden no encontrada'}), 404
         tenant_slug = str(row[0] or '')
-        cur.execute("SELECT id FROM cash_sessions WHERE tenant_slug = ? AND closed_at IS NULL ORDER BY opened_at DESC LIMIT 1", (tenant_slug,))
+        if session_tenant and tenant_slug and session_tenant != tenant_slug:
+            return jsonify({'error': 'acceso denegado al tenant'}), 403
+        scope = _scope_for(role, owner=owner)
+        if scope == 'user':
+            cur.execute(
+                "SELECT id FROM cash_sessions WHERE tenant_slug = ? AND scope = 'user' AND closed_at IS NULL AND lower(opened_by) = lower(?) ORDER BY opened_at DESC LIMIT 1",
+                (tenant_slug, actor or ''),
+            )
+        else:
+            cur.execute("SELECT id FROM cash_sessions WHERE tenant_slug = ? AND scope = 'tenant' AND closed_at IS NULL ORDER BY opened_at DESC LIMIT 1", (tenant_slug,))
         if not cur.fetchone():
             return jsonify({'error': 'no hay sesión de caja abierta'}), 400
             
@@ -416,10 +515,314 @@ def update_order_status(order_id):
         
     return jsonify({'order_id': order_id, 'status': new_status})
 
+@bp.route('/delivery/orders', methods=['GET'])
+def list_delivery_orders():
+    if not is_authed():
+        return jsonify({'error': 'no autorizado'}), 401
+    session_tenant, actor, role, perms, owner = _ctx()
+    if not _has_perm(perms, owner, role, 'orders_view'):
+        return jsonify({'error': 'sin permisos'}), 403
+
+    tenant_slug = request.args.get('tenant_slug') or request.args.get('slug') or session_tenant or 'gastronomia-local1'
+    if session_tenant and tenant_slug and session_tenant != tenant_slug:
+        return jsonify({'error': 'acceso denegado al tenant'}), 403
+
+    f = str(request.args.get('filter') or '').strip().lower()
+    if not f:
+        f = 'unassigned' if role == 'repartidor' else 'all'
+    delivery_status = (request.args.get('delivery_status') or '').strip().lower()
+    exclude_archived = request.args.get('exclude_archived')
+    exclude_canceled = request.args.get('exclude_canceled')
+    if exclude_canceled is None:
+        exclude_canceled = 'true'
+    limit = int(request.args.get('limit') or 100)
+    offset = int(request.args.get('offset') or 0)
+    q = (request.args.get('q') or '').strip()
+
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        ensure_orders_delivery_columns(conn, cur)
+    except Exception:
+        pass
+    sql = (
+        "SELECT id, tenant_slug, customer_name, customer_phone, order_type, table_number, address_json, status, total, "
+        "payment_method, payment_status, tip_amount, shipping_cost, created_at, order_notes, "
+        "delivery_assigned_to, delivery_status, delivery_sequence, delivery_notes, delivery_assigned_at, delivered_at "
+        "FROM orders WHERE tenant_slug = ? AND lower(trim(COALESCE(order_type,''))) = 'direccion'"
+    )
+    params = [tenant_slug]
+    if exclude_archived == 'true':
+        sql += " AND id NOT IN (SELECT order_id FROM archived_orders)"
+    if str(exclude_canceled).strip().lower() == 'true':
+        sql += " AND lower(COALESCE(status,'')) != 'cancelado'"
+    if delivery_status:
+        sql += " AND lower(COALESCE(delivery_status, '')) = lower(?)"
+        params.append(delivery_status)
+    if f == 'mine':
+        sql += " AND lower(COALESCE(delivery_assigned_to, '')) = lower(?)"
+        params.append(actor or '')
+    elif f == 'unassigned':
+        sql += " AND (delivery_assigned_to IS NULL OR trim(COALESCE(delivery_assigned_to,'')) = '')"
+    elif f == 'assigned':
+        sql += " AND (delivery_assigned_to IS NOT NULL AND trim(COALESCE(delivery_assigned_to,'')) != '')"
+    elif f == 'open':
+        sql += " AND lower(COALESCE(delivery_status, 'pending')) != 'delivered'"
+    if q:
+        try:
+            qid = int(q)
+            sql += " AND id = ?"
+            params.append(qid)
+        except Exception:
+            like = f"%{q}%"
+            sql += " AND (COALESCE(address_json,'') LIKE ? OR COALESCE(customer_name,'') LIKE ? OR COALESCE(customer_phone,'') LIKE ?)"
+            params.extend([like, like, like])
+
+    sql += (
+        " ORDER BY "
+        "CASE lower(COALESCE(delivery_status, 'pending')) "
+        "WHEN 'pending' THEN 0 WHEN 'assigned' THEN 1 WHEN 'en_route' THEN 2 WHEN 'failed' THEN 3 WHEN 'delivered' THEN 4 ELSE 9 END, "
+        "COALESCE(delivery_sequence, 999999) ASC, id ASC "
+        "LIMIT ? OFFSET ?"
+    )
+    params.extend([limit, offset])
+    cur.execute(sql, params)
+    rows = cur.fetchall()
+    return jsonify({'orders': [dict(r) for r in rows], 'limit': limit, 'offset': offset})
+
+@bp.route('/delivery/orders/<int:order_id>/assign', methods=['PATCH'])
+def assign_delivery_order(order_id):
+    if not is_authed():
+        return jsonify({'error': 'no autorizado'}), 401
+    if not check_csrf():
+        return jsonify({'error': 'csrf inválido'}), 403
+    session_tenant, actor, role, perms, owner = _ctx()
+    if not _has_perm(perms, owner, role, 'delivery_manage'):
+        return jsonify({'error': 'sin permisos'}), 403
+
+    payload = request.get_json(silent=True) or {}
+    assigned_to = str(payload.get('assigned_to') or actor or '').strip()
+    if not assigned_to:
+        return jsonify({'error': 'assigned_to requerido'}), 400
+    if not (owner or role == 'admin') and assigned_to.lower() != (actor or '').lower():
+        return jsonify({'error': 'sin permisos para asignar a otro usuario'}), 403
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT tenant_slug, order_type, status, COALESCE(delivery_assigned_to,'') FROM orders WHERE id = ?", (order_id,))
+    row = cur.fetchone()
+    if not row:
+        return jsonify({'error': 'orden no encontrada'}), 404
+    tenant_slug, order_type, st, current_assigned = row
+    tenant_slug = str(tenant_slug or '')
+    if session_tenant and tenant_slug and session_tenant != tenant_slug:
+        return jsonify({'error': 'acceso denegado al tenant'}), 403
+    if str(order_type or '').strip().lower() != 'direccion':
+        return jsonify({'error': 'orden no es de delivery'}), 400
+    if str(st or '').strip().lower() == 'cancelado':
+        return jsonify({'error': 'orden cancelada'}), 400
+
+    now = datetime.utcnow().isoformat()
+    cur.execute(
+        "UPDATE orders SET delivery_assigned_to = ?, delivery_assigned_at = ?, "
+        "delivery_status = CASE WHEN delivery_status IS NULL OR trim(COALESCE(delivery_status,'')) = '' OR lower(delivery_status) = 'pending' THEN 'assigned' ELSE delivery_status END "
+        "WHERE id = ?",
+        (assigned_to, now, order_id),
+    )
+    try:
+        cur.execute(
+            "INSERT INTO order_events (order_id, event_type, actor, amount_delta, payload_json, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (order_id, 'delivery_assign', actor or '', 0, json.dumps({'assigned_to': assigned_to, 'prev_assigned_to': str(current_assigned or '').strip()}), now),
+        )
+    except Exception:
+        pass
+    conn.commit()
+    return jsonify({'order_id': order_id, 'assigned_to': assigned_to, 'delivery_status': 'assigned'})
+
+@bp.route('/delivery/orders/<int:order_id>/delivery_status', methods=['PATCH'])
+def update_delivery_status(order_id):
+    if not is_authed():
+        return jsonify({'error': 'no autorizado'}), 401
+    if not check_csrf():
+        return jsonify({'error': 'csrf inválido'}), 403
+    session_tenant, actor, role, perms, owner = _ctx()
+    if not _has_perm(perms, owner, role, 'delivery_manage'):
+        return jsonify({'error': 'sin permisos'}), 403
+
+    payload = request.get_json(silent=True) or {}
+    raw = str(payload.get('delivery_status') or payload.get('status') or '').strip().lower()
+    m = {
+        'pendiente': 'pending',
+        'asignado': 'assigned',
+        'en_camino': 'en_route',
+        'entregado': 'delivered',
+        'fallo': 'failed',
+    }
+    new_status = m.get(raw, raw)
+    if new_status not in ('pending', 'assigned', 'en_route', 'delivered', 'failed'):
+        return jsonify({'error': 'delivery_status inválido'}), 400
+
+    delivery_notes = payload.get('delivery_notes')
+    if delivery_notes is None:
+        delivery_notes = payload.get('notes')
+    if delivery_notes is not None:
+        delivery_notes = str(delivery_notes)
+
+    seq = payload.get('delivery_sequence')
+    seq_val = None
+    if seq is not None:
+        try:
+            seq_val = int(seq)
+        except Exception:
+            return jsonify({'error': 'delivery_sequence inválido'}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT tenant_slug, order_type, status, COALESCE(delivery_assigned_to,''), COALESCE(delivery_status,'pending') FROM orders WHERE id = ?",
+        (order_id,),
+    )
+    row = cur.fetchone()
+    if not row:
+        return jsonify({'error': 'orden no encontrada'}), 404
+    tenant_slug, order_type, st, assigned_to, current_delivery_status = row
+    tenant_slug = str(tenant_slug or '')
+    if session_tenant and tenant_slug and session_tenant != tenant_slug:
+        return jsonify({'error': 'acceso denegado al tenant'}), 403
+    if str(order_type or '').strip().lower() != 'direccion':
+        return jsonify({'error': 'orden no es de delivery'}), 400
+
+    if role == 'repartidor' and (assigned_to or '').strip() and (assigned_to or '').strip().lower() != (actor or '').lower():
+        return jsonify({'error': 'orden asignada a otro repartidor'}), 403
+    if role == 'repartidor' and not (assigned_to or '').strip() and new_status in ('en_route', 'delivered', 'failed'):
+        return jsonify({'error': 'primero debe asignarse la orden'}), 400
+
+    if str(st or '').strip().lower() == 'entregado' and new_status != 'delivered':
+        return jsonify({'error': 'no se puede cambiar el estado de una orden entregada'}), 400
+
+    now = datetime.utcnow().isoformat()
+    delivered_at = now if new_status == 'delivered' else None
+
+    sets = ["delivery_status = ?"]
+    params = [new_status]
+    if delivered_at:
+        sets.append("delivered_at = ?")
+        params.append(delivered_at)
+    if delivery_notes is not None:
+        sets.append("delivery_notes = ?")
+        params.append(delivery_notes)
+    if seq_val is not None:
+        sets.append("delivery_sequence = ?")
+        params.append(seq_val)
+    if new_status in ('assigned', 'en_route', 'delivered') and not (assigned_to or '').strip():
+        sets.append("delivery_assigned_to = ?")
+        params.append(actor or '')
+        sets.append("delivery_assigned_at = ?")
+        params.append(now)
+    params.append(order_id)
+    cur.execute(f"UPDATE orders SET {', '.join(sets)} WHERE id = ?", params)
+
+    new_main = None
+    st_norm = str(st or '').strip().lower()
+    if new_status == 'en_route' and st_norm not in ('cancelado', 'entregado'):
+        new_main = 'en_camino'
+    if new_status == 'delivered' and st_norm != 'entregado':
+        new_main = 'entregado'
+
+    if new_main == 'entregado':
+        scope = _scope_for(role, owner=owner)
+        if scope == 'user':
+            cur.execute(
+                "SELECT id FROM cash_sessions WHERE tenant_slug = ? AND scope = 'user' AND closed_at IS NULL AND lower(opened_by) = lower(?) ORDER BY opened_at DESC LIMIT 1",
+                (tenant_slug, actor or ''),
+            )
+        else:
+            cur.execute("SELECT id FROM cash_sessions WHERE tenant_slug = ? AND scope = 'tenant' AND closed_at IS NULL ORDER BY opened_at DESC LIMIT 1", (tenant_slug,))
+        if not cur.fetchone():
+            return jsonify({'error': 'no hay sesión de caja abierta'}), 400
+
+    if new_main:
+        cur.execute("UPDATE orders SET status = ? WHERE id = ?", (new_main, order_id))
+        cur.execute(
+            "INSERT INTO order_status_history (order_id, status, changed_at, changed_by) VALUES (?, ?, ?, ?)",
+            (order_id, new_main, now, actor or ''),
+        )
+
+    try:
+        cur.execute(
+            "INSERT INTO order_events (order_id, event_type, actor, amount_delta, payload_json, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                order_id,
+                'delivery_status_change',
+                actor or '',
+                0,
+                json.dumps({'from': str(current_delivery_status or 'pending'), 'to': new_status, 'order_status': new_main}),
+                now,
+            ),
+        )
+    except Exception:
+        pass
+
+    conn.commit()
+    return jsonify({'order_id': order_id, 'delivery_status': new_status, 'order_status': new_main})
+
+@bp.route('/delivery/route', methods=['PATCH'])
+def update_delivery_route():
+    if not is_authed():
+        return jsonify({'error': 'no autorizado'}), 401
+    if not check_csrf():
+        return jsonify({'error': 'csrf inválido'}), 403
+    session_tenant, actor, role, perms, owner = _ctx()
+    if not _has_perm(perms, owner, role, 'delivery_manage'):
+        return jsonify({'error': 'sin permisos'}), 403
+
+    payload = request.get_json(silent=True) or {}
+    tenant_slug = str(payload.get('tenant_slug') or session_tenant or '').strip()
+    if not tenant_slug:
+        return jsonify({'error': 'tenant_slug requerido'}), 400
+    if session_tenant and tenant_slug and session_tenant != tenant_slug:
+        return jsonify({'error': 'acceso denegado al tenant'}), 403
+
+    items = payload.get('orders') or payload.get('items') or []
+    if not isinstance(items, list) or not items:
+        return jsonify({'error': 'orders requerido'}), 400
+
+    updates = []
+    for it in items:
+        try:
+            oid = int(it.get('id'))
+            seq = int(it.get('sequence'))
+            updates.append((oid, seq))
+        except Exception:
+            return jsonify({'error': 'orders inválido'}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+    for oid, seq in updates:
+        cur.execute(
+            "SELECT order_type, COALESCE(delivery_assigned_to,'') FROM orders WHERE id = ? AND tenant_slug = ?",
+            (oid, tenant_slug),
+        )
+        row = cur.fetchone()
+        if not row:
+            return jsonify({'error': f'orden no encontrada: {oid}'}), 404
+        order_type, assigned_to = row
+        if str(order_type or '').strip().lower() != 'direccion':
+            return jsonify({'error': f'orden no es de delivery: {oid}'}), 400
+        if role == 'repartidor' and (assigned_to or '').strip().lower() != (actor or '').lower():
+            return jsonify({'error': f'orden asignada a otro repartidor: {oid}'}), 403
+        cur.execute("UPDATE orders SET delivery_sequence = ? WHERE id = ? AND tenant_slug = ?", (seq, oid, tenant_slug))
+
+    conn.commit()
+    return jsonify({'ok': True, 'count': len(updates)})
+
 @bp.route('/orders/<int:order_id>/pay', methods=['POST'])
 def pay_order(order_id):
     if not is_authed(): return jsonify({'error': 'no autorizado'}), 401
     if not check_csrf(): return jsonify({'error': 'csrf inválido'}), 403
+    session_tenant, actor, role, perms, owner = _ctx()
+    if not _has_perm(perms, owner, role, 'cash_manage'):
+        return jsonify({'error': 'sin permisos'}), 403
     
     payload = request.get_json(silent=True) or {}
     method = payload.get('payment_method')
@@ -434,59 +837,104 @@ def pay_order(order_id):
 
     conn = get_db()
     cur = conn.cursor()
-    
-    cur.execute("SELECT id, tenant_slug, total, payment_status, order_type FROM orders WHERE id = ?", (order_id,))
-    row = cur.fetchone()
-    if not row: return jsonify({'error': 'orden no encontrada'}), 404
-    
-    oid, tenant, total, current_pay_status, order_type = row
-    if current_pay_status == 'paid': return jsonify({'error': 'orden ya pagada'}), 400
+    try:
+        if is_postgres():
+            cur.execute("SELECT id, tenant_slug, total, payment_status, order_type FROM orders WHERE id = ? FOR UPDATE", (order_id,))
+        else:
+            try:
+                cur.execute("BEGIN IMMEDIATE")
+            except Exception:
+                pass
+            cur.execute("SELECT id, tenant_slug, total, payment_status, order_type FROM orders WHERE id = ?", (order_id,))
 
-    cur.execute("SELECT id FROM cash_sessions WHERE tenant_slug = ? AND closed_at IS NULL ORDER BY opened_at DESC LIMIT 1", (tenant,))
-    sess = cur.fetchone()
-    if not sess: return jsonify({'error': 'no hay sesión de caja abierta'}), 400
-    session_id = sess[0]
+        row = cur.fetchone()
+        if not row:
+            try: conn.rollback()
+            except Exception: pass
+            return jsonify({'error': 'orden no encontrada'}), 404
 
-    cur.execute("UPDATE orders SET payment_status = 'paid', payment_method = ?, tip_amount = ? WHERE id = ?", (method, tip_amount, order_id))
+        oid, tenant, total, current_pay_status, order_type = row
+        if session_tenant and tenant and session_tenant != tenant:
+            try: conn.rollback()
+            except Exception: pass
+            return jsonify({'error': 'acceso denegado al tenant'}), 403
 
-    cur.execute(
-        "INSERT INTO order_events (order_id, event_type, actor, amount_delta, payload_json, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-        (order_id, 'payment', session.get('admin_user') or '', 0, json.dumps({'method': method, 'amount': total, 'tip': tip_amount, 'details': details if method == 'mixed' else None}), datetime.utcnow().isoformat())
-    )
+        if str(current_pay_status or '').strip().lower() == 'paid':
+            try: conn.rollback()
+            except Exception: pass
+            return jsonify({'order_id': order_id, 'payment_status': 'paid'}), 200
 
-    payments_to_register = []
-    if method == 'mixed':
-        sum_details = sum(int(d.get('amount') or 0) for d in details)
-        if sum_details != (total + tip_amount):
-             return jsonify({'error': f'suma de pagos ({sum_details}) no coincide con total ({total + tip_amount})'}), 400
-        for d in details:
-            pm = d.get('method')
-            amt = int(d.get('amount') or 0)
-            if amt > 0:
-                payments_to_register.append({'method': pm, 'amount': amt})
-    else:
-        payments_to_register.append({'method': method, 'amount': total + tip_amount})
+        if tip_amount < 0:
+            try: conn.rollback()
+            except Exception: pass
+            return jsonify({'error': 'propina inválida'}), 400
 
-    created_at = datetime.utcnow().isoformat()
-    actor = session.get('admin_user') or ''
-    order_type_norm = (order_type or '').strip().lower()
-    
-    for pay in payments_to_register:
-        pm = pay['method']
-        amt = pay['amount']
-        note = f"Cobro pedido #{order_id} ({pm})"
-        if method != 'mixed' and tip_amount > 0:
-             note += f" (incl. propina ${tip_amount})"
-        if order_type_norm in ('delivery', 'espera'):
-            note += f" [Auto-Cobro {order_type_norm}]"
+        payments_to_register = []
+        if method == 'mixed':
+            sum_details = 0
+            for d in details:
+                try:
+                    pm = str(d.get('method') or '').strip().lower()
+                    amt = int(d.get('amount') or 0)
+                except Exception:
+                    pm = ''
+                    amt = 0
+                if pm not in ('contado', 'pos', 'transferencia') or amt < 0:
+                    try: conn.rollback()
+                    except Exception: pass
+                    return jsonify({'error': 'detalles de pago mixto inválidos'}), 400
+                if amt > 0:
+                    payments_to_register.append({'method': pm, 'amount': amt})
+                    sum_details += amt
+            if sum_details != (int(total or 0) + tip_amount):
+                try: conn.rollback()
+                except Exception: pass
+                return jsonify({'error': f'suma de pagos ({sum_details}) no coincide con total ({int(total or 0) + tip_amount})'}), 400
+        else:
+            payments_to_register.append({'method': method, 'amount': int(total or 0) + tip_amount})
 
+        scope = _scope_for(role, owner=owner)
+        if scope == 'user':
+            cur.execute(
+                "SELECT id FROM cash_sessions WHERE tenant_slug = ? AND scope = 'user' AND closed_at IS NULL AND lower(opened_by) = lower(?) ORDER BY opened_at DESC LIMIT 1",
+                (tenant, actor or ''),
+            )
+        else:
+            cur.execute("SELECT id FROM cash_sessions WHERE tenant_slug = ? AND scope = 'tenant' AND closed_at IS NULL ORDER BY opened_at DESC LIMIT 1", (tenant,))
+        sess = cur.fetchone()
+        if not sess:
+            try: conn.rollback()
+            except Exception: pass
+            return jsonify({'error': 'no hay sesión de caja abierta'}), 400
+        session_id = sess[0]
+
+        cur.execute("UPDATE orders SET payment_status = 'paid', payment_method = ?, tip_amount = ? WHERE id = ?", (method, tip_amount, order_id))
+
+        created_at = datetime.utcnow().isoformat()
         cur.execute(
-            "INSERT INTO cash_movements (session_id, type, amount, note, actor, created_at, payment_method) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (session_id, 'entrada', amt, note, actor, created_at, pm)
+            "INSERT INTO order_events (order_id, event_type, actor, amount_delta, payload_json, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (order_id, 'payment', actor or '', 0, json.dumps({'method': method, 'amount': total, 'tip': tip_amount, 'details': details if method == 'mixed' else None}), created_at)
         )
-    
-    conn.commit()
-    return jsonify({'order_id': order_id, 'payment_status': 'paid', 'payment_method': method, 'tip_amount': tip_amount})
+
+        for pay in payments_to_register:
+            pm = pay['method']
+            amt = pay['amount']
+            note = f"Cobro pedido #{order_id} ({pm})"
+            if method != 'mixed' and tip_amount > 0:
+                 note += f" (incl. propina ${tip_amount})"
+            cur.execute(
+                "INSERT INTO cash_movements (session_id, type, amount, note, actor, created_at, payment_method) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (session_id, 'entrada', amt, note, actor, created_at, pm)
+            )
+
+        conn.commit()
+        return jsonify({'order_id': order_id, 'payment_status': 'paid', 'payment_method': method, 'tip_amount': tip_amount})
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        raise
 
 @bp.route('/orders/<int:order_id>/events', methods=['POST'])
 def create_order_event(order_id):

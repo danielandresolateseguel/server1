@@ -1327,12 +1327,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const orderType = orderTypeEl ? orderTypeEl.value : (CHECKOUT_MODE === 'mesa' ? 'mesa' : 'none');
         const mesaNumberEl = document.getElementById('mesa-number');
         const addressEl = document.getElementById('delivery-address');
+        const localityEl = document.getElementById('delivery-locality');
         const contactPhoneEl = document.getElementById('contact-phone');
         const esperaNameEl = document.getElementById('espera-name');
         const esperaPhoneEl = document.getElementById('espera-phone');
 
         const mesaNumber = mesaNumberEl ? (mesaNumberEl.value || '').trim() : '';
         const address = addressEl ? (addressEl.value || '').trim() : '';
+        const locality = localityEl ? (localityEl.value || '').trim() : '';
         const contactPhone = contactPhoneEl ? (contactPhoneEl.value || '').trim() : '';
         const esperaName = esperaNameEl ? (esperaNameEl.value || '').trim() : '';
         const esperaPhone = esperaPhoneEl ? (esperaPhoneEl.value || '').trim() : '';
@@ -1375,7 +1377,9 @@ document.addEventListener('DOMContentLoaded', function() {
             mensaje += `   🪑 Mesa N°: ${mesaNumber}\n\n`;
         } else if (orderType === 'direccion') {
             mensaje += `📍 Modalidad: Dirección\n`;
-            mensaje += `   🏠 Dirección: ${address}\n\n`;
+            mensaje += `   🏠 Dirección: ${address}\n`;
+            if (locality) mensaje += `   📍 Localidad: ${locality}\n`;
+            mensaje += `\n`;
         } else if (orderType === 'espera') {
             mensaje += `📍 Modalidad: Espera en local\n`;
             mensaje += `   👤 Nombre: ${esperaName}\n`;
@@ -1465,7 +1469,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 tenant_slug: getTenantSlug(),
                 order_type: orderType,
                 table_number: orderType === 'mesa' ? mesaNumber : '',
-                address: orderType === 'direccion' ? { address } : {},
+                address: orderType === 'direccion' ? { address, locality } : {},
                 customer_phone: orderType === 'direccion' ? contactPhone : (orderType === 'espera' ? esperaPhone : ''),
                 customer_name: orderType === 'espera' ? esperaName : '',
                 items: cart.map(it => ({ id: it.id, name: it.name, price: it.price, quantity: it.quantity, notes: it.notes || '' })),
