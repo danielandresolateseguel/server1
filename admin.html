@@ -4621,8 +4621,18 @@
               const ok = await ensureCashOpen();
               if (!ok) return;
             }
-            await setDeliveryStatus(oid, st);
+            let extras = null;
+            if (st === 'failed') {
+              let reason = '';
+              try { reason = String(prompt('Motivo del fallo (requerido):', '') || '').trim(); } catch(_) { reason = ''; }
+              if (!reason) return;
+              extras = { delivery_notes: reason };
+            }
+            const res = await setDeliveryStatus(oid, st, extras);
             await loadOrdersSafe();
+            if (res && res.run_closed) {
+              try { showToast('Salida finalizada (sin pedidos pendientes).', 'success'); } catch(_) {}
+            }
             if (st === 'delivered' && autoNext) {
               await openNextDeliveryStopInGoogleMaps(preW, true);
             } else {
@@ -4689,9 +4699,12 @@
           btn.style.opacity = '0.6';
           btn.textContent = 'Devolviendo...';
           try {
-            await unassignDelivery(oid);
+            const res = await unassignDelivery(oid);
             lastDeliverySignature = '';
             await loadOrdersSafe();
+            if (res && res.run_closed) {
+              try { showToast('Salida finalizada (sin pedidos pendientes).', 'success'); } catch(_) {}
+            }
           } catch (err) {
             alert(String(err && err.message || 'No se pudo devolver'));
           } finally {

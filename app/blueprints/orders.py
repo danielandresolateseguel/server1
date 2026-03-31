@@ -162,6 +162,33 @@ def _get_active_run_id(cur, tenant_slug, driver_username):
     row = cur.fetchone()
     return int(row[0]) if row and row[0] is not None else None
 
+def _auto_close_run_if_empty(cur, tenant_slug, driver_username):
+    try:
+        rid = _get_active_run_id(cur, tenant_slug, driver_username)
+        if not rid:
+            return False
+        cur.execute(
+            """
+            SELECT COUNT(1)
+            FROM delivery_run_orders ro
+            JOIN orders o ON o.id = ro.order_id
+            WHERE ro.run_id = ?
+              AND o.tenant_slug = ?
+              AND lower(COALESCE(o.delivery_assigned_to,'')) = lower(?)
+              AND lower(COALESCE(o.delivery_status,'pending')) != 'delivered'
+            """,
+            (rid, tenant_slug, driver_username),
+        )
+        row = cur.fetchone()
+        cnt = int(row[0] or 0) if row else 0
+        if cnt > 0:
+            return False
+        now = datetime.utcnow().isoformat()
+        cur.execute("UPDATE delivery_runs SET status = 'closed', closed_at = ? WHERE id = ?", (now, rid))
+        return True
+    except Exception:
+        return False
+
 def _create_run(conn, cur, tenant_slug, driver_username):
     now = datetime.utcnow().isoformat()
     if is_postgres():
@@ -891,7 +918,12 @@ def update_delivery_status(order_id):
     if delivery_notes is None:
         delivery_notes = payload.get('notes')
     if delivery_notes is not None:
-        delivery_notes = str(delivery_notes)
+        delivery_notes = str(delivery_notes).strip()
+        if delivery_notes == '':
+            delivery_notes = None
+
+    if new_status == 'failed' and not delivery_notes:
+        return jsonify({'error': 'motivo requerido'}), 400
 
     seq = payload.get('delivery_sequence')
     seq_val = None
@@ -990,8 +1022,17 @@ def update_delivery_status(order_id):
     except Exception:
         pass
 
+    closed = False
+    try:
+        ensure_delivery_run_tables(conn, cur)
+        driver_for_run = (actor or '') if role == 'repartidor' else (assigned_to or '')
+        if driver_for_run:
+            closed = _auto_close_run_if_empty(cur, tenant_slug, driver_for_run)
+    except Exception:
+        closed = False
+
     conn.commit()
-    return jsonify({'order_id': order_id, 'delivery_status': new_status, 'order_status': new_main})
+    return jsonify({'order_id': order_id, 'delivery_status': new_status, 'order_status': new_main, 'run_closed': closed})
 
 
 @bp.route('/delivery/orders/<int:order_id>/unassign', methods=['POST', 'PATCH'])
@@ -1058,8 +1099,16 @@ def unassign_delivery_order(order_id):
     except Exception:
         pass
 
+    closed = False
+    try:
+        ensure_delivery_run_tables(conn, cur)
+        if str(assigned_to or '').strip():
+            closed = _auto_close_run_if_empty(cur, tenant_slug, str(assigned_to or '').strip())
+    except Exception:
+        closed = False
+
     conn.commit()
-    return jsonify({'ok': True, 'order_id': order_id, 'assigned_to': None, 'delivery_status': 'pending', 'order_status': 'listo' if st_norm == 'en_camino' else None})
+    return jsonify({'ok': True, 'order_id': order_id, 'assigned_to': None, 'delivery_status': 'pending', 'order_status': 'listo' if st_norm == 'en_camino' else None, 'run_closed': closed})
 
 @bp.route('/delivery/route', methods=['PATCH'])
 def update_delivery_route():
