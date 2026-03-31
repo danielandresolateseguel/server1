@@ -2691,7 +2691,7 @@
       const arr = Array.isArray(stops) ? stops.map(s => String(s || '').trim()).filter(Boolean) : [];
       if (!arr.length) return '';
       if (arr.length === 1) {
-        return 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(arr[0]) + '&travelmode=driving';
+        return 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(arr[0]) + '&travelmode=driving&dir_action=navigate';
       }
       const parts = arr.map(s => encodeURIComponent(s));
       return 'https://www.google.com/maps/dir/' + parts.join('/') + '/?travelmode=driving';
@@ -2746,6 +2746,15 @@
       if (sa !== sb) return sa - sb;
       return Number(a.id) - Number(b.id);
     }
+    function _statusRank(dsRaw) {
+      const ds = _normUser(dsRaw || 'pending');
+      if (ds === 'en_route') return 0;
+      if (ds === 'assigned') return 1;
+      if (ds === 'pending') return 2;
+      if (ds === 'failed') return 3;
+      if (ds === 'delivered') return 99;
+      return 50;
+    }
     async function getMyRouteOrdersPreferRun() {
       const role = String(currentUserRole || '').trim().toLowerCase();
       if (role !== 'repartidor') return { run: null, orders: [] };
@@ -2769,7 +2778,12 @@
       const w = preOpenedWindow || null;
       try {
         const j = await getMyRouteOrdersPreferRun();
-        const ordered = (j.orders || []).slice().sort(_sortStops);
+        const ordered = (j.orders || []).slice().sort((a, b) => {
+          const ra = _statusRank(a && a.delivery_status);
+          const rb = _statusRank(b && b.delivery_status);
+          if (ra !== rb) return ra - rb;
+          return _sortStops(a, b);
+        });
         const next = ordered.find(o => {
           const ds = _normUser(o && o.delivery_status || 'pending');
           if (ds === 'delivered') return false;
