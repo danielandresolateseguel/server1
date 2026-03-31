@@ -2697,6 +2697,52 @@
       const parts = [origin].concat(arr).map(s => encodeURIComponent(s));
       return 'https://www.google.com/maps/dir/' + parts.join('/') + '/?travelmode=driving&dir_action=navigate';
     }
+    function _isAndroid() {
+      try { return /Android/i.test(String(navigator.userAgent || '')); } catch (_) { return false; }
+    }
+    function _isIOS() {
+      try { return /iPad|iPhone|iPod/i.test(String(navigator.userAgent || '')); } catch (_) { return false; }
+    }
+    function openGoogleMapsDestination(destination, preOpenedWindow) {
+      const dest = String(destination || '').trim();
+      if (!dest) return false;
+
+      const webUrl = buildGoogleRouteUrl([dest]);
+      let appUrl = '';
+      if (_isAndroid()) {
+        appUrl = 'google.navigation:q=' + encodeURIComponent(dest) + '&mode=d';
+      } else if (_isIOS()) {
+        appUrl = 'comgooglemaps://?saddr=' + encodeURIComponent('My Location') + '&daddr=' + encodeURIComponent(dest) + '&directionsmode=driving';
+      }
+
+      const w = preOpenedWindow || null;
+      const openWebFallback = () => {
+        if (!webUrl) return;
+        if (w) {
+          try { w.location.href = webUrl; return; } catch (_) { try { w.close(); } catch (_) {} }
+        }
+        window.open(webUrl, '_blank', 'noopener');
+      };
+
+      if (appUrl) {
+        if (w) {
+          try { w.location.href = appUrl; } catch (_) { openWebFallback(); return true; }
+        } else {
+          try { window.location.href = appUrl; } catch (_) { openWebFallback(); return true; }
+        }
+        if (webUrl) {
+          setTimeout(() => {
+            try {
+              if (document.visibilityState === 'visible') openWebFallback();
+            } catch (_) {}
+          }, 900);
+        }
+        return true;
+      }
+
+      openWebFallback();
+      return true;
+    }
     async function fetchActiveDeliveryRun() {
       const slug = tenantInput?.value?.trim() || defaultSlug();
       const url = new URL('/api/delivery/run/active', API_BASE);
@@ -2797,16 +2843,16 @@
           return;
         }
         const addrOneLine = getOrderAddressOneLine(next);
-        const url = buildGoogleRouteUrl([addrOneLine]);
-        if (!url) {
+        if (!addrOneLine) {
           if (w) { try { w.close(); } catch (_) {} }
           if (!silent) alert('No hay dirección válida para la siguiente parada');
           return;
         }
-        if (w) {
-          try { w.location.href = url; return; } catch (_) { try { w.close(); } catch (_) {} }
+        const ok = openGoogleMapsDestination(addrOneLine, w);
+        if (!ok) {
+          if (w) { try { w.close(); } catch (_) {} }
+          if (!silent) alert('No se pudo abrir la siguiente parada');
         }
-        window.open(url, '_blank', 'noopener');
       } catch (err) {
         if (w) { try { w.close(); } catch (_) {} }
         if (!silent) alert(String(err && err.message || 'No se pudo abrir la siguiente parada'));
@@ -4608,9 +4654,8 @@
           if (!o) return;
           const addrOneLine = getOrderAddressOneLine(o);
           if (!addrOneLine) return;
-          const url = buildGoogleRouteUrl([addrOneLine]);
-          if (!url) return;
-          window.open(url, '_blank', 'noopener');
+          const w = window.open('about:blank', '_blank', 'noopener');
+          openGoogleMapsDestination(addrOneLine, w);
         });
       });
       list.querySelectorAll('.delivery-notes').forEach(btn => {
@@ -6672,7 +6717,8 @@
         nextStopBtn.addEventListener('click', async (e) => {
           e.preventDefault();
           if (!isAuthed) return;
-          await openNextDeliveryStopInGoogleMaps(null, false);
+          const w = window.open('about:blank', '_blank', 'noopener');
+          await openNextDeliveryStopInGoogleMaps(w, false);
           try { refreshDeliveryRunLabel(); } catch (_) {}
         });
       }
