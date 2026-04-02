@@ -310,6 +310,7 @@ function initHeaderContact() {
         if (openingHours && typeof openingHours === 'object') {
             let isOpenNow = false;
             let nextOpeningMinutes = null;
+            let nextOpening = null;
             try {
                 const days = ['sun','mon','tue','wed','thu','fri','sat'];
                 const now = new Date();
