@@ -998,6 +998,15 @@ def update_delivery_status(order_id):
     if new_status == 'failed' and st_norm == 'en_camino':
         new_main = 'listo'
 
+    if new_status == 'failed':
+        try:
+            cur.execute(
+                "INSERT INTO order_status_history (order_id, status, changed_at, changed_by) VALUES (?, ?, ?, ?)",
+                (order_id, 'fallo', now, actor or ''),
+            )
+        except Exception:
+            pass
+
     if new_main == 'entregado':
         scope = _scope_for(role, owner=owner)
         if scope == 'user':
