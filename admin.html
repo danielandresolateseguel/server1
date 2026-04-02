@@ -1275,6 +1275,31 @@
     </div>
   </div>
 
+  <div id="delivery-fail-modal" class="kds-modal" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="kds-modal-overlay"></div>
+    <div class="kds-modal-content kds-confirm" style="max-width:420px;">
+      <h3 style="margin:0 0 10px 0; font-size:16px; color:#333;">Motivo del fallo</h3>
+      <div id="delivery-fail-options" style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:8px;">
+        <button type="button" data-reason="No atiende" style="padding:10px 12px; border-radius:8px;">No atiende</button>
+        <button type="button" data-reason="Dirección incorrecta" style="padding:10px 12px; border-radius:8px;">Dirección incorrecta</button>
+        <button type="button" data-reason="Reprogramar" style="padding:10px 12px; border-radius:8px;">Reprogramar</button>
+        <button type="button" data-reason="No tiene efectivo / Pago pendiente" style="padding:10px 12px; border-radius:8px;">Pago pendiente</button>
+        <button type="button" data-reason="No se pudo acceder" style="padding:10px 12px; border-radius:8px;">No se pudo acceder</button>
+        <button type="button" data-reason="__other__" style="padding:10px 12px; border-radius:8px; background:#f3f4f6;">Otro…</button>
+      </div>
+      <div id="delivery-fail-other-box" style="display:none; margin-top:10px;">
+        <input id="delivery-fail-other-input" type="text" placeholder="Escribí el motivo" style="width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:8px; font-size:14px;">
+        <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:10px;">
+          <button id="delivery-fail-other-cancel" type="button" style="background:#c62828;">Cancelar</button>
+          <button id="delivery-fail-other-ok" type="button">Confirmar</button>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:flex-end; margin-top:12px;">
+        <button id="delivery-fail-cancel" type="button" style="background:#c62828;">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
   <div id="payment-modal" class="kds-modal" aria-hidden="true" role="dialog" aria-modal="true">
     <div class="kds-modal-overlay"></div>
     <div class="kds-modal-content kds-confirm" style="max-width: 350px;">
@@ -4623,8 +4648,7 @@
             }
             let extras = null;
             if (st === 'failed') {
-              let reason = '';
-              try { reason = String(prompt('Motivo del fallo (requerido):', '') || '').trim(); } catch(_) { reason = ''; }
+              const reason = await askDeliveryFailReason();
               if (!reason) return;
               extras = { delivery_notes: reason };
             }
@@ -6892,6 +6916,88 @@
         document.addEventListener('keydown', onKey);
         yesBtn.onclick = onYes;
         noBtn.onclick = onNo;
+      });
+    }
+
+    async function askDeliveryFailReason() {
+      return new Promise((resolve) => {
+        const modal = document.getElementById('delivery-fail-modal');
+        const overlay = modal.querySelector('.kds-modal-overlay');
+        const cancelBtn = document.getElementById('delivery-fail-cancel');
+        const optBox = document.getElementById('delivery-fail-options');
+        const otherBox = document.getElementById('delivery-fail-other-box');
+        const otherInput = document.getElementById('delivery-fail-other-input');
+        const otherCancel = document.getElementById('delivery-fail-other-cancel');
+        const otherOk = document.getElementById('delivery-fail-other-ok');
+
+        if (otherBox) otherBox.style.display = 'none';
+        if (otherInput) otherInput.value = '';
+
+        modal.classList.add('active');
+        modal.setAttribute('aria-hidden','false');
+        document.body.style.overflow = 'hidden';
+        const prevFocus = document.activeElement;
+        let focusables = Array.from(modal.querySelectorAll('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])')).filter(x => !x.hasAttribute('disabled'));
+        let first = focusables[0];
+        let last = focusables[focusables.length - 1];
+        const onTrap = (e) => {
+          if (e.key === 'Tab') {
+            if (!focusables.length) return;
+            if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+            else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+          }
+        };
+        document.addEventListener('keydown', onTrap);
+        try {
+          const firstBtn = optBox ? optBox.querySelector('button[data-reason]') : null;
+          if (firstBtn) firstBtn.focus();
+        } catch(_) {}
+
+        const cleanup = () => {
+          modal.classList.remove('active');
+          modal.setAttribute('aria-hidden','true');
+          document.body.style.overflow = 'auto';
+          document.removeEventListener('keydown', onTrap);
+          try { if (prevFocus && typeof prevFocus.focus === 'function') prevFocus.focus(); } catch(_) {}
+          overlay.removeEventListener('click', onCancel);
+          document.removeEventListener('keydown', onKey);
+          cancelBtn.onclick = null;
+          if (optBox) optBox.querySelectorAll('button[data-reason]').forEach(b => b.onclick = null);
+          if (otherCancel) otherCancel.onclick = null;
+          if (otherOk) otherOk.onclick = null;
+        };
+
+        const onCancel = () => { cleanup(); resolve(null); };
+        const onKey = (e) => { if (e.key === 'Escape') onCancel(); };
+        overlay.addEventListener('click', onCancel);
+        document.addEventListener('keydown', onKey);
+        cancelBtn.onclick = onCancel;
+
+        if (optBox) {
+          optBox.querySelectorAll('button[data-reason]').forEach(b => {
+            b.onclick = () => {
+              const reason = String(b.getAttribute('data-reason') || '').trim();
+              if (!reason) return;
+              if (reason === '__other__') {
+                if (otherBox) otherBox.style.display = 'block';
+                try { if (otherInput) otherInput.focus(); } catch(_) {}
+                return;
+              }
+              cleanup();
+              resolve(reason);
+            };
+          });
+        }
+
+        if (otherCancel) otherCancel.onclick = onCancel;
+        if (otherOk) {
+          otherOk.onclick = () => {
+            const v = String(otherInput && otherInput.value || '').trim();
+            if (!v) return;
+            cleanup();
+            resolve(v);
+          };
+        }
       });
     }
 
