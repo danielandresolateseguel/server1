@@ -422,8 +422,18 @@ def update_tenant_config():
             
     if 'time_auto' in payload:
         current_cfg['time_auto'] = bool(payload['time_auto'])
+
+    if 'delivery_fail_reasons' in payload:
+        reasons = payload.get('delivery_fail_reasons')
+        parsed = []
+        if isinstance(reasons, list):
+            parsed = [str(x).strip() for x in reasons if str(x).strip()]
+        else:
+            raw = str(reasons or '')
+            parsed = [s.strip() for s in raw.splitlines() if s.strip()]
+        current_cfg['delivery_fail_reasons'] = parsed
     
-    cur.execute("INSERT OR REPLACE INTO tenant_config (tenant_slug, config_json) VALUES (?, ?)", (slug, json.dumps(current_cfg)))
+    cur.execute("INSERT OR REPLACE INTO tenant_config (tenant_slug, config_json) VALUES (?, ?)", (slug, json.dumps(current_cfg, ensure_ascii=False)))
     conn.commit()
     invalidate_tenant_config(slug)
     return jsonify(current_cfg)
@@ -1015,7 +1025,7 @@ def update_delivery_status(order_id):
                 'delivery_status_change',
                 actor or '',
                 0,
-                json.dumps({'from': str(current_delivery_status or 'pending'), 'to': new_status, 'order_status': new_main}),
+                json.dumps({'from': str(current_delivery_status or 'pending'), 'to': new_status, 'order_status': new_main, 'delivery_notes': delivery_notes}),
                 now,
             ),
         )

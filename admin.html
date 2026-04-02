@@ -1594,6 +1594,11 @@
       </div>
 
       <div style="margin-bottom:16px; border-top:1px solid #eee; padding-top:12px;">
+        <div style="font-weight:bold; margin-bottom:8px;">Motivos de “Falló” (Reparto):</div>
+        <textarea id="cfg-delivery-fail-reasons" rows="6" placeholder="Uno por línea" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; resize:vertical;"></textarea>
+      </div>
+
+      <div style="margin-bottom:16px; border-top:1px solid #eee; padding-top:12px;">
         <div style="font-weight:bold; margin-bottom:8px;">Configuración SLA (Alertas):</div>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
           <div>
@@ -3250,6 +3255,39 @@
                     actor: e.actor,
                     type: 'event'
                 });
+            }
+            if (e.event_type === 'delivery_status_change') {
+                try {
+                    const payload = JSON.parse(e.payload_json || '{}') || {};
+                    const stMap = { pending: 'Pendiente', assigned: 'Asignado', en_route: 'En camino', delivered: 'Entregado', failed: 'Falló' };
+                    const to = String(payload.to || '').trim().toLowerCase();
+                    const txt = stMap[to] || to || 'Actualizado';
+                    const notes = String(payload.delivery_notes || '').trim();
+                    label = `Reparto: ${txt}` + (to === 'failed' && notes ? ` — ${notes}` : '');
+                } catch (_) {
+                    label = 'Reparto: estado actualizado';
+                }
+                combinedHistory.push({ label, date: e.created_at, actor: e.actor, type: 'event' });
+            }
+            if (e.event_type === 'delivery_unassign') {
+                try {
+                    const payload = JSON.parse(e.payload_json || '{}') || {};
+                    const prev = String(payload.prev_assigned_to || '').trim();
+                    label = 'Reparto: devuelto a sin asignar' + (prev ? ` (antes: ${prev})` : '');
+                } catch (_) {
+                    label = 'Reparto: devuelto a sin asignar';
+                }
+                combinedHistory.push({ label, date: e.created_at, actor: e.actor, type: 'event' });
+            }
+            if (e.event_type === 'delivery_assign') {
+                try {
+                    const payload = JSON.parse(e.payload_json || '{}') || {};
+                    const to = String(payload.assigned_to || '').trim();
+                    label = 'Reparto: asignado' + (to ? ` a ${to}` : '');
+                } catch (_) {
+                    label = 'Reparto: asignado';
+                }
+                combinedHistory.push({ label, date: e.created_at, actor: e.actor, type: 'event' });
             }
         });
         combinedHistory.sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -6920,6 +6958,30 @@
     }
 
     async function askDeliveryFailReason() {
+      const defaultReasons = [
+        'No atiende',
+        'Dirección incorrecta',
+        'Reprogramar',
+        'No tiene efectivo / Pago pendiente',
+        'No se pudo acceder'
+      ];
+      const loadReasons = async () => {
+        try {
+          const slug = (window.currentTenantSlug || (document.getElementById('tenant-input') ? document.getElementById('tenant-input').value : '') || 'gastronomia-local1').trim() || 'gastronomia-local1';
+          const url = new URL('/api/config', API_BASE);
+          url.searchParams.set('slug', slug);
+          const resp = await fetch(url.toString(), { cache: 'no-store' });
+          if (!resp.ok) return defaultReasons;
+          const cfg = await resp.json().catch(() => ({}));
+          const list = (cfg && Array.isArray(cfg.delivery_fail_reasons)) ? cfg.delivery_fail_reasons : [];
+          const parsed = list.map(x => String(x || '').trim()).filter(Boolean);
+          return parsed.length ? parsed : defaultReasons;
+        } catch (_) {
+          return defaultReasons;
+        }
+      };
+      const reasons = await loadReasons();
+
       return new Promise((resolve) => {
         const modal = document.getElementById('delivery-fail-modal');
         const overlay = modal.querySelector('.kds-modal-overlay');
@@ -6930,6 +6992,14 @@
         const otherCancel = document.getElementById('delivery-fail-other-cancel');
         const otherOk = document.getElementById('delivery-fail-other-ok');
 
+        const renderReasonButtons = () => {
+          const buttonsHtml = reasons.map(r => `<button type="button" data-reason="${String(r).replace(/"/g,'&quot;')}" style="padding:10px 12px; border-radius:8px;">${r}</button>`).join('');
+          if (optBox) {
+            optBox.innerHTML = buttonsHtml + `<button type="button" data-reason="__other__" style="padding:10px 12px; border-radius:8px; background:#f3f4f6;">Otro…</button>`;
+          }
+        };
+
+        renderReasonButtons();
         if (otherBox) otherBox.style.display = 'none';
         if (otherInput) otherInput.value = '';
 
@@ -8788,6 +8858,11 @@
                  const valEspera = tEspera ? (parseInt(tEspera.value)||0) : 0;
                  const valDelivery = tDelivery ? (parseInt(tDelivery.value)||0) : 0;
                  const valAuto = tAuto ? tAuto.checked : false;
+                 const failReasonsEl = document.getElementById('cfg-delivery-fail-reasons');
+                 const failReasons = (() => {
+                   const raw = String(failReasonsEl && failReasonsEl.value || '');
+                   return raw.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+                 })();
 
                  // SLA Inputs
                  const slaWarnIn = document.getElementById('sla-warning');
@@ -8805,7 +8880,8 @@
                        time_mesa: valMesa,
                        time_espera: valEspera,
                        time_delivery: valDelivery,
-                       time_auto: valAuto
+                       time_auto: valAuto,
+                       delivery_fail_reasons: failReasons
                  });
 
                  try {
@@ -8937,6 +9013,11 @@
                    };
                    tAuto.onchange = updateState;
                    updateState();
+                 }
+                 const fr = document.getElementById('cfg-delivery-fail-reasons');
+                 if (fr) {
+                   const list = Array.isArray(d.delivery_fail_reasons) ? d.delivery_fail_reasons : [];
+                   fr.value = list.map(x => String(x || '').trim()).filter(Boolean).join('\n');
                  }
               })
               .catch(err => console.error('[DEBUG] Load config error:', err));
