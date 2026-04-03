@@ -460,7 +460,12 @@ export async function initDynamicProducts() {
             const priceEl = card.querySelector('.product-price');
             const priceVal = isFinite(parseInt(prod.price)) ? parseInt(prod.price) : 0;
             if (priceEl && priceVal > 0) {
-                priceEl.textContent = '$' + priceVal.toLocaleString('es-AR') + ' ARS';
+                try {
+                    const { formatMoneyWithCode } = await import('./config.js');
+                    priceEl.textContent = formatMoneyWithCode(priceVal);
+                } catch (_) {
+                    priceEl.textContent = '$' + priceVal.toLocaleString('es-AR') + ' ARS';
+                }
             }
             if (btn && priceVal > 0) {
                 btn.setAttribute('data-price', String(priceVal));
@@ -535,7 +540,15 @@ export async function initDynamicProducts() {
                 }
             }
             const imgSrc = p.image_url || '';
-            const priceText = priceVal > 0 ? '$' + priceVal.toLocaleString('es-AR') + ' ARS' : '';
+            let priceText = '';
+            if (priceVal > 0) {
+                try {
+                    const { formatMoneyWithCode } = await import('./config.js');
+                    priceText = formatMoneyWithCode(priceVal);
+                } catch (_) {
+                    priceText = '$' + priceVal.toLocaleString('es-AR') + ' ARS';
+                }
+            }
             card.innerHTML = '<div class="product-image">' +
                 (imgSrc ? '<img src="' + imgSrc + '" alt="">' : '') +
                 '</div>' +

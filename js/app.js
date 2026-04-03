@@ -112,6 +112,10 @@ function initHeaderContact() {
         const locationUrl = (data.location_url || '').trim();
         const openingHours = data.opening_hours || null;
         const timeZone = (data.timezone || '').trim();
+        try {
+            if (data.currency_code) window.CURRENCY_CODE = String(data.currency_code || '').toUpperCase();
+            if (data.currency_locale) window.CURRENCY_LOCALE = String(data.currency_locale || '');
+        } catch (_) {}
         const logoUrl = (data.logo_url || '').trim();
         
         // Helper functions for color manipulation

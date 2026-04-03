@@ -109,7 +109,12 @@ export function clearCart() {
     saveCart();
     updateCartDisplay();
     updateCartCount();
-    announceCart('Carrito vaciado. Total $0 ARS');
+    try {
+        const { formatMoneyWithCode } = await import('./config.js');
+        announceCart('Carrito vaciado. Total ' + formatMoneyWithCode(0));
+    } catch (_) {
+        announceCart('Carrito vaciado. Total $0 ARS');
+    }
 }
 
 // Actualizar contador
@@ -137,7 +142,12 @@ export function updateCartDisplay() {
     
     if (cart.length === 0) {
         cartItems.innerHTML = '<p class="empty-cart">Tu carrito está vacío</p>';
-        cartTotalPrice.textContent = '$0 ARS';
+        try {
+            const { formatMoneyWithCode } = await import('./config.js');
+            cartTotalPrice.textContent = formatMoneyWithCode(0);
+        } catch (_) {
+            cartTotalPrice.textContent = '$0 ARS';
+        }
         announceCart('Carrito vacío. Total $0 ARS');
         return;
     }

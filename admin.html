@@ -1698,6 +1698,38 @@
         </datalist>
       </div>
       <div style="margin-bottom:16px;">
+        <label style="font-size:12px; display:block; margin-bottom:4px;">Moneda (ISO 4217)</label>
+        <input type="text" id="header-currency-code" list="header-currency-list" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;" placeholder="ARS">
+        <datalist id="header-currency-list">
+          <option value="ARS"></option>
+          <option value="CLP"></option>
+          <option value="UYU"></option>
+          <option value="PYG"></option>
+          <option value="BRL"></option>
+          <option value="PEN"></option>
+          <option value="COP"></option>
+          <option value="MXN"></option>
+          <option value="USD"></option>
+          <option value="EUR"></option>
+        </datalist>
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="font-size:12px; display:block; margin-bottom:4px;">Locale numérico</label>
+        <input type="text" id="header-currency-locale" list="header-locale-list" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;" placeholder="es-AR">
+        <datalist id="header-locale-list">
+          <option value="es-AR"></option>
+          <option value="es-CL"></option>
+          <option value="es-UY"></option>
+          <option value="es-PY"></option>
+          <option value="pt-BR"></option>
+          <option value="es-PE"></option>
+          <option value="es-CO"></option>
+          <option value="es-MX"></option>
+          <option value="en-US"></option>
+          <option value="es-ES"></option>
+        </datalist>
+      </div>
+      <div style="margin-bottom:16px;">
         <label style="font-size:12px; display:block; margin-bottom:4px;">Logo (URL de imagen)</label>
         <input type="text" id="header-logo-url" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;" placeholder="https://...">
         <div style="margin-top:4px;">
@@ -6056,6 +6088,8 @@
     const headerLocationLabelInput = document.getElementById('header-location-label');
     const headerLocationUrlInput = document.getElementById('header-location-url');
     const headerTimezoneInput = document.getElementById('header-timezone');
+    const headerCurrencyCodeInput = document.getElementById('header-currency-code');
+    const headerCurrencyLocaleInput = document.getElementById('header-currency-locale');
     const headerLogoInput = document.getElementById('header-logo-url');
     const headerThemeColor = document.getElementById('header-theme-color');
     const headerBgColor = document.getElementById('header-bg-color');
@@ -6155,6 +6189,8 @@
         if (headerLocationLabelInput) headerLocationLabelInput.value = (data.location_label || data.location || '');
         if (headerLocationUrlInput) headerLocationUrlInput.value = data.location_url || '';
         if (headerTimezoneInput) headerTimezoneInput.value = data.timezone || 'America/Argentina/Mendoza';
+        if (headerCurrencyCodeInput) headerCurrencyCodeInput.value = data.currency_code || 'ARS';
+        if (headerCurrencyLocaleInput) headerCurrencyLocaleInput.value = data.currency_locale || 'es-AR';
         if (headerLogoInput) headerLogoInput.value = data.logo_url || '';
         if (headerThemeColor) headerThemeColor.value = data.theme_color || '#ff6a00';
         if (headerBgColor) headerBgColor.value = data.header_bg_color || '#667eea';
@@ -6204,6 +6240,8 @@
             location_url: headerLocationUrlInput ? headerLocationUrlInput.value.trim() : '',
             opening_hours: openingHours,
             timezone: headerTimezoneInput ? (headerTimezoneInput.value.trim() || 'America/Argentina/Mendoza') : 'America/Argentina/Mendoza',
+            currency_code: headerCurrencyCodeInput ? (headerCurrencyCodeInput.value.trim() || 'ARS') : 'ARS',
+            currency_locale: headerCurrencyLocaleInput ? (headerCurrencyLocaleInput.value.trim() || 'es-AR') : 'es-AR',
             logo_url: headerLogoInput ? headerLogoInput.value.trim() : '',
             theme_color: headerThemeColor ? headerThemeColor.value : '#ff6a00',
             header_bg_color: headerBgColor ? headerBgColor.value : '#667eea',

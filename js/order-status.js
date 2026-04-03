@@ -484,7 +484,7 @@ function renderStatus(order, config = {}) {
                     <div style="display:flex; flex-direction:column; width:100%;">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <span class="item-name"><strong>${item.qty}x</strong> ${item.name}</span>
-                            <span class="item-price">$${item.unit_price}</span>
+                            <span class="item-price">${(function(){try{return (new Intl.NumberFormat((window.CURRENCY_LOCALE||'es-AR'),{style:'currency',currency:(window.CURRENCY_CODE||'ARS'),maximumFractionDigits:0})).format(item.unit_price)+' '+(window.CURRENCY_CODE||'ARS')}catch(_){return '$'+item.unit_price}})()}</span>
                         </div>
                         ${note ? `<div class="item-note" style="font-size:0.85em; color:#e65100; margin-left:1.5rem; margin-top:0.2rem; font-style:italic;">Nota: ${note}</div>` : ''}
                     </div>
@@ -512,22 +512,22 @@ function renderStatus(order, config = {}) {
         totalSectionHtml = `
             <div class="order-summary-item" style="border-top: 1px dashed #eee; margin-top: 10px; padding-top: 10px;">
                 <span class="item-name" style="font-weight: bold;">Total (sin propina)</span>
-                <span class="item-price">$${baseTotal}</span>
+                <span class="item-price">${(function(){try{return (new Intl.NumberFormat((window.CURRENCY_LOCALE||'es-AR'),{style:'currency',currency:(window.CURRENCY_CODE||'ARS'),maximumFractionDigits:0})).format(baseTotal)+' '+(window.CURRENCY_CODE||'ARS')}catch(_){return '$'+baseTotal}})()}</span>
             </div>
             <div class="order-summary-item" style="color: #2e7d32;">
                 <span class="item-name">Propina sugerida (10%)</span>
-                <span class="item-price">$${tip}</span>
+                <span class="item-price">${(function(){try{return (new Intl.NumberFormat((window.CURRENCY_LOCALE||'es-AR'),{style:'currency',currency:(window.CURRENCY_CODE||'ARS'),maximumFractionDigits:0})).format(tip)+' '+(window.CURRENCY_CODE||'ARS')}catch(_){return '$'+tip}})()}</span>
             </div>
             <div class="order-summary-total">
                 <span>Total con propina</span>
-                <span>$${totalWithTip}</span>
+                <span>${(function(){try{return (new Intl.NumberFormat((window.CURRENCY_LOCALE||'es-AR'),{style:'currency',currency:(window.CURRENCY_CODE||'ARS'),maximumFractionDigits:0})).format(totalWithTip)+' '+(window.CURRENCY_CODE||'ARS')}catch(_){return '$'+totalWithTip}})()}</span>
             </div>
         `;
     } else {
         totalSectionHtml = `
             <div class="order-summary-total">
                 <span>Total</span>
-                <span>$${order.total}</span>
+                <span>${(function(){try{return (new Intl.NumberFormat((window.CURRENCY_LOCALE||'es-AR'),{style:'currency',currency:(window.CURRENCY_CODE||'ARS'),maximumFractionDigits:0})).format(order.total)+' '+(window.CURRENCY_CODE||'ARS')}catch(_){return '$'+order.total}})()}</span>
             </div>
         `;
     }

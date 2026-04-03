@@ -107,3 +107,30 @@ export function loadBusinessConfig(callback) {
         if (callback) callback();
     });
 }
+
+export function getCurrencySettings() {
+    const code = (window.CURRENCY_CODE || (window.BusinessConfig && window.BusinessConfig.currency_code) || 'ARS').toString().trim().toUpperCase();
+    const locale = (window.CURRENCY_LOCALE || (window.BusinessConfig && window.BusinessConfig.currency_locale) || 'es-AR').toString().trim() || 'es-AR';
+    return { code, locale };
+}
+
+export function formatMoney(amount) {
+    const { code, locale } = getCurrencySettings();
+    try {
+        const n = Number(amount || 0);
+        const fmt = new Intl.NumberFormat(locale, { style: 'currency', currency: code, maximumFractionDigits: 0 });
+        return fmt.format(n);
+    } catch (_) {
+        try {
+            return '$' + parseInt(amount || 0, 10).toLocaleString(locale);
+        } catch (_) {
+            return '$' + String(parseInt(amount || 0, 10));
+        }
+    }
+}
+
+export function formatMoneyWithCode(amount) {
+    const txt = formatMoney(amount);
+    const { code } = getCurrencySettings();
+    return txt + ' ' + code;
+}
