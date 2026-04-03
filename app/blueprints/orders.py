@@ -499,7 +499,13 @@ def create_order():
         except Exception:
             cfg = {}
 
-        if (not is_authed()) and bool(cfg.get('require_order_approval')):
+        is_admin_origin = False
+        try:
+            is_admin_origin = bool(is_authed() and check_csrf())
+        except Exception:
+            is_admin_origin = False
+
+        if bool(cfg.get('require_order_approval')) and (not is_admin_origin):
             status = 'por_aprobar'
         
         shipping_cost = 0
