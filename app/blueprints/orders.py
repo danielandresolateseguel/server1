@@ -700,6 +700,7 @@ def get_order_detail(order_id):
         sanitized_order = {
             'id': order['id'],
             'tenant_slug': order['tenant_slug'],
+            'tenant_order_number': order.get('tenant_order_number'),
             'status': order['status'],
             'total': order['total'],
             'created_at': order['created_at'],

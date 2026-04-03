@@ -496,10 +496,17 @@ function renderStatus(order, config = {}) {
 
     // --- BOTÓN WHATSAPP ---
     const whatsappNumber = '5492615893590'; 
-    const whatsappMsg = encodeURIComponent(`Hola, tengo una consulta sobre mi pedido #${order.id}.`);
+    const tenantOrderNumberRaw = (order && (order.tenant_order_number ?? order.tenant_order_number)) ?? null;
+    let displayOrderNumber = String(order.id || '');
+    if (tenantOrderNumberRaw !== null && tenantOrderNumberRaw !== undefined && String(tenantOrderNumberRaw).trim() !== '') {
+        const n = parseInt(tenantOrderNumberRaw, 10);
+        displayOrderNumber = (isFinite(n) && n > 0) ? String(n).padStart(3, '0') : String(tenantOrderNumberRaw);
+    }
+
+    const whatsappMsg = encodeURIComponent(`Hola, tengo una consulta sobre mi pedido #${displayOrderNumber}.`);
     const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${whatsappMsg}`;
 
-    const whatsappPaymentMsg = encodeURIComponent(`Hola, quiero realizar el pago del pedido #${order.id}.`);
+    const whatsappPaymentMsg = encodeURIComponent(`Hola, quiero realizar el pago del pedido #${displayOrderNumber}.`);
     const whatsappPaymentUrl = `https://wa.me/${whatsappNumber}?text=${whatsappPaymentMsg}`;
 
     // Lógica de totales (Propina)
@@ -545,7 +552,7 @@ function renderStatus(order, config = {}) {
             ${stepperHtml}
 
             <div class="order-header" style="text-align: center; margin-bottom: 1.5rem; border-bottom: none; padding-bottom: 0;">
-                <span class="order-id" style="display: block; font-size: 0.875rem; color: #6b7280;">Pedido #${order.id}</span>
+                <span class="order-id" style="display: block; font-size: 0.875rem; color: #6b7280;">Pedido #${displayOrderNumber}</span>
                 <span class="order-time" style="font-size: 0.75rem; color: #9ca3af;">${date}</span>
             </div>
 
