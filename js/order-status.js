@@ -1,5 +1,5 @@
 
-import { getBusinessSlug } from './config.js';
+import { getBusinessSlug } from './config.js?v=8';
 
 // Estado interno del módulo
 let pollingInterval = null;

@@ -4,8 +4,9 @@
 import { 
     CART_STORAGE_KEY, 
     LEGACY_CART_STORAGE_KEY, 
-    getCheckoutMode 
-} from './config.js';
+    getCheckoutMode,
+    formatMoneyWithCode
+} from './config.js?v=8';
 import { announceCart } from './utils.js';
 
 // Estado del carrito
@@ -109,12 +110,7 @@ export function clearCart() {
     saveCart();
     updateCartDisplay();
     updateCartCount();
-    try {
-        const { formatMoneyWithCode } = await import('./config.js');
-        announceCart('Carrito vaciado. Total ' + formatMoneyWithCode(0));
-    } catch (_) {
-        announceCart('Carrito vaciado. Total $0 ARS');
-    }
+    announceCart('Carrito vaciado. Total ' + formatMoneyWithCode(0));
 }
 
 // Actualizar contador
@@ -142,13 +138,8 @@ export function updateCartDisplay() {
     
     if (cart.length === 0) {
         cartItems.innerHTML = '<p class="empty-cart">Tu carrito está vacío</p>';
-        try {
-            const { formatMoneyWithCode } = await import('./config.js');
-            cartTotalPrice.textContent = formatMoneyWithCode(0);
-        } catch (_) {
-            cartTotalPrice.textContent = '$0 ARS';
-        }
-        announceCart('Carrito vacío. Total $0 ARS');
+        cartTotalPrice.textContent = formatMoneyWithCode(0);
+        announceCart('Carrito vacío. Total ' + formatMoneyWithCode(0));
         return;
     }
     
@@ -180,7 +171,7 @@ export function updateCartDisplay() {
         
         const itemPrice = document.createElement('div');
         itemPrice.className = 'cart-item-price';
-        itemPrice.textContent = '$' + parseInt(item.price).toLocaleString('es-AR') + ' ARS';
+        itemPrice.textContent = formatMoneyWithCode(parseInt(item.price));
         
         // Controles de cantidad
         const itemQuantityContainer = document.createElement('div');
@@ -278,13 +269,14 @@ export function updateCartDisplay() {
     }
     
     if (shippingCost > 0) {
+        const shippingText = formatMoneyWithCode(parseInt(shippingCost));
         const shippingRow = document.createElement('div');
         shippingRow.className = 'cart-item shipping-row';
         shippingRow.style.cssText = 'border-top: 1px dashed #eee; margin-top: 10px; padding-top: 10px; background: none;';
         shippingRow.innerHTML = `
             <div class="cart-item-info" style="width:100%; display:flex; justify-content:space-between; align-items:center;">
                 <div class="cart-item-name" style="font-weight:bold; color: #666;">Costo de envío</div>
-                <div class="cart-item-price">$${shippingCost.toLocaleString('es-AR')} ARS</div>
+                <div class="cart-item-price">${shippingText}</div>
             </div>
         `;
         cartItems.appendChild(shippingRow);
@@ -294,6 +286,8 @@ export function updateCartDisplay() {
     // Lógica de Propina (Solo Mesa)
     if (currentOrderType === 'mesa') {
         const tipAmount = Math.round(totalPrice * 0.10);
+        const subtotalText = formatMoneyWithCode(parseInt(totalPrice));
+        const tipText = formatMoneyWithCode(parseInt(tipAmount));
         
         // Mostrar subtotal (Total sin propina)
         const subtotalRow = document.createElement('div');
@@ -302,7 +296,7 @@ export function updateCartDisplay() {
         subtotalRow.innerHTML = `
              <div class="cart-item-info" style="width:100%; display:flex; justify-content:space-between; align-items:center;">
                 <div class="cart-item-name" style="font-weight:bold;">Total (sin propina)</div>
-                <div class="cart-item-price">$${totalPrice.toLocaleString('es-AR')} ARS</div>
+                <div class="cart-item-price">${subtotalText}</div>
             </div>
         `;
         cartItems.appendChild(subtotalRow);
@@ -314,7 +308,7 @@ export function updateCartDisplay() {
         tipRow.innerHTML = `
             <div class="cart-item-info" style="width:100%; display:flex; justify-content:space-between; align-items:center;">
                 <div class="cart-item-name" style="font-weight:bold;">Propina sugerida (10%)</div>
-                <div class="cart-item-price">$${tipAmount.toLocaleString('es-AR')} ARS</div>
+                <div class="cart-item-price">${tipText}</div>
             </div>
         `;
         cartItems.appendChild(tipRow);
@@ -322,6 +316,7 @@ export function updateCartDisplay() {
         totalPrice += tipAmount;
     }
     
-    cartTotalPrice.textContent = '$' + parseInt(totalPrice).toLocaleString('es-AR') + ' ARS';
-    announceCart('Total actualizado: $' + parseInt(totalPrice).toLocaleString('es-AR') + ' ARS');
+    const totalText = formatMoneyWithCode(parseInt(totalPrice));
+    cartTotalPrice.textContent = totalText;
+    announceCart('Total actualizado: ' + totalText);
 }

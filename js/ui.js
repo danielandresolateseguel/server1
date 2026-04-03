@@ -1,9 +1,9 @@
 /**
  * UI Animations and Interactions
  */
-import { addToCart, updateCartDisplay, updateCartCount } from './cart.js';
-import { getBusinessSlug } from './config.js';
-import { refreshSearchableItems } from './search.js';
+import { addToCart, updateCartDisplay, updateCartCount } from './cart.js?v=8';
+import { getBusinessSlug, formatMoneyWithCode } from './config.js?v=8';
+import { refreshSearchableItems } from './search.js?v=8';
 
 // Animación de añadir al carrito
 export function showAddToCartAnimation(event) {
@@ -460,12 +460,7 @@ export async function initDynamicProducts() {
             const priceEl = card.querySelector('.product-price');
             const priceVal = isFinite(parseInt(prod.price)) ? parseInt(prod.price) : 0;
             if (priceEl && priceVal > 0) {
-                try {
-                    const { formatMoneyWithCode } = await import('./config.js');
-                    priceEl.textContent = formatMoneyWithCode(priceVal);
-                } catch (_) {
-                    priceEl.textContent = '$' + priceVal.toLocaleString('es-AR') + ' ARS';
-                }
+                priceEl.textContent = formatMoneyWithCode(priceVal);
             }
             if (btn && priceVal > 0) {
                 btn.setAttribute('data-price', String(priceVal));
@@ -542,12 +537,7 @@ export async function initDynamicProducts() {
             const imgSrc = p.image_url || '';
             let priceText = '';
             if (priceVal > 0) {
-                try {
-                    const { formatMoneyWithCode } = await import('./config.js');
-                    priceText = formatMoneyWithCode(priceVal);
-                } catch (_) {
-                    priceText = '$' + priceVal.toLocaleString('es-AR') + ' ARS';
-                }
+                priceText = formatMoneyWithCode(priceVal);
             }
             card.innerHTML = '<div class="product-image">' +
                 (imgSrc ? '<img src="' + imgSrc + '" alt="">' : '') +

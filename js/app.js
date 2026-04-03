@@ -16,7 +16,7 @@ try {
     console.log('Config cache cleared for update.');
 } catch (e) { console.error('Error clearing cache', e); }
 
-import { loadBusinessConfig, PAGE, CHECKOUT_MODE, getBusinessSlug } from './config.js';
+import { loadBusinessConfig, PAGE, CHECKOUT_MODE, getBusinessSlug } from './config.js?v=8';
 import { 
     initCartElements, 
     loadCart, 
@@ -24,18 +24,18 @@ import {
     clearCart, 
     updateCartDisplay,
     updateCartCount
-} from './cart.js';
+} from './cart.js?v=8';
 import { 
     bindAddToCartEvents, 
     initDiscountSwipe, 
     openDialog, 
     closeDialog,
     closeCartUI
-} from './ui.js';
+} from './ui.js?v=8';
 import { 
     initSearch
-} from './search.js';
-import { handleCheckout } from './checkout.js';
+} from './search.js?v=8';
+import { handleCheckout } from './checkout.js?v=8';
 import { 
     initializeCarousel, 
     loadAndInitCarousel,
@@ -46,14 +46,14 @@ import {
     toggleAutoPlay,
     initInterestNav, 
     initInterestFocusState 
-} from './carousel.js';
+} from './carousel.js?v=8';
 import { 
     scrollDiscounts,
     initProductModals,
     initInterestFiltering,
     initDynamicProducts
-} from './ui.js';
-import { initOrderStatus } from './order-status.js';
+} from './ui.js?v=8';
+import { initOrderStatus } from './order-status.js?v=8';
 
 // Exponer funciones globales necesarias para HTML inline (onclick="...")
 window.addToCart = function(id, name, price, imageSrc, event) {

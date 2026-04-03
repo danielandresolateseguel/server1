@@ -1,9 +1,9 @@
 /**
  * Checkout and WhatsApp Logic
  */
-import { cart, clearCart } from './cart.js';
-import { closeCartUI } from './ui.js';
-import { getWhatsappNumber, CATEGORY, getCheckoutMode, getWhatsappEnabled, getWhatsappTemplate, getBusinessSlug } from './config.js';
+import { cart, clearCart } from './cart.js?v=8';
+import { closeCartUI } from './ui.js?v=8';
+import { getWhatsappNumber, CATEGORY, getCheckoutMode, getWhatsappEnabled, getWhatsappTemplate, getBusinessSlug, formatMoneyWithCode } from './config.js?v=8';
 
 export function handleCheckout() {
     if (cart.length === 0) {
@@ -45,23 +45,11 @@ export function handleCheckout() {
 
     let itemsList = '';
     cart.forEach((item, index) => {
-        let precioFormateado;
-        try {
-            const { formatMoneyWithCode } = await import('./config.js');
-            precioFormateado = formatMoneyWithCode(parseInt(item.price));
-        } catch (_) {
-            precioFormateado = '$' + parseInt(item.price).toLocaleString('es-AR') + ' ARS';
-        }
+        const precioFormateado = formatMoneyWithCode(parseInt(item.price));
         itemsList += `${index + 1}. \uD83D\uDCE6 ${item.name}\n`;
         itemsList += `   \uD83D\uDCCA Cantidad: ${item.quantity}\n`;
         itemsList += `   \uD83D\uDCB5 Precio unitario: ${precioFormateado}\n`;
-        let subtotalTxt;
-        try {
-            const { formatMoneyWithCode } = await import('./config.js');
-            subtotalTxt = formatMoneyWithCode(parseInt(item.price * item.quantity));
-        } catch (_) {
-            subtotalTxt = '$' + parseInt(item.price * item.quantity).toLocaleString('es-AR') + ' ARS';
-        }
+        const subtotalTxt = formatMoneyWithCode(parseInt(item.price * item.quantity));
         itemsList += `   \uD83D\uDCB0 Subtotal: ${subtotalTxt}\n`;
         if ((item.notes || '').trim()) itemsList += `   \uD83D\uDCDD Detalle: ${(item.notes||'').trim()}\n`;
         itemsList += '\n';
@@ -73,25 +61,13 @@ export function handleCheckout() {
         shippingCost = parseInt(window.BusinessConfig.shipping_cost) || 0;
     }
     const totalNumber = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0) + shippingCost;
-    let totalText;
-    try {
-        const { formatMoneyWithCode } = await import('./config.js');
-        totalText = formatMoneyWithCode(parseInt(totalNumber));
-    } catch (_) {
-        totalText = '$' + parseInt(totalNumber).toLocaleString('es-AR') + ' ARS';
-    }
+    const totalText = formatMoneyWithCode(parseInt(totalNumber));
     const currentCategory = (CATEGORY || '').toLowerCase();
     const isCommerce = currentCategory === 'comercio' || currentCategory === 'general';
 
     let totales = '';
     if (shippingCost > 0) {
-        let envioTxt;
-        try {
-            const { formatMoneyWithCode } = await import('./config.js');
-            envioTxt = formatMoneyWithCode(parseInt(shippingCost));
-        } catch (_) {
-            envioTxt = '$' + parseInt(shippingCost).toLocaleString('es-AR') + ' ARS';
-        }
+        const envioTxt = formatMoneyWithCode(parseInt(shippingCost));
         totales += `\uD83D\uDE9A Costo de envío: ${envioTxt}\n`;
     }
     
@@ -103,16 +79,10 @@ export function handleCheckout() {
 
     if (orderType === 'mesa') {
         const tip = Math.round(totalNumber * 0.10);
-        try {
-            const { formatMoneyWithCode } = await import('./config.js');
-            const tipTxt = formatMoneyWithCode(parseInt(tip));
-            const totalWithTipTxt = formatMoneyWithCode(parseInt(totalNumber + tip));
-            totales += `\uD83D\uDC81 Propina sugerida (10%): ${tipTxt}\n`;
-            totales += `\uD83C\uDF7D\uFE0F TOTAL con propina sugerida: ${totalWithTipTxt}\n`;
-        } catch (_) {
-            totales += `\uD83D\uDC81 Propina sugerida (10%): $${parseInt(tip).toLocaleString('es-AR')} ARS\n`;
-            totales += `\uD83C\uDF7D\uFE0F TOTAL con propina sugerida: $${parseInt(totalNumber + tip).toLocaleString('es-AR')} ARS\n`;
-        }
+        const tipTxt = formatMoneyWithCode(parseInt(tip));
+        const totalWithTipTxt = formatMoneyWithCode(parseInt(totalNumber + tip));
+        totales += `\uD83D\uDC81 Propina sugerida (10%): ${tipTxt}\n`;
+        totales += `\uD83C\uDF7D\uFE0F TOTAL con propina sugerida: ${totalWithTipTxt}\n`;
     }
 
     let notas = '';

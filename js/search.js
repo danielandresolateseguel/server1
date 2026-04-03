@@ -2,8 +2,8 @@
  * Search Logic
  */
 import { normalizeForSearch, extractSnippet, highlightTerm, highlightElement } from './utils.js';
-import { addToCart } from './cart.js';
-import { showAddToCartAnimation, showAddedToCartIndicator } from './ui.js';
+import { addToCart } from './cart.js?v=8';
+import { showAddToCartAnimation, showAddedToCartIndicator } from './ui.js?v=8';
 
 export let searchableItems = [];
 
