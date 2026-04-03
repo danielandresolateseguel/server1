@@ -443,6 +443,9 @@ def update_tenant_config():
             raw = str(reasons or '')
             parsed = [s.strip() for s in raw.splitlines() if s.strip()]
         current_cfg['delivery_fail_reasons'] = parsed
+
+    if 'require_order_approval' in payload:
+        current_cfg['require_order_approval'] = bool(payload.get('require_order_approval'))
     
     cur.execute("INSERT OR REPLACE INTO tenant_config (tenant_slug, config_json) VALUES (?, ?)", (slug, json.dumps(current_cfg, ensure_ascii=False)))
     conn.commit()
@@ -489,11 +492,19 @@ def create_order():
             ensure_orders_tenant_number_columns(conn, cur)
         except Exception:
             pass
+
+        cfg = {}
+        try:
+            cfg = get_cached_tenant_config(tenant_slug) or {}
+        except Exception:
+            cfg = {}
+
+        if (not is_authed()) and bool(cfg.get('require_order_approval')):
+            status = 'por_aprobar'
         
         shipping_cost = 0
         if order_type == 'direccion':
             try:
-                cfg = get_cached_tenant_config(tenant_slug)
                 shipping_cost = int(cfg.get('shipping_cost', 0))
             except:
                 pass
@@ -722,7 +733,7 @@ def update_order_status(order_id):
     payload = request.get_json(silent=True) or {}
     new_status = payload.get('status')
     reason = (payload.get('reason') or '').strip()
-    if new_status not in ('pendiente', 'preparacion', 'listo', 'en_camino', 'entregado', 'cancelado'):
+    if new_status not in ('por_aprobar', 'pendiente', 'preparacion', 'listo', 'en_camino', 'entregado', 'cancelado'):
         return jsonify({'error': 'status inválido'}), 400
         
     conn = get_db()

@@ -350,6 +350,7 @@ function renderStatus(order, config = {}) {
     }
     
     const statusMap = {
+        'por_aprobar': { label: 'Por aprobar', class: 'pendiente', icon: 'fa-user-check' },
         'pendiente': { label: 'Pendiente', class: 'pendiente', icon: 'fa-clock' },
         'preparacion': { label: 'En preparación', class: 'preparacion', icon: 'fa-fire' },
         'listo': { label: 'Listo para retirar', class: 'listo', icon: 'fa-shopping-bag' },
@@ -402,6 +403,7 @@ function renderStatus(order, config = {}) {
     let steps = [];
     if (isDelivery) {
         steps = [
+            { key: 'por_aprobar', label: 'Aprobación', icon: 'fa-user-check' },
             { key: 'pendiente', label: 'Recibido', icon: 'fa-clipboard-check' },
             { key: 'preparacion', label: 'Cocina', icon: 'fa-fire' },
             { key: 'listo', label: 'Listo', icon: 'fa-check' },
@@ -410,6 +412,7 @@ function renderStatus(order, config = {}) {
         ];
     } else {
         steps = [
+            { key: 'por_aprobar', label: 'Aprobación', icon: 'fa-user-check' },
             { key: 'pendiente', label: 'Recibido', icon: 'fa-clipboard-check' },
             { key: 'preparacion', label: 'Cocina', icon: 'fa-fire' },
             { key: 'listo', label: 'Listo', icon: 'fa-check' },
@@ -422,19 +425,23 @@ function renderStatus(order, config = {}) {
     
     if (isDelivery) {
         // Lógica para 5 pasos (con En camino)
-        if (order.status === 'preparacion') currentStepIndex = 1;
-        else if (order.status === 'listo') currentStepIndex = 2;
-        else if (order.status === 'en_camino') currentStepIndex = 3;
-        else if (order.status === 'entregado') currentStepIndex = 4;
+        if (order.status === 'por_aprobar') currentStepIndex = 0;
+        else if (order.status === 'pendiente') currentStepIndex = 1;
+        else if (order.status === 'preparacion') currentStepIndex = 2;
+        else if (order.status === 'listo') currentStepIndex = 3;
+        else if (order.status === 'en_camino') currentStepIndex = 4;
+        else if (order.status === 'entregado') currentStepIndex = 5;
         else if (order.status === 'cancelado') currentStepIndex = -1;
     } else {
         // Lógica estándar de 4 pasos
-        if (order.status === 'preparacion') currentStepIndex = 1;
-        else if (order.status === 'listo') currentStepIndex = 2;
+        if (order.status === 'por_aprobar') currentStepIndex = 0;
+        else if (order.status === 'pendiente') currentStepIndex = 1;
+        else if (order.status === 'preparacion') currentStepIndex = 2;
+        else if (order.status === 'listo') currentStepIndex = 3;
         // Si llega en_camino pero no es delivery (caso raro/fallback), lo mostramos como paso 2 (Listo) o 3 si fuera posible
         // Para mantener consistencia, si no es delivery, en_camino se visualiza igual que listo (ya salió)
-        else if (order.status === 'en_camino') currentStepIndex = 2; 
-        else if (order.status === 'entregado') currentStepIndex = 3;
+        else if (order.status === 'en_camino') currentStepIndex = 3; 
+        else if (order.status === 'entregado') currentStepIndex = 4;
         else if (order.status === 'cancelado') currentStepIndex = -1;
     }
 

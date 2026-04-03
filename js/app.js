@@ -53,7 +53,7 @@ import {
     initInterestFiltering,
     initDynamicProducts
 } from './ui.js?v=8';
-import { initOrderStatus } from './order-status.js?v=9';
+import { initOrderStatus } from './order-status.js?v=10';
 
 // Exponer funciones globales necesarias para HTML inline (onclick="...")
 window.addToCart = function(id, name, price, imageSrc, event) {

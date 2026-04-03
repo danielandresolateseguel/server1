@@ -61,6 +61,7 @@
     .status-en_camino { background:#fb8c00; }
     .status-entregado { background:#6a1b9a; }
     .status-cancelado { background:#c62828; }
+    .status-por_aprobar { background:#455a64; }
     table { width:100%; border-collapse: collapse; }
     body { max-width: 100vw; overflow-x: hidden; }
     th, td { border-bottom: 1px solid #ddd; padding: 8px; text-align: left; }
@@ -89,6 +90,7 @@
     .status-action.mesa { background:#fb8c00; color:#fff; }
     .status-action.entregado { background:#6a1b9a; color:#fff; }
     .status-action.cancelado { background:#c62828; color:#fff; }
+    .status-action.approve { background:#2e7d32; color:#fff; }
     .kds-tooltip { position: fixed; display:none; background: rgba(33,33,33,0.92); color:#fff; font-size:12px; padding:6px 8px; border-radius:6px; box-shadow: 0 6px 16px rgba(0,0,0,0.18); z-index: 10001; }
     .kds-tooltip.active { display:block; }
     .status-action.preparacion:hover { background:#1565c0; }
@@ -96,6 +98,7 @@
     .status-action.en_camino:hover, .status-action.mesa:hover { background:#f57c00; }
     .status-action.entregado:hover { background:#4a148c; }
     .status-action.cancelado:hover { background:#b71c1c; }
+    .status-action.approve:hover { background:#1b5e20; }
     #service-banner{display:none;margin:12px 0 8px;padding:10px 12px;border-radius:8px;border:1px solid #ffeeba;background:#fff3cd;color:#7a5a00;font-weight:600}
     #service-banner.danger{border-color:#f5c6cb;background:#f8d7da;color:#721c24}
 
@@ -1567,6 +1570,14 @@
       </div>
 
       <div style="margin-bottom:16px; border-top:1px solid #eee; padding-top:12px;">
+        <div style="font-weight:bold; margin-bottom:8px;">Seguridad (Carta Online):</div>
+        <label style="display:flex; align-items:center; gap:8px;">
+          <input type="checkbox" id="cfg-require-approval">
+          <span style="font-size:14px;">Requerir aprobación antes de enviar a cocina</span>
+        </label>
+      </div>
+
+      <div style="margin-bottom:16px; border-top:1px solid #eee; padding-top:12px;">
         <div style="font-weight:bold; margin-bottom:8px;">Costo de envío (Domicilio):</div>
         <input type="number" id="cfg-shipping-cost" placeholder="0" min="0" step="100" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
       </div>
@@ -1893,6 +1904,7 @@
     })();
 
     const statusClasses = {
+      por_aprobar: 'status-por_aprobar',
       pendiente: 'status-pendiente',
       preparacion: 'status-preparacion',
       listo: 'status-listo',
@@ -3749,7 +3761,7 @@
         const waUrl = getWaLink(o, phoneDigits);
 
         const statusClass = statusClasses[o.status] || 'status-pendiente';
-        const statusLabelText = (isMesa && o.status === 'en_camino') ? 'mesa' : o.status;
+        const statusLabelText = (o.status === 'por_aprobar') ? 'por aprobar' : ((isMesa && o.status === 'en_camino') ? 'mesa' : o.status);
         
         let pDisabled = '';
         let lDisabled = '';
@@ -3764,6 +3776,7 @@
              
              if (!isPrepOrLater) lDisabled = 'disabled style="opacity:0.3;cursor:not-allowed;"';
              if (!isListoOrLater) eDisabled = 'disabled style="opacity:0.3;cursor:not-allowed;"';
+             if (s === 'por_aprobar') pDisabled = 'disabled style="opacity:0.3;cursor:not-allowed;"';
              
              // Política para Espera: Debe estar pagado para entregar
              if (isEspera && !isPaid) {
@@ -3779,6 +3792,7 @@
              if (!isPrepOrLater) lDisabled = 'disabled style="opacity:0.3;cursor:not-allowed;"';
              if (!isListoOrLater) cDisabled = 'disabled style="opacity:0.3;cursor:not-allowed;"';
              if (!isEnCaminoOrLater) eDisabled = 'disabled style="opacity:0.3;cursor:not-allowed;"';
+             if (s === 'por_aprobar') pDisabled = 'disabled style="opacity:0.3;cursor:not-allowed;"';
         }
 
         let enCaminoBtn = '';
@@ -3795,6 +3809,9 @@
         const entregadoBtn = `<button class="status-action entregado" data-status="entregado" aria-label="Entregado" data-tip="Entregado" ${eDisabled}>E</button>`;
         const prepBtn = `<button class="status-action preparacion" data-status="preparacion" aria-label="Preparación" data-tip="Preparación" ${pDisabled}>P</button>`;
         const listoBtn = `<button class="status-action listo" data-status="listo" aria-label="Listo" data-tip="Listo" ${lDisabled}>L</button>`;
+        const aprobarBtn = (String(o.status || '').toLowerCase() === 'por_aprobar')
+          ? `<button class="status-action approve" data-status="pendiente" aria-label="Aprobar" data-tip="Aprobar">A</button>`
+          : '';
 
         const baseTotal = Number(o.total || 0);
 
@@ -3820,6 +3837,7 @@
           <td class="status-cell"><span class="status-badge ${statusClass}">${statusLabelText}</span>${renderSLA(o)}</td>
           <td class="actions">
             <div class="status-quick">
+              ${aprobarBtn}
               ${prepBtn}
               ${listoBtn}
               ${enCaminoBtn}
@@ -3885,6 +3903,7 @@
             <div class="state-line"><span class="status-badge ${statusClass}">${statusLabelText}</span>${renderSLA(o)}</div>
             <div class="actions">
               <div class="status-quick">
+                ${aprobarBtn}
                 ${prepBtn}
               ${listoBtn}
                 ${enCaminoBtn}
@@ -8921,6 +8940,8 @@
                  
                  const inp = document.getElementById('cfg-shipping-cost');
                  const val = inp ? (parseInt(inp.value)||0) : 0;
+                 const reqApprovalEl = document.getElementById('cfg-require-approval');
+                 const valRequireApproval = reqApprovalEl ? !!reqApprovalEl.checked : false;
 
                  const tMesa = document.getElementById('cfg-time-mesa');
                  const tEspera = document.getElementById('cfg-time-espera');
@@ -8954,7 +8975,8 @@
                        time_espera: valEspera,
                        time_delivery: valDelivery,
                        time_auto: valAuto,
-                       delivery_fail_reasons: failReasons
+                       delivery_fail_reasons: failReasons,
+                       require_order_approval: valRequireApproval
                  });
 
                  try {
@@ -9064,6 +9086,8 @@
                  console.log('[DEBUG] Config loaded:', d);
                  const inp = document.getElementById('cfg-shipping-cost');
                  if(inp) inp.value = d.shipping_cost || 0;
+                 const reqApprovalEl = document.getElementById('cfg-require-approval');
+                 if (reqApprovalEl) reqApprovalEl.checked = !!d.require_order_approval;
 
                  const tMesa = document.getElementById('cfg-time-mesa');
                  const tEspera = document.getElementById('cfg-time-espera');
