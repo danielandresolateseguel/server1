@@ -267,12 +267,13 @@ function initDeliveryGeoUI() {
     tsEl.type = 'hidden';
     tsEl.id = 'delivery-geo-ts';
 
-    container.appendChild(btn);
-    container.appendChild(preview);
-    container.appendChild(latEl);
-    container.appendChild(lngEl);
-    container.appendChild(accEl);
-    container.appendChild(tsEl);
+    const first = container.firstChild;
+    container.insertBefore(btn, first);
+    container.insertBefore(preview, first);
+    container.insertBefore(latEl, first);
+    container.insertBefore(lngEl, first);
+    container.insertBefore(accEl, first);
+    container.insertBefore(tsEl, first);
 
     const setPreview = (html) => { preview.innerHTML = html || ''; };
 
@@ -282,6 +283,30 @@ function initDeliveryGeoUI() {
         setPreview('Tu navegador no permite compartir ubicación.');
         return;
     }
+
+    const addressInput = document.getElementById('delivery-address');
+    const localityInput = document.getElementById('delivery-locality');
+    const origin = window.location.origin || '';
+    const API_BASE = /^file:/i.test(origin) ? 'http://127.0.0.1:8000' : origin;
+
+    const tryAutofillFromGeo = async (lat, lng) => {
+        try {
+            const url = new URL('/api/geocode/reverse', API_BASE);
+            url.searchParams.set('lat', String(lat));
+            url.searchParams.set('lng', String(lng));
+            const r = await fetch(url.toString(), { cache: 'no-store' });
+            if (!r.ok) return null;
+            const j = await r.json().catch(() => null);
+            if (!j) return null;
+            const addr = String(j.address || '').trim();
+            const loc = String(j.locality || '').trim();
+            if (addressInput && addr && !(addressInput.value || '').trim()) addressInput.value = addr;
+            if (localityInput && loc && !(localityInput.value || '').trim()) localityInput.value = loc;
+            return { address: addr, locality: loc };
+        } catch (_) {
+            return null;
+        }
+    };
 
     const renderFromValues = () => {
         const lat = parseFloat((latEl.value || '').trim());
@@ -303,6 +328,28 @@ function initDeliveryGeoUI() {
                 accEl.value = (j.accuracy == null) ? '' : String(j.accuracy);
                 tsEl.value = (j.ts == null) ? '' : String(j.ts);
                 renderFromValues();
+                const a = String(j.address || '').trim();
+                const l = String(j.locality || '').trim();
+                if (addressInput && a && !(addressInput.value || '').trim()) addressInput.value = a;
+                if (localityInput && l && !(localityInput.value || '').trim()) localityInput.value = l;
+                if ((!a || !l) && ((addressInput && !(addressInput.value || '').trim()) || (localityInput && !(localityInput.value || '').trim()))) {
+                    (async () => {
+                        const lat = Number(j.lat);
+                        const lng = Number(j.lng);
+                        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+                        const res = await tryAutofillFromGeo(lat, lng);
+                        if (!res) return;
+                        try {
+                            const saved2 = sessionStorage.getItem('delivery_geo');
+                            const j2 = saved2 ? JSON.parse(saved2) : {};
+                            if (j2 && typeof j2 === 'object') {
+                                j2.address = res.address || j2.address || '';
+                                j2.locality = res.locality || j2.locality || '';
+                                sessionStorage.setItem('delivery_geo', JSON.stringify(j2));
+                            }
+                        } catch (_) {}
+                    })();
+                }
             }
         }
     } catch (_) {}
@@ -326,10 +373,38 @@ function initDeliveryGeoUI() {
                             lat,
                             lng,
                             accuracy: Number.isFinite(acc) ? acc : null,
-                            ts: pos && pos.timestamp ? pos.timestamp : null
+                            ts: pos && pos.timestamp ? pos.timestamp : null,
+                            address: addressInput ? String(addressInput.value || '').trim() : '',
+                            locality: localityInput ? String(localityInput.value || '').trim() : ''
                         }));
                     } catch (_) {}
                     renderFromValues();
+                    (async () => {
+                        const res = await tryAutofillFromGeo(lat, lng);
+                        if (res && (res.address || res.locality)) {
+                            try {
+                                const saved2 = sessionStorage.getItem('delivery_geo');
+                                const j2 = saved2 ? JSON.parse(saved2) : {};
+                                if (j2 && typeof j2 === 'object') {
+                                    j2.address = res.address || j2.address || '';
+                                    j2.locality = res.locality || j2.locality || '';
+                                    sessionStorage.setItem('delivery_geo', JSON.stringify(j2));
+                                }
+                            } catch (_) {}
+                            const lat2 = parseFloat((latEl.value || '').trim());
+                            const lng2 = parseFloat((lngEl.value || '').trim());
+                            const accuracy2 = parseFloat((accEl.value || '').trim());
+                            if (Number.isFinite(lat2) && Number.isFinite(lng2)) {
+                                const url2 = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat2},${lng2}`)}`;
+                                const accTxt2 = Number.isFinite(accuracy2) ? ` (precisión aprox. ${Math.round(accuracy2)}m)` : '';
+                                const parts = [];
+                                if (res.address) parts.push(res.address);
+                                if (res.locality) parts.push(res.locality);
+                                const txt = parts.length ? ` · ${parts.join(', ')}` : '';
+                                setPreview(`Ubicación lista${accTxt2}: <a href="${url2}" target="_blank" rel="noopener">ver en mapa</a>${txt}`);
+                            }
+                        }
+                    })();
                 } else {
                     latEl.value = '';
                     lngEl.value = '';

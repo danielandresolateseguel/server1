@@ -1,6 +1,9 @@
-from flask import Blueprint, jsonify, current_app
+from flask import Blueprint, jsonify, current_app, request
 import os
 import sys
+import json
+import urllib.request
+import urllib.parse
 from datetime import datetime, timezone
 
 bp = Blueprint('system', __name__)
@@ -24,6 +27,67 @@ def version():
 @bp.route('/api/ping_system')
 def ping():
     return jsonify({'status': 'ok', 'message': 'System blueprint active'})
+
+@bp.route('/api/geocode/reverse')
+def geocode_reverse():
+    lat_raw = request.args.get('lat')
+    lng_raw = request.args.get('lng') or request.args.get('lon')
+    try:
+        lat = float(str(lat_raw).strip())
+        lng = float(str(lng_raw).strip())
+    except Exception:
+        return jsonify({'error': 'lat/lng inválidos'}), 400
+
+    ua = os.environ.get('GEOCODE_USER_AGENT') or os.environ.get('RENDER_SERVICE_NAME') or 'Proyecto-avansado-2026'
+    headers = {
+        'User-Agent': str(ua),
+        'Accept': 'application/json'
+    }
+    query = urllib.parse.urlencode({
+        'format': 'jsonv2',
+        'lat': f"{lat:.7f}",
+        'lon': f"{lng:.7f}",
+        'addressdetails': '1'
+    })
+    url = f"https://nominatim.openstreetmap.org/reverse?{query}"
+
+    try:
+        req = urllib.request.Request(url, headers=headers, method='GET')
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            raw = resp.read().decode('utf-8', errors='replace')
+        data = json.loads(raw or '{}') if raw else {}
+    except Exception:
+        return jsonify({'error': 'no se pudo resolver la ubicación'}), 502
+
+    addr = data.get('address') or {}
+    if not isinstance(addr, dict):
+        addr = {}
+
+    road = str(addr.get('road') or addr.get('pedestrian') or addr.get('footway') or addr.get('path') or '').strip()
+    house = str(addr.get('house_number') or '').strip()
+    display_name = str(data.get('display_name') or '').strip()
+
+    address_line = ''
+    if road and house:
+        address_line = f"{road} {house}".strip()
+    elif road:
+        address_line = road
+    elif display_name:
+        address_line = display_name.split(',')[0].strip()
+
+    city = str(addr.get('city') or addr.get('town') or addr.get('village') or addr.get('municipality') or addr.get('county') or '').strip()
+    state = str(addr.get('state') or '').strip()
+    locality = ', '.join([x for x in [city, state] if x])
+
+    resp = jsonify({
+        'lat': lat,
+        'lng': lng,
+        'address': address_line,
+        'locality': locality,
+        'display_name': display_name
+    })
+    resp.headers['Cache-Control'] = 'no-store'
+    return resp
 
 @bp.route('/api/routes_debug')
 def routes_debug():
