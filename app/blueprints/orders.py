@@ -466,6 +466,17 @@ def create_order():
             
         table_number = payload.get('table_number') or ''
         address_json = payload.get('address') or {}
+        if isinstance(address_json, str):
+            raw = address_json.strip()
+            if raw:
+                try:
+                    address_json = json.loads(raw)
+                except Exception:
+                    address_json = {'address': raw}
+            else:
+                address_json = {}
+        if not isinstance(address_json, dict):
+            address_json = {}
         items = payload.get('items') or []
         customer_name = payload.get('customer_name') or ''
         customer_phone = payload.get('customer_phone') or ''
@@ -527,7 +538,7 @@ def create_order():
                 INSERT INTO orders (tenant_slug, tenant_order_number, customer_name, customer_phone, order_type, table_number, address_json, status, total, payment_method, payment_status, created_at, order_notes, shipping_cost)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (tenant_slug, tenant_order_number, customer_name, customer_phone, order_type, table_number, str(address_json), status, total, None, None, created_at, order_notes, shipping_cost)
+                (tenant_slug, tenant_order_number, customer_name, customer_phone, order_type, table_number, json.dumps(address_json, ensure_ascii=False), status, total, None, None, created_at, order_notes, shipping_cost)
             )
             order_id = cur.lastrowid
             print(f"DEBUG: Order created with ID {order_id}")

@@ -2820,7 +2820,31 @@
     function getOrderAddressOneLine(o) {
       let a = '';
       try {
-        a = (typeof getAddressText === 'function') ? getAddressText(o && o.address_json) : String((o && o.address_json) || '');
+        const raw = o && o.address_json;
+        let obj = null;
+        if (raw && typeof raw === 'object') obj = raw;
+        else {
+          const s = String(raw || '').trim();
+          if (s && s.startsWith('{')) {
+            try { obj = JSON.parse(s); }
+            catch (_) {
+              try { obj = JSON.parse(s.replace(/'/g, '"')); } catch (__) { obj = null; }
+            }
+          }
+        }
+
+        if (obj && typeof obj === 'object') {
+          const g = obj.geo || obj.location || obj.gps || null;
+          if (g && typeof g === 'object') {
+            const lat = Number(g.lat ?? g.latitude);
+            const lng = Number(g.lng ?? g.lon ?? g.longitude);
+            if (Number.isFinite(lat) && Number.isFinite(lng)) {
+              return `${lat},${lng}`;
+            }
+          }
+        }
+
+        a = (typeof getAddressText === 'function') ? getAddressText(raw) : String(raw || '');
       } catch (_) {
         a = String((o && o.address_json) || '');
       }
@@ -4653,7 +4677,8 @@
           ? `<button class="delivery-pay" data-id="${o.id}" disabled style="opacity:0.35; cursor:default; background:#9e9e9e; color:#fff; border:none; padding:4px 8px; border-radius:4px;">Pagado</button>`
           : ((role !== 'repartidor' || _deliveryMine(o)) ? `<button class="delivery-pay" data-id="${o.id}" style="background:#1976d2; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">Cobrar</button>` : '');
         const addrOneLine = String(addr || '').replace(/\n+/g, ' ').trim();
-        const mapBtn = addrOneLine ? `<button class="delivery-map" data-id="${o.id}" style="background:#455a64; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">Mapa</button>` : '';
+        const destOneLine = getOrderAddressOneLine(o);
+        const mapBtn = destOneLine ? `<button class="delivery-map" data-id="${o.id}" style="background:#455a64; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">Mapa</button>` : '';
         const unassignBtn = (role === 'repartidor' && _deliveryMine(o) && String(o && o.delivery_status || 'pending').trim().toLowerCase() !== 'delivered')
           ? `<button class="delivery-unassign" data-id="${o.id}" style="background:#607d8b; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">Devolver</button>`
           : '';
@@ -4860,9 +4885,9 @@
           if (!oid) return;
           const o = (orders || []).find(x => Number(x.id) === oid) || null;
           if (!o) return;
-          const addrOneLine = getOrderAddressOneLine(o);
-          if (!addrOneLine) return;
-          openGoogleMapsDestination(addrOneLine, null);
+          const destOneLine = getOrderAddressOneLine(o);
+          if (!destOneLine) return;
+          openGoogleMapsDestination(destOneLine, null);
         });
       });
       list.querySelectorAll('.delivery-unassign').forEach(btn => {

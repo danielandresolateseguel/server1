@@ -23,6 +23,10 @@ export function handleCheckout() {
     const esperaName = (document.getElementById('espera-name')?.value || '').trim();
     const esperaPhone = (document.getElementById('espera-phone')?.value || '').trim();
     const orderNotes = (document.getElementById('order-notes')?.value || '').trim();
+    const latRaw = (document.getElementById('delivery-geo-lat')?.value || '').trim();
+    const lngRaw = (document.getElementById('delivery-geo-lng')?.value || '').trim();
+    const accRaw = (document.getElementById('delivery-geo-acc')?.value || '').trim();
+    const tsRaw = (document.getElementById('delivery-geo-ts')?.value || '').trim();
 
     // Validaciones
     if (orderType === 'mesa' && !mesaNumber) { alert('Por favor, ingresa el número de mesa.'); return; }
@@ -34,6 +38,22 @@ export function handleCheckout() {
     if (orderType === 'espera') {
         if (!esperaName) { alert('Por favor, ingresa tu nombre.'); return; }
         if (!esperaPhone) { alert('Por favor, ingresa tu teléfono.'); return; }
+    }
+
+    let geo = null;
+    if (orderType === 'direccion') {
+        const lat = parseFloat(latRaw);
+        const lng = parseFloat(lngRaw);
+        const accuracy = parseFloat(accRaw);
+        const ts = tsRaw ? parseInt(tsRaw, 10) : null;
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+            geo = {
+                lat,
+                lng,
+                accuracy: Number.isFinite(accuracy) ? accuracy : null,
+                ts: Number.isFinite(ts) ? ts : null
+            };
+        }
     }
 
     // Construcción del mensaje (Nueva Lógica con Template)
@@ -143,7 +163,7 @@ ${notas}`;
     }
 
     // Enviar al backend (background)
-    sendOrderToBackend(orderType, { mesaNumber, address, locality, contactPhone, esperaName, esperaPhone, deliveryName, orderNotes }, totalNumber);
+    sendOrderToBackend(orderType, { mesaNumber, address, locality, contactPhone, esperaName, esperaPhone, deliveryName, orderNotes, geo }, totalNumber);
 
     // Vaciar carrito tras iniciar proceso de pedido
     clearCart();
@@ -170,7 +190,7 @@ function sendOrderToBackend(orderType, data, total) {
             tenant_slug: getTenantSlug(),
             order_type: orderType,
             table_number: orderType === 'mesa' ? data.mesaNumber : '',
-            address: orderType === 'direccion' ? { address: data.address, locality: data.locality } : {},
+            address: orderType === 'direccion' ? { address: data.address, locality: data.locality, geo: data.geo || null } : {},
             customer_phone: orderType === 'direccion' ? data.contactPhone : (orderType === 'espera' ? data.esperaPhone : ''),
             customer_name: orderType === 'espera' ? data.esperaName : (orderType === 'direccion' ? data.deliveryName : ''),
             items: cart.map(it => ({ id: it.id, name: it.name, price: it.price, quantity: it.quantity, notes: it.notes || '' })),
@@ -214,3 +234,126 @@ function sendOrderToBackend(orderType, data, total) {
         alert('Error interno al procesar el pedido: ' + e.message);
     }
 }
+
+function initDeliveryGeoUI() {
+    const container = document.getElementById('order-address-fields');
+    if (!container) return;
+
+    if (document.getElementById('use-location-btn')) return;
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'use-location-btn';
+    btn.className = 'clear-cart-btn';
+    btn.style.marginTop = '8px';
+    btn.textContent = 'Usar mi ubicación';
+
+    const preview = document.createElement('div');
+    preview.id = 'delivery-location-preview';
+    preview.style.marginTop = '6px';
+    preview.style.fontSize = '12px';
+    preview.style.color = '#555';
+
+    const latEl = document.createElement('input');
+    latEl.type = 'hidden';
+    latEl.id = 'delivery-geo-lat';
+    const lngEl = document.createElement('input');
+    lngEl.type = 'hidden';
+    lngEl.id = 'delivery-geo-lng';
+    const accEl = document.createElement('input');
+    accEl.type = 'hidden';
+    accEl.id = 'delivery-geo-acc';
+    const tsEl = document.createElement('input');
+    tsEl.type = 'hidden';
+    tsEl.id = 'delivery-geo-ts';
+
+    container.appendChild(btn);
+    container.appendChild(preview);
+    container.appendChild(latEl);
+    container.appendChild(lngEl);
+    container.appendChild(accEl);
+    container.appendChild(tsEl);
+
+    const setPreview = (html) => { preview.innerHTML = html || ''; };
+
+    if (!navigator.geolocation) {
+        btn.disabled = true;
+        btn.style.opacity = '0.6';
+        setPreview('Tu navegador no permite compartir ubicación.');
+        return;
+    }
+
+    const renderFromValues = () => {
+        const lat = parseFloat((latEl.value || '').trim());
+        const lng = parseFloat((lngEl.value || '').trim());
+        const accuracy = parseFloat((accEl.value || '').trim());
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) { setPreview(''); return; }
+        const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`;
+        const accTxt = Number.isFinite(accuracy) ? ` (precisión aprox. ${Math.round(accuracy)}m)` : '';
+        setPreview(`Ubicación lista${accTxt}: <a href="${url}" target="_blank" rel="noopener">ver en mapa</a>`);
+    };
+
+    try {
+        const saved = sessionStorage.getItem('delivery_geo');
+        if (saved) {
+            const j = JSON.parse(saved);
+            if (j && Number.isFinite(Number(j.lat)) && Number.isFinite(Number(j.lng))) {
+                latEl.value = String(j.lat);
+                lngEl.value = String(j.lng);
+                accEl.value = (j.accuracy == null) ? '' : String(j.accuracy);
+                tsEl.value = (j.ts == null) ? '' : String(j.ts);
+                renderFromValues();
+            }
+        }
+    } catch (_) {}
+
+    btn.addEventListener('click', () => {
+        btn.disabled = true;
+        btn.style.opacity = '0.7';
+        setPreview('Obteniendo ubicación...');
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const lat = pos && pos.coords ? pos.coords.latitude : null;
+                const lng = pos && pos.coords ? pos.coords.longitude : null;
+                const acc = pos && pos.coords ? pos.coords.accuracy : null;
+                if (Number.isFinite(lat) && Number.isFinite(lng)) {
+                    latEl.value = String(lat);
+                    lngEl.value = String(lng);
+                    accEl.value = Number.isFinite(acc) ? String(acc) : '';
+                    tsEl.value = pos && pos.timestamp ? String(pos.timestamp) : '';
+                    try {
+                        sessionStorage.setItem('delivery_geo', JSON.stringify({
+                            lat,
+                            lng,
+                            accuracy: Number.isFinite(acc) ? acc : null,
+                            ts: pos && pos.timestamp ? pos.timestamp : null
+                        }));
+                    } catch (_) {}
+                    renderFromValues();
+                } else {
+                    latEl.value = '';
+                    lngEl.value = '';
+                    accEl.value = '';
+                    tsEl.value = '';
+                    setPreview('No se pudo leer tu ubicación.');
+                }
+                btn.disabled = false;
+                btn.style.opacity = '';
+            },
+            (err) => {
+                btn.disabled = false;
+                btn.style.opacity = '';
+                const code = err && err.code ? Number(err.code) : 0;
+                if (code === 1) setPreview('Permiso denegado para acceder a tu ubicación.');
+                else if (code === 2) setPreview('No se pudo determinar tu ubicación (señal débil).');
+                else if (code === 3) setPreview('Tiempo de espera agotado al obtener tu ubicación.');
+                else setPreview('No se pudo obtener tu ubicación.');
+            },
+            { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+        );
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    try { initDeliveryGeoUI(); } catch (e) { console.error(e); }
+});
