@@ -55,7 +55,7 @@ import {
 } from './ui.js?v=10';
  
  
-import { initOrderStatus } from './order-status.js?v=10';
+import { initOrderStatus } from './order-status.js?v=11';
 
 // Exponer funciones globales necesarias para HTML inline (onclick="...")
 window.addToCart = function(id, name, price, imageSrc, event) {

@@ -107,6 +107,24 @@ function getTenantSlug() {
     return slug;
 }
 
+function _paymentHintKey() {
+    const slug = getTenantSlug();
+    return 'payment_hint_shown_' + slug;
+}
+
+function shouldShowPaymentHintOnce(order) {
+    try {
+        if (!order || order.status === 'entregado' || order.status === 'cancelado') return false;
+        return localStorage.getItem(_paymentHintKey()) !== '1';
+    } catch (_) {
+        return false;
+    }
+}
+
+function markPaymentHintShown() {
+    try { localStorage.setItem(_paymentHintKey(), '1'); } catch (_) {}
+}
+
 async function updateStatusSilently() {
     const slug = getTenantSlug();
     const orderId = localStorage.getItem('last_order_id_' + slug);
@@ -348,6 +366,17 @@ function renderStatus(order, config = {}) {
         triggerConfetti();
         celebrationShown = true;
     }
+
+    let paymentHintHtml = '';
+    if (shouldShowPaymentHintOnce(order)) {
+        paymentHintHtml = `
+            <div class="status-alert" style="margin: 10px 0 0; padding: 12px 14px; background: #fff7ed; color: #7c2d12; border: 1px solid #fed7aa; border-radius: 10px; text-align: left; font-weight: 600; line-height: 1.25;">
+                <i class="fas fa-info-circle" style="margin-right:6px;"></i>
+                Por favor, mantente atento a tus mensajes: es posible que te contactemos para coordinar el pago de tu pedido.
+            </div>
+        `;
+        markPaymentHintShown();
+    }
     
     const statusMap = {
         'por_aprobar': { label: 'Por aprobar', class: 'pendiente', icon: 'fa-user-check' },
@@ -554,6 +583,8 @@ function renderStatus(order, config = {}) {
                     <i class="fas ${s.icon}"></i> ${s.label}
                 </div>
             </div>
+
+            ${paymentHintHtml}
 
             <!-- Stepper Visual -->
             ${stepperHtml}
