@@ -248,6 +248,21 @@ function initDeliveryGeoUI() {
     btn.style.marginTop = '8px';
     btn.textContent = 'Usar mi ubicación';
 
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.id = 'edit-geo-address-btn';
+    editBtn.style.marginTop = '8px';
+    editBtn.style.marginLeft = '6px';
+    editBtn.style.height = '36px';
+    editBtn.style.padding = '0 12px';
+    editBtn.style.borderRadius = '10px';
+    editBtn.style.border = '1px solid #e5e7eb';
+    editBtn.style.background = '#f9fafb';
+    editBtn.style.color = '#374151';
+    editBtn.style.fontWeight = '700';
+    editBtn.style.display = 'none';
+    editBtn.textContent = 'Editar dirección';
+
     const preview = document.createElement('div');
     preview.id = 'delivery-location-preview';
     preview.style.marginTop = '6px';
@@ -269,6 +284,7 @@ function initDeliveryGeoUI() {
 
     const first = container.firstChild;
     container.insertBefore(btn, first);
+    container.insertBefore(editBtn, first);
     container.insertBefore(preview, first);
     container.insertBefore(latEl, first);
     container.insertBefore(lngEl, first);
@@ -286,8 +302,74 @@ function initDeliveryGeoUI() {
 
     const addressInput = document.getElementById('delivery-address');
     const localityInput = document.getElementById('delivery-locality');
+    const nameInput = document.getElementById('delivery-name');
+    const phoneInput = document.getElementById('contact-phone');
+    const esperaNameInput = document.getElementById('espera-name');
+    const esperaPhoneInput = document.getElementById('espera-phone');
+
+    if (addressInput) {
+        addressInput.setAttribute('autocomplete', 'street-address');
+        if (!addressInput.getAttribute('name')) addressInput.setAttribute('name', 'delivery_address');
+    }
+    if (localityInput) {
+        localityInput.setAttribute('autocomplete', 'address-level2');
+        if (!localityInput.getAttribute('name')) localityInput.setAttribute('name', 'delivery_locality');
+    }
+    if (nameInput) {
+        nameInput.setAttribute('autocomplete', 'name');
+        if (!nameInput.getAttribute('name')) nameInput.setAttribute('name', 'delivery_name');
+    }
+    if (phoneInput) {
+        phoneInput.setAttribute('autocomplete', 'tel');
+        if (!phoneInput.getAttribute('name')) phoneInput.setAttribute('name', 'delivery_phone');
+    }
+    if (esperaNameInput) {
+        esperaNameInput.setAttribute('autocomplete', 'name');
+        if (!esperaNameInput.getAttribute('name')) esperaNameInput.setAttribute('name', 'pickup_name');
+    }
+    if (esperaPhoneInput) {
+        esperaPhoneInput.setAttribute('autocomplete', 'tel');
+        if (!esperaPhoneInput.getAttribute('name')) esperaPhoneInput.setAttribute('name', 'pickup_phone');
+    }
+
     const origin = window.location.origin || '';
     const API_BASE = /^file:/i.test(origin) ? 'http://127.0.0.1:8000' : origin;
+
+    const lockAddressInputs = () => {
+        const hasGeo = Number.isFinite(parseFloat((latEl.value || '').trim())) && Number.isFinite(parseFloat((lngEl.value || '').trim()));
+        if (!hasGeo) return;
+        const hasAnyText = Boolean((addressInput && String(addressInput.value || '').trim()) || (localityInput && String(localityInput.value || '').trim()));
+        if (!hasAnyText) return;
+        if (addressInput) {
+            addressInput.readOnly = true;
+            addressInput.style.backgroundColor = '#f9fafb';
+        }
+        if (localityInput) {
+            localityInput.readOnly = true;
+            localityInput.style.backgroundColor = '#f9fafb';
+        }
+        editBtn.style.display = '';
+        editBtn.textContent = 'Editar dirección';
+    };
+
+    const unlockAddressInputs = () => {
+        if (addressInput) {
+            addressInput.readOnly = false;
+            addressInput.style.backgroundColor = '';
+        }
+        if (localityInput) {
+            localityInput.readOnly = false;
+            localityInput.style.backgroundColor = '';
+        }
+        editBtn.style.display = '';
+        editBtn.textContent = 'Bloquear dirección';
+    };
+
+    editBtn.addEventListener('click', () => {
+        const isLocked = Boolean((addressInput && addressInput.readOnly) || (localityInput && localityInput.readOnly));
+        if (isLocked) unlockAddressInputs();
+        else lockAddressInputs();
+    });
 
     const tryAutofillFromGeo = async (lat, lng) => {
         try {
@@ -302,6 +384,7 @@ function initDeliveryGeoUI() {
             const loc = String(j.locality || '').trim();
             if (addressInput && addr && !(addressInput.value || '').trim()) addressInput.value = addr;
             if (localityInput && loc && !(localityInput.value || '').trim()) localityInput.value = loc;
+            lockAddressInputs();
             return { address: addr, locality: loc };
         } catch (_) {
             return null;
@@ -332,6 +415,7 @@ function initDeliveryGeoUI() {
                 const l = String(j.locality || '').trim();
                 if (addressInput && a && !(addressInput.value || '').trim()) addressInput.value = a;
                 if (localityInput && l && !(localityInput.value || '').trim()) localityInput.value = l;
+                lockAddressInputs();
                 if ((!a || !l) && ((addressInput && !(addressInput.value || '').trim()) || (localityInput && !(localityInput.value || '').trim()))) {
                     (async () => {
                         const lat = Number(j.lat);
