@@ -194,8 +194,7 @@ def get_tenant_header():
             except:
                 pass
                 
-        # Update header fields
-        fields = ['whatsapp', 'instagram', 'instagram_label', 'location_label', 'location_url', 'opening_hours', 'timezone', 'currency_code', 'currency_locale', 'logo_url', 'announcement_text', 'announcement_active', 'theme_color', 'header_bg_color', 'featured_bg_color', 'menu_bg_color', 'interest_bg_color']
+        fields = ['name', 'whatsapp', 'instagram', 'instagram_label', 'location_label', 'location_url', 'opening_hours', 'opening_hours_label', 'contact_email', 'footer_title', 'footer_tagline', 'footer_bottom', 'timezone', 'currency_code', 'currency_locale', 'logo_url', 'announcement_text', 'announcement_active', 'theme_color', 'header_bg_color', 'featured_bg_color', 'menu_bg_color', 'interest_bg_color']
         for f in fields:
             if f in payload:
                 current_cfg[f] = payload[f]
@@ -280,7 +279,7 @@ def get_tenant_header():
     currency_code = str(cfg.get('currency_code') or meta_contact.get('currency_code') or 'ARS').strip().upper()
     currency_locale = str(cfg.get('currency_locale') or meta_contact.get('currency_locale') or 'es-AR').strip()
     return jsonify({
-        'name': tenant_name or (cfg.get('name') or meta_branding.get('name', '')),
+        'name': cfg.get('name') or tenant_name or meta_branding.get('name', ''),
         'whatsapp': cfg.get('whatsapp') or meta_contact.get('whatsapp', ''),
         'instagram': cfg.get('instagram') or meta_contact.get('instagram', ''),
         'instagram_label': cfg.get('instagram_label') or meta_contact.get('instagram_label', ''),
@@ -288,6 +287,11 @@ def get_tenant_header():
         'location_label': cfg.get('location_label') or cfg.get('location') or meta_contact.get('location_label') or meta_contact.get('location', ''),
         'location_url': cfg.get('location_url') or meta_contact.get('location_url', ''),
         'opening_hours': opening_hours,
+        'opening_hours_label': cfg.get('opening_hours_label') or meta_contact.get('opening_hours_label', ''),
+        'contact_email': cfg.get('contact_email') or meta_contact.get('email', ''),
+        'footer_title': cfg.get('footer_title') or meta_branding.get('footer_title', ''),
+        'footer_tagline': cfg.get('footer_tagline') or meta_branding.get('footer_tagline', ''),
+        'footer_bottom': cfg.get('footer_bottom') or meta_branding.get('footer_bottom', ''),
         'timezone': timezone,
         'currency_code': currency_code,
         'currency_locale': currency_locale,

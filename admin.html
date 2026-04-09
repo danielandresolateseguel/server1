@@ -852,6 +852,9 @@
       <button id="whatsapp-config-btn" title="Configuración de WhatsApp" style="background:#25D366;">
         <svg style="width:16px;height:16px;fill:currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
       </button>
+      <button id="restaurant-config-btn" title="Información del Restaurante / Pie de Página" style="background:#795548;">
+        <svg style="width:16px;height:16px;fill:currentColor" viewBox="0 0 24 24"><path d="M11 9h2V7h-2v2zm1-9C6.49 0 2 4.49 2 10s4.49 10 10 10 10-4.49 10-10S17.51 0 12 0zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-3h2v-6h-2v6z"/></svg>
+      </button>
     </div>
 
     <!-- WHATSAPP CONFIG MODAL -->
@@ -883,6 +886,76 @@
 
         <div style="text-align:right;">
           <button id="cfg-whatsapp-save-btn" style="background:#25D366; color:white; border:none; padding:8px 16px; border-radius:4px; cursor:pointer; font-weight:bold;">Guardar</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="restaurant-config-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:10001; justify-content:center; align-items:center;">
+      <div style="background:#fff; padding:20px; border-radius:8px; width:min(640px, 94vw); box-shadow:0 2px 10px rgba(0,0,0,0.2); max-height:86vh; overflow-y:auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <h3 style="margin:0;">Información del Restaurante</h3>
+          <button id="cfg-restaurant-close-btn" style="background:none; border:none; font-size:20px; cursor:pointer;">&times;</button>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:14px;">
+          <label style="display:block;">
+            <span style="font-size:12px; display:block; margin-bottom:2px; font-weight:bold;">Nombre</span>
+            <input type="text" id="cfg-rest-name" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+          </label>
+          <label style="display:block;">
+            <span style="font-size:12px; display:block; margin-bottom:2px; font-weight:bold;">WhatsApp (texto visible)</span>
+            <input type="text" id="cfg-rest-whatsapp" placeholder="+54 9 261 000-0000" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+          </label>
+          <label style="display:block;">
+            <span style="font-size:12px; display:block; margin-bottom:2px; font-weight:bold;">Instagram</span>
+            <input type="text" id="cfg-rest-instagram" placeholder="@mi_restaurante" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+          </label>
+          <label style="display:block;">
+            <span style="font-size:12px; display:block; margin-bottom:2px; font-weight:bold;">Email</span>
+            <input type="text" id="cfg-rest-email" placeholder="info@mi-restaurante.com" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+          </label>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:14px;">
+          <label style="display:block;">
+            <span style="font-size:12px; display:block; margin-bottom:2px; font-weight:bold;">Ubicación (texto visible)</span>
+            <input type="text" id="cfg-rest-location" placeholder="Mendoza, Argentina" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+          </label>
+          <label style="display:block;">
+            <span style="font-size:12px; display:block; margin-bottom:2px; font-weight:bold;">URL Ubicación (opcional)</span>
+            <input type="text" id="cfg-rest-location-url" placeholder="https://maps.google.com/?q=..." style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+          </label>
+        </div>
+
+        <div style="margin-bottom:14px;">
+          <label style="display:block;">
+            <span style="font-size:12px; display:block; margin-bottom:2px; font-weight:bold;">Horarios (texto visible)</span>
+            <input type="text" id="cfg-rest-hours-label" placeholder="Lun-Dom: 12:00-23:00" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+          </label>
+        </div>
+
+        <div style="margin-bottom:14px; border-top:1px solid #eee; padding-top:12px;">
+          <div style="font-weight:bold; margin-bottom:8px;">Pie de página</div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+            <label style="display:block;">
+              <span style="font-size:12px; display:block; margin-bottom:2px; font-weight:bold;">Título</span>
+              <input type="text" id="cfg-footer-title" placeholder="Restaurante" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+            </label>
+            <label style="display:block;">
+              <span style="font-size:12px; display:block; margin-bottom:2px; font-weight:bold;">Texto</span>
+              <input type="text" id="cfg-footer-tagline" placeholder="Sabores auténticos y platos de calidad." style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+            </label>
+          </div>
+          <div style="margin-top:12px;">
+            <label style="display:block;">
+              <span style="font-size:12px; display:block; margin-bottom:2px; font-weight:bold;">Copyright (línea final)</span>
+              <input type="text" id="cfg-footer-bottom" placeholder="© 2026 Mi Restaurante. Todos los derechos reservados." style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+            </label>
+          </div>
+        </div>
+
+        <div style="text-align:right;">
+          <button id="cfg-restaurant-save-btn" style="background:#795548; color:#fff; border:none; padding:8px 16px; border-radius:4px; cursor:pointer; font-weight:bold;">Guardar</button>
         </div>
       </div>
     </div>
@@ -1101,6 +1174,7 @@
           <button id="car-create-btn" style="background-color:#4caf50; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">+ Nuevo Slide</button>
           <button id="car-reload">Recargar</button>
           <button id="header-config-open" style="background-color:#2196F3; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">Cabecera</button>
+          <button id="footer-config-open" style="background-color:#795548; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">Pie de página</button>
         </div>
         <button id="close-carousel-box" style="background-color:#f44336; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">Cerrar lista</button>
       </div>
@@ -2628,7 +2702,7 @@
       setRoleVisibilityById('metrics', !isKitchen && !mozoTablesOnly && canOrdersView && !isRepartidor);
       setRoleVisibilityById('cash-box', !isKitchen && canCash);
       setRoleVisibilityById('cash-history', !isKitchen && canCash);
-      setRoleVisibilityById('table-management', !isKitchen && canTables);
+      setRoleVisibilityById('table-management', !!mozoTablesOnly && !isKitchen && canTables);
 
       setRoleVisibilityById('btn-new-order', !isKitchen && canOrdersCreate);
       setRoleVisibilityById('search-box', !isKitchen && !mozoTablesOnly);
@@ -9314,6 +9388,99 @@
         }
     }
 
+    function initRestaurantConfigUI() {
+        try {
+            const btn = document.getElementById('restaurant-config-btn');
+            const btnFooter = document.getElementById('footer-config-open');
+            const modal = document.getElementById('restaurant-config-modal');
+            const closeBtn = document.getElementById('cfg-restaurant-close-btn');
+            const saveBtn = document.getElementById('cfg-restaurant-save-btn');
+            if ((!btn && !btnFooter) || !modal) return;
+
+            const getSlug = () => currentTenantSlug || (document.getElementById('tenant-input') ? document.getElementById('tenant-input').value : '') || 'gastronomia-local1';
+            const headers = () => {
+                const h = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+                const t = (typeof csrfToken !== 'undefined' && csrfToken) ? csrfToken : (typeof CSRF_TOKEN !== 'undefined' ? CSRF_TOKEN : '');
+                if (t) h['X-CSRF-Token'] = t;
+                return h;
+            };
+
+            const openModal = (focusFooter) => {
+                modal.style.display = 'flex';
+                const slug = getSlug();
+                fetch(new URL('/api/tenant_header', API_BASE).toString() + `?tenant_slug=${encodeURIComponent(slug)}`)
+                    .then(r => r.json())
+                    .then(d => {
+                        const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = (v == null ? '' : String(v)); };
+                        setVal('cfg-rest-name', d.name || '');
+                        setVal('cfg-rest-whatsapp', d.whatsapp || '');
+                        setVal('cfg-rest-instagram', d.instagram || '');
+                        setVal('cfg-rest-location', d.location_label || d.location || '');
+                        setVal('cfg-rest-location-url', d.location_url || '');
+                        setVal('cfg-rest-hours-label', d.opening_hours_label || '');
+                        setVal('cfg-rest-email', d.contact_email || '');
+                        setVal('cfg-footer-title', d.footer_title || '');
+                        setVal('cfg-footer-tagline', d.footer_tagline || '');
+                        setVal('cfg-footer-bottom', d.footer_bottom || '');
+                        if (focusFooter) {
+                            try {
+                                const target = document.getElementById('cfg-footer-title') || document.getElementById('cfg-footer-tagline') || document.getElementById('cfg-footer-bottom');
+                                if (target) {
+                                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                    if (typeof target.focus === 'function') target.focus();
+                                }
+                            } catch (_) {}
+                        }
+                    })
+                    .catch(e => console.error('Error loading restaurant config:', e));
+            };
+            if (btn) btn.onclick = () => openModal(false);
+            if (btnFooter) btnFooter.onclick = () => openModal(true);
+
+            if (closeBtn) closeBtn.onclick = () => modal.style.display = 'none';
+            modal.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
+
+            if (saveBtn) {
+                saveBtn.onclick = async () => {
+                    const slug = getSlug();
+                    const getVal = (id) => {
+                        const el = document.getElementById(id);
+                        return el ? String(el.value || '').trim() : '';
+                    };
+                    const payload = {
+                        name: getVal('cfg-rest-name'),
+                        whatsapp: getVal('cfg-rest-whatsapp'),
+                        instagram: getVal('cfg-rest-instagram'),
+                        location_label: getVal('cfg-rest-location'),
+                        location_url: getVal('cfg-rest-location-url'),
+                        opening_hours_label: getVal('cfg-rest-hours-label'),
+                        contact_email: getVal('cfg-rest-email'),
+                        footer_title: getVal('cfg-footer-title'),
+                        footer_tagline: getVal('cfg-footer-tagline'),
+                        footer_bottom: getVal('cfg-footer-bottom')
+                    };
+
+                    try {
+                        const resp = await fetch(new URL('/api/tenant_header', API_BASE).toString() + `?tenant_slug=${encodeURIComponent(slug)}`, {
+                            method: 'PATCH',
+                            headers: headers(),
+                            body: JSON.stringify(payload)
+                        });
+                        const j = await resp.json().catch(() => ({}));
+                        if (!resp.ok) throw new Error(j.error || resp.statusText);
+                        alert('Información guardada correctamente.');
+                        modal.style.display = 'none';
+                    } catch (e) {
+                        console.error('Error saving restaurant config:', e);
+                        alert('Error al guardar: ' + e.message);
+                    }
+                };
+            }
+        } catch (e) {
+            console.error('initRestaurantConfigUI error:', e);
+        }
+    }
+
     function usersRoleDefaults(role){
       const r = String(role||'').trim().toLowerCase();
       if (r === 'admin'){
@@ -9612,10 +9779,12 @@
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initOrdersConfigUI);
         document.addEventListener('DOMContentLoaded', initWhatsappConfigUI);
+        document.addEventListener('DOMContentLoaded', initRestaurantConfigUI);
         document.addEventListener('DOMContentLoaded', initUsersAdminUI);
     } else {
         initOrdersConfigUI();
         initWhatsappConfigUI();
+        initRestaurantConfigUI();
         initUsersAdminUI();
     }
     // --- NEW ORDER MODAL LOGIC ---

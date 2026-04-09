@@ -91,12 +91,346 @@ window.scrollDiscounts = scrollDiscounts;
 
 window.closeCartUI = closeCartUI;
 
+function getApiBase() {
+    const origin = window.location.origin || '';
+    return /^file:/i.test(origin) ? 'http://127.0.0.1:8000' : origin;
+}
+
+async function fetchAuthMe() {
+    try {
+        const base = getApiBase();
+        const r = await fetch(new URL('/api/auth/me', base).toString(), { cache: 'no-store', credentials: 'include' });
+        if (!r.ok) return null;
+        return await r.json();
+    } catch (_) {
+        return null;
+    }
+}
+
+async function fetchCsrfToken() {
+    try {
+        const base = getApiBase();
+        const r = await fetch(new URL('/api/auth/csrf', base).toString(), { cache: 'no-store', credentials: 'include' });
+        if (!r.ok) return '';
+        const j = await r.json();
+        return String(j && j.token || '');
+    } catch (_) {
+        return '';
+    }
+}
+
+function formatIntervalsForEditor(intervals) {
+    if (!Array.isArray(intervals) || !intervals.length) return '';
+    const parts = [];
+    intervals.forEach(it => {
+        if (!Array.isArray(it) || it.length < 2) return;
+        const a = String(it[0] || '').trim();
+        const b = String(it[1] || '').trim();
+        if (!a || !b) return;
+        parts.push(`${a}-${b}`);
+    });
+    return parts.join(', ');
+}
+
+function parseIntervalsForEditor(text) {
+    const out = [];
+    const t = String(text || '').trim();
+    if (!t) return out;
+    const segs = t.split(',').map(s => s.trim()).filter(Boolean);
+    segs.forEach(seg => {
+        const m = seg.split('-').map(s => s.trim()).filter(Boolean);
+        if (m.length < 2) return;
+        const a = m[0];
+        const b = m[1];
+        if (!/^\d{1,2}:\d{2}$/.test(a) || !/^\d{1,2}:\d{2}$/.test(b)) return;
+        const hhA = parseInt(a.split(':')[0], 10);
+        const hhB = parseInt(b.split(':')[0], 10);
+        const mmA = parseInt(a.split(':')[1], 10);
+        const mmB = parseInt(b.split(':')[1], 10);
+        if (hhA < 0 || hhA > 23 || hhB < 0 || hhB > 23 || mmA < 0 || mmA > 59 || mmB < 0 || mmB > 59) return;
+        out.push([a, b]);
+    });
+    return out;
+}
+
+function parseOpeningHoursText(text) {
+    const dayMap = {
+        'lun': 'mon', 'lunes': 'mon', 'mon': 'mon', 'monday': 'mon',
+        'mar': 'tue', 'martes': 'tue', 'tue': 'tue', 'tuesday': 'tue',
+        'mie': 'wed', 'mié': 'wed', 'miercoles': 'wed', 'miércoles': 'wed', 'wed': 'wed', 'wednesday': 'wed',
+        'jue': 'thu', 'jueves': 'thu', 'thu': 'thu', 'thursday': 'thu',
+        'vie': 'fri', 'viernes': 'fri', 'fri': 'fri', 'friday': 'fri',
+        'sab': 'sat', 'sáb': 'sat', 'sabado': 'sat', 'sábado': 'sat', 'sat': 'sat', 'saturday': 'sat',
+        'dom': 'sun', 'domingo': 'sun', 'sun': 'sun', 'sunday': 'sun'
+    };
+    const out = {};
+    const lines = String(text || '').split('\n').map(s => s.trim()).filter(Boolean);
+    lines.forEach(line => {
+        const idx = line.indexOf(':');
+        if (idx < 0) return;
+        const dayRaw = line.slice(0, idx).trim().toLowerCase();
+        const intervalsRaw = line.slice(idx + 1).trim();
+        const key = dayMap[dayRaw];
+        if (!key) return;
+        const intervals = parseIntervalsForEditor(intervalsRaw);
+        if (!intervals.length) return;
+        out[key] = intervals;
+    });
+    return out;
+}
+
+function buildOpeningHoursText(openingHours) {
+    const oh = openingHours && typeof openingHours === 'object' ? openingHours : {};
+    const dayLabels = [
+        ['mon', 'Lun'],
+        ['tue', 'Mar'],
+        ['wed', 'Mié'],
+        ['thu', 'Jue'],
+        ['fri', 'Vie'],
+        ['sat', 'Sáb'],
+        ['sun', 'Dom']
+    ];
+    const lines = [];
+    dayLabels.forEach(([k, label]) => {
+        const line = formatIntervalsForEditor(oh[k]);
+        if (!line) return;
+        lines.push(`${label}: ${line}`);
+    });
+    return lines.join('\n');
+}
+
+function createTenantHeaderEditorModal() {
+    if (document.getElementById('tenant-header-editor-modal')) return;
+    const modal = document.createElement('div');
+    modal.id = 'tenant-header-editor-modal';
+    modal.style.display = 'none';
+    modal.style.position = 'fixed';
+    modal.style.inset = '0';
+    modal.style.background = 'rgba(0,0,0,0.5)';
+    modal.style.zIndex = '99999';
+    modal.style.alignItems = 'center';
+    modal.style.justifyContent = 'center';
+    modal.innerHTML = `
+      <div style="background:#fff; padding:18px; border-radius:10px; width:92%; max-width:520px; box-shadow:0 10px 25px rgba(0,0,0,0.2); max-height:85vh; overflow:auto;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px;">
+          <strong style="font-size:16px;">Editar cabecera y pie de página</strong>
+          <button type="button" id="tenant-header-editor-close-x" style="background:none; border:none; font-size:22px; cursor:pointer; line-height:1;">×</button>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr; gap:10px;">
+          <label style="display:block;">
+            <div style="font-size:12px; font-weight:700; margin-bottom:4px;">Nombre</div>
+            <input id="the-name" type="text" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:8px;" />
+          </label>
+          <label style="display:block;">
+            <div style="font-size:12px; font-weight:700; margin-bottom:4px;">Logo URL (opcional)</div>
+            <input id="the-logo" type="text" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:8px;" placeholder="https://..." />
+          </label>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+            <label style="display:block;">
+              <div style="font-size:12px; font-weight:700; margin-bottom:4px;">WhatsApp</div>
+              <input id="the-whatsapp" type="text" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:8px;" />
+            </label>
+            <label style="display:block;">
+              <div style="font-size:12px; font-weight:700; margin-bottom:4px;">Email</div>
+              <input id="the-email" type="text" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:8px;" />
+            </label>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+            <label style="display:block;">
+              <div style="font-size:12px; font-weight:700; margin-bottom:4px;">Instagram</div>
+              <input id="the-ig" type="text" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:8px;" placeholder="@usuario o URL" />
+            </label>
+            <label style="display:block;">
+              <div style="font-size:12px; font-weight:700; margin-bottom:4px;">Etiqueta Instagram</div>
+              <input id="the-ig-label" type="text" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:8px;" placeholder="Instagram" />
+            </label>
+          </div>
+          <label style="display:block;">
+            <div style="font-size:12px; font-weight:700; margin-bottom:4px;">Ubicación (texto)</div>
+            <input id="the-loc" type="text" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:8px;" />
+          </label>
+          <label style="display:block;">
+            <div style="font-size:12px; font-weight:700; margin-bottom:4px;">Ubicación URL (opcional)</div>
+            <input id="the-loc-url" type="text" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:8px;" placeholder="https://maps.google.com/..." />
+          </label>
+          <label style="display:block;">
+            <div style="font-size:12px; font-weight:700; margin-bottom:4px;">Horarios</div>
+            <textarea id="the-hours" rows="5" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:8px;" placeholder="Lun: 12:00-23:00&#10;Mar: 12:00-23:00"></textarea>
+          </label>
+          <label style="display:block;">
+            <div style="font-size:12px; font-weight:700; margin-bottom:4px;">Texto horarios (opcional)</div>
+            <input id="the-hours-label" type="text" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:8px;" placeholder="Lun-Dom: 12:00-23:00" />
+          </label>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+            <label style="display:block;">
+              <div style="font-size:12px; font-weight:700; margin-bottom:4px;">Color principal</div>
+              <input id="the-theme" type="text" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:8px;" placeholder="#ff6a00" />
+            </label>
+            <label style="display:block;">
+              <div style="font-size:12px; font-weight:700; margin-bottom:4px;">Color cabecera</div>
+              <input id="the-header-bg" type="text" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:8px;" placeholder="#333333" />
+            </label>
+          </div>
+          <div style="border-top:1px solid #eee; padding-top:10px; margin-top:4px;">
+            <div style="font-weight:800; margin-bottom:8px;">Pie de página</div>
+            <label style="display:block; margin-bottom:10px;">
+              <div style="font-size:12px; font-weight:700; margin-bottom:4px;">Título</div>
+              <input id="the-footer-title" type="text" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:8px;" />
+            </label>
+            <label style="display:block; margin-bottom:10px;">
+              <div style="font-size:12px; font-weight:700; margin-bottom:4px;">Texto</div>
+              <textarea id="the-footer-tagline" rows="3" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:8px;"></textarea>
+            </label>
+            <label style="display:block;">
+              <div style="font-size:12px; font-weight:700; margin-bottom:4px;">Copyright</div>
+              <input id="the-footer-bottom" type="text" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:8px;" placeholder="© 2026 ... Todos los derechos reservados." />
+            </label>
+          </div>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px;">
+          <button type="button" id="tenant-header-editor-close" style="padding:8px 14px; border-radius:8px; border:1px solid #ddd; background:#f5f5f5; cursor:pointer;">Cerrar</button>
+          <button type="button" id="tenant-header-editor-save" style="padding:8px 14px; border-radius:8px; border:none; background:#ff6a00; color:#fff; cursor:pointer; font-weight:800;">Guardar</button>
+        </div>
+      </div>
+    `;
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.style.display = 'none';
+    });
+    document.body.appendChild(modal);
+    const close = () => { modal.style.display = 'none'; };
+    const btnClose = modal.querySelector('#tenant-header-editor-close');
+    const btnCloseX = modal.querySelector('#tenant-header-editor-close-x');
+    if (btnClose) btnClose.addEventListener('click', close);
+    if (btnCloseX) btnCloseX.addEventListener('click', close);
+}
+
+async function openTenantHeaderEditor() {
+    createTenantHeaderEditorModal();
+    const modal = document.getElementById('tenant-header-editor-modal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    const slug = getBusinessSlug() || 'gastronomia-local1';
+    const base = getApiBase();
+    try {
+        const r = await fetch(new URL(`/api/tenant_header?tenant_slug=${encodeURIComponent(slug)}`, base).toString(), { cache: 'no-store', credentials: 'include' });
+        if (!r.ok) throw new Error('No se pudo cargar la configuración');
+        const d = await r.json();
+        const byId = (id) => modal.querySelector('#' + id);
+        if (byId('the-name')) byId('the-name').value = String(d.name || '');
+        if (byId('the-logo')) byId('the-logo').value = String(d.logo_url || '');
+        if (byId('the-whatsapp')) byId('the-whatsapp').value = String(d.whatsapp || '');
+        if (byId('the-email')) byId('the-email').value = String(d.contact_email || '');
+        if (byId('the-ig')) byId('the-ig').value = String(d.instagram || '');
+        if (byId('the-ig-label')) byId('the-ig-label').value = String(d.instagram_label || '');
+        if (byId('the-loc')) byId('the-loc').value = String(d.location_label || d.location || '');
+        if (byId('the-loc-url')) byId('the-loc-url').value = String(d.location_url || '');
+        if (byId('the-hours')) byId('the-hours').value = buildOpeningHoursText(d.opening_hours || {});
+        if (byId('the-hours-label')) byId('the-hours-label').value = String(d.opening_hours_label || '');
+        if (byId('the-theme')) byId('the-theme').value = String(d.theme_color || '');
+        if (byId('the-header-bg')) byId('the-header-bg').value = String(d.header_bg_color || '');
+        if (byId('the-footer-title')) byId('the-footer-title').value = String(d.footer_title || '');
+        if (byId('the-footer-tagline')) byId('the-footer-tagline').value = String(d.footer_tagline || '');
+        if (byId('the-footer-bottom')) byId('the-footer-bottom').value = String(d.footer_bottom || '');
+    } catch (e) {
+        try { modal.style.display = 'none'; } catch (_) {}
+        alert(String(e && e.message || 'Error cargando configuración'));
+        return;
+    }
+    const saveBtn = modal.querySelector('#tenant-header-editor-save');
+    if (!saveBtn) return;
+    if (saveBtn.dataset.bound === '1') return;
+    saveBtn.dataset.bound = '1';
+    saveBtn.addEventListener('click', async () => {
+        const byId = (id) => modal.querySelector('#' + id);
+        const payload = {};
+        const pick = (k, id) => {
+            const el = byId(id);
+            if (!el) return;
+            const v = String(el.value || '').trim();
+            payload[k] = v;
+        };
+        pick('name', 'the-name');
+        pick('logo_url', 'the-logo');
+        pick('whatsapp', 'the-whatsapp');
+        pick('contact_email', 'the-email');
+        pick('instagram', 'the-ig');
+        pick('instagram_label', 'the-ig-label');
+        pick('location_label', 'the-loc');
+        pick('location_url', 'the-loc-url');
+        pick('opening_hours_label', 'the-hours-label');
+        pick('theme_color', 'the-theme');
+        pick('header_bg_color', 'the-header-bg');
+        pick('footer_title', 'the-footer-title');
+        payload['footer_tagline'] = String((byId('the-footer-tagline') && byId('the-footer-tagline').value) || '').trim();
+        pick('footer_bottom', 'the-footer-bottom');
+        const hoursText = String((byId('the-hours') && byId('the-hours').value) || '').trim();
+        const parsedHours = parseOpeningHoursText(hoursText);
+        if (Object.keys(parsedHours).length) payload['opening_hours'] = parsedHours;
+        const csrf = await fetchCsrfToken();
+        if (!csrf) { alert('No se pudo obtener CSRF. Iniciá sesión nuevamente.'); return; }
+        try {
+            const resp = await fetch(new URL(`/api/tenant_header?tenant_slug=${encodeURIComponent(slug)}`, base).toString(), {
+                method: 'PATCH',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
+                body: JSON.stringify(payload)
+            });
+            if (!resp.ok) {
+                let msg = 'No se pudo guardar';
+                try { const j = await resp.json(); if (j && j.error) msg = j.error; } catch (_) {}
+                throw new Error(msg);
+            }
+            modal.style.display = 'none';
+            try { initHeaderContact(); } catch (_) {}
+        } catch (e) {
+            alert(String(e && e.message || 'Error guardando configuración'));
+        }
+    });
+}
+
+async function initTenantHeaderEditorButton() {
+    try {
+        const headerTop = document.querySelector('header .header-top');
+        if (!headerTop) return;
+        if (document.getElementById('tenant-header-editor-btn')) return;
+        const me = await fetchAuthMe();
+        if (!me) return;
+        const isAuthenticated = (typeof me.authenticated === 'boolean') ? me.authenticated : true;
+        if (!isAuthenticated) return;
+        const role = String(me.role || '').trim().toLowerCase();
+        const isOwner = !!me.is_owner;
+        if (!isOwner && role !== 'admin') return;
+        const btn = document.createElement('button');
+        btn.id = 'tenant-header-editor-btn';
+        btn.type = 'button';
+        btn.title = 'Editar cabecera y pie de página';
+        btn.setAttribute('aria-label', 'Editar cabecera y pie de página');
+        btn.style.display = 'inline-flex';
+        btn.style.alignItems = 'center';
+        btn.style.justifyContent = 'center';
+        btn.style.width = '36px';
+        btn.style.height = '36px';
+        btn.style.marginLeft = '10px';
+        btn.style.borderRadius = '10px';
+        btn.style.border = '1px solid rgba(255,255,255,0.25)';
+        btn.style.background = 'rgba(0,0,0,0.18)';
+        btn.style.color = '#fff';
+        btn.style.cursor = 'pointer';
+        btn.innerHTML = '<svg viewBox="0 0 24 24" style="width:18px; height:18px; fill:currentColor"><path d="M19.14 12.94c.04-.31.06-.63.06-.94 0-.32-.02-.63-.07-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54A.5.5 0 0 0 14.9 1h-3.8a.5.5 0 0 0-.49.42l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96a.5.5 0 0 0-.6.22L2.72 7.5a.5.5 0 0 0 .12.64l2.03 1.58c-.05.31-.07.62-.07.94 0 .31.02.63.06.94L2.84 14.5a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.39.3.6.22l2.39-.96c.49.38 1.03.7 1.62.94l.36 2.54c.04.24.25.42.49.42h3.8c.24 0 .45-.18.49-.42l.36-2.54c.59-.24 1.12-.56 1.62-.94l2.39.96c.22.08.47 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.56zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg>';
+        btn.addEventListener('click', () => { openTenantHeaderEditor(); });
+        const cartIcon = headerTop.querySelector('.cart-icon');
+        if (cartIcon && cartIcon.parentNode === headerTop) {
+            headerTop.insertBefore(btn, cartIcon);
+        } else {
+            headerTop.appendChild(btn);
+        }
+    } catch (_) {}
+}
+
 function initHeaderContact() {
     const headerContact = document.querySelector('.header-contact');
-    if (!headerContact) return;
     const slug = getBusinessSlug() || 'gastronomia-local1';
-    const origin = window.location.origin || '';
-    const base = /^file:/i.test(origin) ? 'http://127.0.0.1:8000' : origin;
+    const base = getApiBase();
     const url = `${base}/api/tenant_header?tenant_slug=${encodeURIComponent(slug)}`;
     fetch(url).then(res => {
         if (!res.ok) return null;
@@ -113,6 +447,11 @@ function initHeaderContact() {
         const locationLabel = (data.location_label || data.location || '').trim();
         const locationUrl = (data.location_url || '').trim();
         const openingHours = data.opening_hours || null;
+        let openingHoursLabel = (data.opening_hours_label || '').trim();
+        const footerTitle = (data.footer_title || '').trim();
+        const footerTagline = (data.footer_tagline || '').trim();
+        const footerBottom = (data.footer_bottom || '').trim();
+        const contactEmail = (data.contact_email || '').trim();
         const timeZone = (data.timezone || '').trim();
         try {
             if (data.currency_code) window.CURRENCY_CODE = String(data.currency_code || '').toUpperCase();
@@ -262,7 +601,7 @@ function initHeaderContact() {
         };
         img.src = faviconUrl;
 
-        if (whatsappValue) {
+        if (headerContact && whatsappValue) {
             const whatsappIcon = headerContact.querySelector('.fa-whatsapp');
             const whatsappLink = whatsappIcon ? whatsappIcon.closest('a') : null;
             if (whatsappLink) {
@@ -275,7 +614,7 @@ function initHeaderContact() {
                 whatsappLink.setAttribute('data-tooltip', whatsappValue);
             }
         }
-        if (instagramValue) {
+        if (headerContact && instagramValue) {
             const instagramIcon = headerContact.querySelector('.fa-instagram');
             const instagramLink = instagramIcon ? instagramIcon.closest('a') : null;
             if (instagramLink) {
@@ -297,7 +636,7 @@ function initHeaderContact() {
                 instagramLink.setAttribute('data-tooltip', instagramLabel || instagramValue);
             }
         }
-        if (locationLabel || locationUrl) {
+        if (headerContact && (locationLabel || locationUrl)) {
             const locationIcon = headerContact.querySelector('.fa-map-marker-alt');
             const locationLink = locationIcon ? locationIcon.closest('a') : null;
             if (locationLink) {
@@ -314,7 +653,7 @@ function initHeaderContact() {
                 locationLink.setAttribute('data-tooltip', locationLabel || locationUrl || '');
             }
         }
-        if (openingHours && typeof openingHours === 'object') {
+        if (headerContact && openingHours && typeof openingHours === 'object') {
             let isOpenNow = false;
             let nextOpeningMinutes = null;
             let nextOpening = null;
@@ -477,6 +816,9 @@ function initHeaderContact() {
                 if (tooltip) {
                     clockItem.setAttribute('data-tooltip', tooltip);
                 }
+                if (!openingHoursLabel && tooltip) {
+                    openingHoursLabel = tooltip;
+                }
 
                 try {
                     const infoItems = Array.from(document.querySelectorAll('.restaurant-info .info-item'));
@@ -489,11 +831,80 @@ function initHeaderContact() {
                     });
                     if (hoursItem) {
                         const valueSpan = hoursItem.querySelector('.info-content span') || hoursItem.querySelector('span');
-                        if (valueSpan && tooltip) valueSpan.textContent = tooltip;
+                        if (valueSpan && openingHoursLabel) valueSpan.textContent = openingHoursLabel;
                     }
                 } catch (_) {}
             }
         }
+
+        try {
+            const infoItems = Array.from(document.querySelectorAll('.restaurant-info .info-item'));
+            infoItems.forEach(el => {
+                const strong = el.querySelector('strong');
+                const key = String(strong && strong.textContent || '').trim().toLowerCase();
+                const valueSpan = el.querySelector('.info-content span') || el.querySelector('span');
+                if (!valueSpan) return;
+                if (key === 'whatsapp' && whatsappValue) valueSpan.textContent = whatsappValue;
+                if (key === 'instagram' && instagramValue) {
+                    let handle = instagramValue;
+                    if (handle.startsWith('@')) handle = handle.slice(1);
+                    valueSpan.textContent = handle ? `@${handle}` : instagramValue;
+                }
+                if (key === 'ubicación' && locationLabel) valueSpan.textContent = locationLabel;
+                if (key === 'horarios' && openingHoursLabel) valueSpan.textContent = openingHoursLabel;
+            });
+        } catch (_) {}
+
+        try {
+            const footer = document.querySelector('footer');
+            if (footer) {
+                const sections = Array.from(footer.querySelectorAll('.footer-section'));
+                const bottomP = footer.querySelector('.footer-bottom p');
+                const year = new Date().getFullYear();
+                const displayName = tenantName || footerTitle || '';
+
+                if (sections[0]) {
+                    const h4 = sections[0].querySelector('h4');
+                    const p = sections[0].querySelector('p');
+                    if (h4 && (footerTitle || tenantName)) h4.textContent = `🍽️ ${footerTitle || tenantName}`;
+                    if (p && footerTagline) p.textContent = footerTagline;
+                }
+                if (sections[1]) {
+                    const ps = Array.from(sections[1].querySelectorAll('p'));
+                    ps.forEach(p => {
+                        const t = String(p.textContent || '').toLowerCase();
+                        if (t.includes('whatsapp') && whatsappValue) {
+                            p.textContent = '';
+                            const i = document.createElement('i');
+                            i.className = 'fab fa-whatsapp';
+                            p.appendChild(i);
+                            p.appendChild(document.createTextNode(` WhatsApp: ${whatsappValue}`));
+                        }
+                        if (t.includes('@') || t.includes('mail') || t.includes('correo') || t.includes('info@') || t.includes('gmail') || t.includes('email')) {
+                            if (contactEmail) {
+                                p.textContent = '';
+                                const i = document.createElement('i');
+                                i.className = 'fas fa-envelope';
+                                p.appendChild(i);
+                                p.appendChild(document.createTextNode(` ${contactEmail}`));
+                            }
+                        }
+                    });
+                }
+                if (sections[2]) {
+                    const ps = Array.from(sections[2].querySelectorAll('p'));
+                    if (ps[0] && locationLabel) ps[0].textContent = locationLabel;
+                    if (ps[1] && openingHoursLabel) ps[1].textContent = openingHoursLabel;
+                }
+                if (bottomP) {
+                    if (footerBottom) {
+                        bottomP.textContent = footerBottom;
+                    } else if (displayName) {
+                        bottomP.textContent = `© ${year} ${displayName}. Todos los derechos reservados.`;
+                    }
+                }
+            }
+        } catch (_) {}
 
         // Announcement Banner
         const announcementActive = data.announcement_active;
@@ -560,6 +971,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initInterestFocusState();
     initOrderStatus();
     initHeaderContact();
+    initTenantHeaderEditorButton();
 
     // Setup Buscador
     initSearch();
