@@ -3242,6 +3242,20 @@
 
       if (!resp.ok) throw new Error('Error al actualizar estado');
 
+      const patchLocalOrderStatus = (oid, st) => {
+        const idStr = String(oid);
+        const newSt = String(st || '').trim();
+        const patchArr = (arr) => {
+          if (!Array.isArray(arr)) return;
+          const found = arr.find(x => x && String(x.id) === idStr);
+          if (found) found.status = newSt;
+        };
+        try { patchArr(window.currentOrders); } catch (_) {}
+        try { patchArr(window.currentOrdersForTables); } catch (_) {}
+        try { if (window.__lastOrdersData && Array.isArray(window.__lastOrdersData.orders)) patchArr(window.__lastOrdersData.orders); } catch (_) {}
+      };
+      try { patchLocalOrderStatus(orderId, status); } catch (_) {}
+
       // Sync with Table Management
       if (status === 'preparacion') {
           try {
@@ -3302,7 +3316,8 @@
           } catch(e) { console.error('Error auto-updating table status', e); }
       }
 
-      return resp.json();
+      const out = await resp.json().catch(() => ({}));
+      return out;
     }
 
     async function payOrder(orderId, paymentData) {
@@ -4213,6 +4228,7 @@
                 }
                 const success = await updateStatus(o.id, newStatus, reason);
                 if (success) {
+                  try { o.status = newStatus; } catch (_) {}
                   if (newStatus === 'entregado' || newStatus === 'cancelado') {
                   const isUnpaidEntregado = (String(o.payment_status || '').toLowerCase() !== 'paid' && newStatus === 'entregado');
                   
@@ -4274,6 +4290,9 @@
                         }
                       }
                     } catch(_) {}
+                    try {
+                      if (ordersQuickStatusFilter && window.__lastOrdersData) await renderOrders(window.__lastOrdersData);
+                    } catch (_) {}
                   }
                 }
               } catch(_) {}
@@ -4393,6 +4412,7 @@
             qb.disabled = true;
             try {
               const resp = await updateStatus(o.id, newStatus, reason);
+              try { o.status = newStatus; } catch (_) {}
               if (newStatus === 'preparacion') {
                 const nowIso = new Date().toISOString();
                 const rowSla = tr.querySelector('.sla-container');
@@ -4497,6 +4517,9 @@
                       }
                     }
                   } catch(_) {}
+                  try {
+                    if (ordersQuickStatusFilter && window.__lastOrdersData) await renderOrders(window.__lastOrdersData);
+                  } catch (_) {}
               }
             } catch (e) {
               try {
