@@ -3864,8 +3864,14 @@
         const total = Number(data.total || orders.length || 0);
         const page = Math.floor(currentOffset / currentLimit) + 1;
         const totalPages = Math.max(1, Math.ceil(total / currentLimit));
-        // Construir una firma ligera del estado actual (id, status, total, payment_status) para detectar cambios reales
-        const newSignature = JSON.stringify(orders.map(o => ({id:o.id, s:o.status, t:o.total, p:o.payment_status})));
+        // Construir una firma ligera del estado actual + filtros para detectar cambios reales (y evitar parpadeo)
+        // Importante: incluir el filtro rápido, porque cambiar de pestaña no cambia el "estado" del pedido, pero sí lo que se debe renderizar.
+        const newSignature = JSON.stringify(orders.map(o => ({id:o.id, s:o.status, t:o.total, p:o.payment_status})))
+          + '|qf:' + String(ordersQuickStatusFilter || '')
+          + '|type:' + JSON.stringify(ordersConfig && ordersConfig.filters ? ordersConfig.filters : {})
+          + '|q:' + String(currentSearch || '')
+          + '|from:' + String(currentFrom || '')
+          + '|to:' + String(currentTo || '');
         // Si la firma no cambió y ya hay filas, evitar reconstrucción para prevenir parpadeo
         const kitchenBox = document.getElementById('kitchen-box');
         const kitchenActive = !!(kitchenBox && kitchenBox.style.display !== 'none' && kitchenBox.open);
