@@ -3022,6 +3022,12 @@
     function _normUser(s) {
       return String(s || '').trim().toLowerCase();
     }
+    function _effectiveDeliveryStatus(o) {
+      const st = _normUser(o && o.status || '');
+      if (st === 'entregado') return 'delivered';
+      const ds = _normUser(o && o.delivery_status || '');
+      return ds || 'pending';
+    }
     function _sortStops(a, b) {
       const sa = (a && a.delivery_sequence != null) ? Number(a.delivery_sequence) : 999999;
       const sb = (b && b.delivery_sequence != null) ? Number(b.delivery_sequence) : 999999;
@@ -3061,13 +3067,13 @@
       try {
         const j = await getMyRouteOrdersPreferRun();
         const ordered = (j.orders || []).slice().sort((a, b) => {
-          const ra = _statusRank(a && a.delivery_status);
-          const rb = _statusRank(b && b.delivery_status);
+          const ra = _statusRank(_effectiveDeliveryStatus(a));
+          const rb = _statusRank(_effectiveDeliveryStatus(b));
           if (ra !== rb) return ra - rb;
           return _sortStops(a, b);
         });
         const next = ordered.find(o => {
-          const ds = _normUser(o && o.delivery_status || 'pending');
+          const ds = _effectiveDeliveryStatus(o);
           if (ds === 'delivered') return false;
           const addr = getOrderAddressOneLine(o);
           return !!addr;
@@ -3115,7 +3121,7 @@
           if (!routeOrders.length) {
             const arr = Array.isArray(window.currentDeliveryOrders) ? window.currentDeliveryOrders.slice() : [];
             const mine = arr.filter(o => String(o && o.delivery_assigned_to || '').trim().toLowerCase() === me);
-            const open = mine.filter(o => String(o && o.delivery_status || 'pending').trim().toLowerCase() !== 'delivered');
+            const open = mine.filter(o => _effectiveDeliveryStatus(o) !== 'delivered');
             routeOrders = open.slice().sort((a, b) => {
               const sa = (a && a.delivery_sequence != null) ? Number(a.delivery_sequence) : 999999;
               const sb = (b && b.delivery_sequence != null) ? Number(b.delivery_sequence) : 999999;
@@ -4844,7 +4850,7 @@
       let orders = (data && data.orders) ? data.orders : [];
       const role = String(currentUserRole || '').trim().toLowerCase();
       if (role === 'repartidor' && String(deliveryFilter || '').trim().toLowerCase() === 'mine' && !String(deliveryStatusFilter || '').trim()) {
-        orders = orders.filter(o => String(o && o.delivery_status || 'pending').trim().toLowerCase() !== 'delivered');
+        orders = orders.filter(o => _effectiveDeliveryStatus(o) !== 'delivered');
       }
       window.currentDeliveryOrders = orders;
       const list = document.getElementById('delivery-list');
@@ -4895,7 +4901,7 @@
         const phoneDigits = phoneRaw.replace(/\D+/g, '');
         const waUrl = (typeof getWaLink === 'function') ? getWaLink(o, phoneDigits) : '';
         const assigned = String(o.delivery_assigned_to || '').trim();
-        const dStatus = String(o.delivery_status || '').trim() || 'pending';
+        const dStatus = _effectiveDeliveryStatus(o);
         const seq = (o.delivery_sequence === null || typeof o.delivery_sequence === 'undefined') ? '' : String(o.delivery_sequence);
         let stopNum = null;
         if (_deliveryMine(o)) {
@@ -4925,7 +4931,7 @@
         const addrOneLine = String(addr || '').replace(/\n+/g, ' ').trim();
         const destOneLine = getOrderAddressOneLine(o);
         const mapBtn = destOneLine ? `<button class="delivery-map" data-id="${o.id}" style="background:#455a64; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">Mapa</button>` : '';
-        const unassignBtn = (role === 'repartidor' && _deliveryMine(o) && String(o && o.delivery_status || 'pending').trim().toLowerCase() !== 'delivered')
+        const unassignBtn = (role === 'repartidor' && _deliveryMine(o) && _effectiveDeliveryStatus(o) !== 'delivered')
           ? `<button class="delivery-unassign" data-id="${o.id}" style="background:#607d8b; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">Devolver</button>`
           : '';
         const notesBtn = (role !== 'repartidor' || _deliveryMine(o)) ? `<button class="delivery-notes" data-id="${o.id}" style="background:#f3f4f6; color:#374151; border:1px solid #cbd5e1; padding:4px 8px; border-radius:4px; cursor:pointer;">Notas</button>` : '';
@@ -5034,7 +5040,7 @@
             const r = await wFetch(url.toString());
             const j = await r.json().catch(() => ({}));
             let mine = Array.isArray(j && j.orders) ? j.orders : [];
-            mine = mine.filter(x => String(x && x.delivery_status || 'pending').trim().toLowerCase() !== 'delivered');
+            mine = mine.filter(x => _effectiveDeliveryStatus(x) !== 'delivered');
             mine.sort((a, b) => {
               const sa = (a.delivery_sequence === null || typeof a.delivery_sequence === 'undefined') ? 999999 : Number(a.delivery_sequence);
               const sb = (b.delivery_sequence === null || typeof b.delivery_sequence === 'undefined') ? 999999 : Number(b.delivery_sequence);

@@ -757,16 +757,17 @@ def update_order_status(order_id):
     cur = conn.cursor()
     
     # Security Check: Prevent modifying finalized orders
-    cur.execute("SELECT status FROM orders WHERE id = ?", (order_id,))
+    cur.execute("SELECT status, tenant_slug, order_type, COALESCE(delivery_status,''), delivered_at FROM orders WHERE id = ?", (order_id,))
     row_check = cur.fetchone()
     if row_check and row_check[0] == 'entregado' and new_status != 'entregado':
          return jsonify({'error': 'no se puede cambiar el estado de una orden entregada. Utilice la función de anulación/reembolso si es necesario.'}), 400
+    if not row_check:
+        return jsonify({'error': 'orden no encontrada'}), 404
+    current_status, tenant_slug, order_type, current_delivery_status, delivered_at = row_check
+    tenant_slug = str(tenant_slug or '')
+    order_type = str(order_type or '').strip().lower()
 
     if new_status == 'entregado':
-        cur.execute("SELECT tenant_slug FROM orders WHERE id = ?", (order_id,))
-        row = cur.fetchone()
-        if not row: return jsonify({'error': 'orden no encontrada'}), 404
-        tenant_slug = str(row[0] or '')
         if session_tenant and tenant_slug and session_tenant != tenant_slug:
             return jsonify({'error': 'acceso denegado al tenant'}), 403
         scope = _scope_for(role, owner=owner)
@@ -780,7 +781,15 @@ def update_order_status(order_id):
         if not cur.fetchone():
             return jsonify({'error': 'no hay sesión de caja abierta'}), 400
             
-    cur.execute("UPDATE orders SET status = ? WHERE id = ?", (new_status, order_id))
+    if new_status == 'entregado' and order_type == 'direccion':
+        now = datetime.utcnow().isoformat()
+        delivered_ts = delivered_at or now
+        cur.execute(
+            "UPDATE orders SET status = ?, delivery_status = 'delivered', delivered_at = ? WHERE id = ?",
+            (new_status, delivered_ts, order_id),
+        )
+    else:
+        cur.execute("UPDATE orders SET status = ? WHERE id = ?", (new_status, order_id))
     if new_status == 'cancelado' and reason:
         cur.execute("UPDATE orders SET order_notes = COALESCE(order_notes, '') || ? WHERE id = ?", (f" [Cancelado: {reason}]", order_id))
         
@@ -858,7 +867,7 @@ def list_delivery_orders():
     elif f == 'assigned':
         sql += " AND (delivery_assigned_to IS NOT NULL AND trim(COALESCE(delivery_assigned_to,'')) != '')"
     elif f == 'open':
-        sql += " AND lower(COALESCE(delivery_status, 'pending')) != 'delivered'"
+        sql += " AND lower(COALESCE(delivery_status, 'pending')) != 'delivered' AND lower(COALESCE(status,'')) != 'entregado'"
     if q:
         try:
             qid = int(q)
