@@ -70,6 +70,9 @@
     .small { font-size: 12px; color: #666; }
     .pill { display:inline-block; padding:2px 6px; background:#eee; border-radius: 12px; font-size: 12px; }
     .grid { display:grid; grid-template-columns: 1fr; grid-template-areas: "orders"; gap: 16px; align-items:start; }
+    .sales-area { background: var(--kds-card-bg); border: 1px solid var(--kds-border); border-radius: 12px; padding: 12px; box-shadow: 0 10px 24px rgba(0,0,0,0.06); }
+    .sales-area #orders-header-row { margin-bottom: 8px; }
+    @media (max-width: 720px) { .sales-area { padding: 10px; } }
     .grid > div:first-child { grid-area: orders; }
     .sla-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-left:6px; background:#bbb; }
     .sla-warning { background:#ff9800; }
@@ -784,7 +787,7 @@
     <p class="small" id="login-error" style="color:#c62828; display:none; margin-top:8px;">Credenciales inválidas</p>
   </div>
 
-  <section class="grid">
+  <section class="grid sales-area">
     <div id="orders-header-row" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
       <h2>Pedidos</h2>
       <button id="orders-config-btn" title="Configuración de Pedidos" style="background:#607d8b;">
