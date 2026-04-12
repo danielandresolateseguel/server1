@@ -10889,6 +10889,10 @@
       if (!tmBtn || !tmSection) return;
 
       loadData();
+
+      const snapGridPx = 20;
+      const snapVal = (n) => Math.round((Number(n) || 0) / snapGridPx) * snapGridPx;
+      const clampVal = (v, min, max) => Math.max(min, Math.min(max, v));
       
       // Listen for external updates
       window.addEventListener('kds-tables-changed', () => {
@@ -11076,8 +11080,8 @@
                   label: newLabel,
                   type: 'rect',
                   size: 'large',
-                  x: avgX,
-                  y: avgY,
+                  x: snapVal(avgX),
+                  y: snapVal(avgY),
                   status: 'free',
                   rotation: 0,
                   is_merged: true,
@@ -11140,8 +11144,8 @@
           label: label,
           type: shape,
           size: size,
-          x: 50,
-          y: 50,
+          x: snapVal(60),
+          y: snapVal(60),
           status: 'free',
           rotation: 0
         });
@@ -11244,6 +11248,23 @@
         if (dragState.active) {
           // Set flag if moved so click handler knows to ignore
           if (dragState.hasMoved && dragState.el) {
+             try {
+               if (dragState.table) {
+                 const map = document.getElementById('restaurant-map');
+                 const mapWidth = map ? (map.offsetWidth || 0) : 0;
+                 const mapHeight = map ? (map.offsetHeight || 0) : 0;
+                 const elWidth = dragState.el.offsetWidth || 0;
+                 const elHeight = dragState.el.offsetHeight || 0;
+                 let x = snapVal(dragState.table.x);
+                 let y = snapVal(dragState.table.y);
+                 if (mapWidth && elWidth) x = clampVal(x, 0, Math.max(0, mapWidth - elWidth));
+                 if (mapHeight && elHeight) y = clampVal(y, 0, Math.max(0, mapHeight - elHeight));
+                 dragState.table.x = x;
+                 dragState.table.y = y;
+                 dragState.el.style.left = x + 'px';
+                 dragState.el.style.top = y + 'px';
+               }
+             } catch (_) {}
              dragState.el.dataset.wasDragging = 'true';
              saveData();
           }
@@ -12078,8 +12099,13 @@
                 
                 qrCodeContainer.innerHTML = '';
                 const origin = window.location.origin;
-                // Usar gastronomia-local1.html
-                const targetUrl = `${origin}/gastronomia-local1.html?table=${encodeURIComponent(table.label)}`;
+                let publicPage = '';
+                try {
+                  publicPage = String(document.getElementById('tenant-input')?.value || '').trim();
+                } catch (_) { publicPage = ''; }
+                if (!publicPage) publicPage = 'gastronomia-local1';
+                publicPage = publicPage.replace(/\.html$/i, '');
+                const targetUrl = `${origin}/${encodeURIComponent(publicPage)}.html?table=${encodeURIComponent(table.label)}`;
                 
                 new QRCode(qrCodeContainer, {
                     text: targetUrl,
