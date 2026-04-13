@@ -363,7 +363,15 @@ def reset_active_orders():
 @bp.route('/metrics', methods=['GET'])
 def metrics():
     try:
+        if not is_authed():
+            return jsonify({'error': 'no autorizado'}), 401
         tenant_slug = request.args.get('tenant_slug') or request.args.get('slug') or 'gastronomia-local1'
+        session_tenant = str(session.get('tenant_slug') or '').strip()
+        is_owner = bool(session.get('admin_owner'))
+        if session_tenant and tenant_slug and session_tenant != tenant_slug:
+            return jsonify({'error': 'acceso denegado al tenant'}), 403
+        if not is_owner:
+            return jsonify({'error': 'solo owner'}), 403
         from_date = request.args.get('from')
         to_date = request.args.get('to')
         def _norm_date(s, end=False):

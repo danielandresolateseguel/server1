@@ -758,7 +758,7 @@
   
 
   <div id="top-controls" style="display:flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom:8px;">
-    <div class="small" style="font-weight:700; color:#415a77; display:flex; align-items:center; gap:6px;">Movimientos del día
+    <div id="daily-controls" class="small" style="font-weight:700; color:#415a77; display:flex; align-items:center; gap:6px;">Movimientos del día
       <button id="daily-eye" class="eye-btn" aria-label="Ocultar movimientos">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5zm0 12.5a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg>
       </button>
@@ -2695,9 +2695,11 @@
       const canCarousel = can('carousel_manage');
       const canReports = can('reports_view');
       const canDelivery = isRepartidor || can('delivery_manage');
+      const canDailyMovements = !!isAuthed && !!isOwnerUser;
 
       setRoleVisibilityById('top-controls', !isKitchen && (canOrdersView || canCash));
-      setRoleVisibilityById('metrics', !isKitchen && !mozoTablesOnly && canOrdersView && !isRepartidor);
+      setRoleVisibilityById('daily-controls', canDailyMovements);
+      setRoleVisibilityById('metrics', canDailyMovements);
       setRoleVisibilityById('cash-box', !isKitchen && canCash);
       setRoleVisibilityById('cash-history', !isKitchen && canCash);
       setRoleVisibilityById('table-management', !!mozoTablesOnly && !isKitchen && canTables);
@@ -7997,6 +7999,7 @@
     }
     async function renderMetricsBox() {
       try {
+        if (!isOwnerUser) return;
         const m = await fetchMetrics();
         const el = document.getElementById('metrics');
         if (!m) { if (el) el.innerHTML = '<div class="small" style="color:#c62828;">No se pudieron cargar las métricas en el rango actual</div>'; return; }
