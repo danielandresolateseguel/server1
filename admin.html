@@ -6107,16 +6107,6 @@
       } catch (_) {}
     }
 
-    function renderSLA(o) {
-      if (o.status === 'entregado' || o.status === 'cancelado') return '';
-      const created = o.created_at || '';
-      const createdTs = (function(c){
-        const t = parseDateSafe(c);
-        return Number.isNaN(t) ? Date.now() : t;
-      })(created);
-      return `<span class="sla-container" data-orderid="${o.id}" data-created="${created}" data-created-ts="${createdTs}" data-status="${o.status}"><span class="sla-dot"></span><span class="sla-label">00:00:00</span><span class="sla-prev small" style="margin-left:4px;color:#888;"></span></span>`;
-    }
-
     // Parseo robusto para 'YYYY-MM-DD[ T]HH:MM:SS(.ffffff)?'
     function parseDateSafe(str) {
       try {
@@ -6142,6 +6132,13 @@
         }
       } catch (_) {}
       return NaN;
+    }
+    function formatDurationHMS(totalSeconds) {
+      const safe = Math.max(0, Number(totalSeconds) || 0);
+      const hh = String(Math.floor(safe / 3600)).padStart(2, '0');
+      const mm = String(Math.floor((safe % 3600) / 60)).padStart(2, '0');
+      const ss = String(Math.floor(safe % 60)).padStart(2, '0');
+      return `${hh}:${mm}:${ss}`;
     }
     function formatARDate(str) {
       try {
@@ -6207,6 +6204,21 @@
       map[String(orderId)] = Number(seconds || 0);
       setSlaFinalMap(map);
     }
+    function renderSLA(o) {
+      if (o.status === 'entregado' || o.status === 'cancelado') return '';
+      const created = o.created_at || '';
+      const createdTs = (function(c){
+        const t = parseDateSafe(c);
+        return Number.isNaN(t) ? Date.now() : t;
+      })(created);
+      const orderId = String(o.id || '');
+      let startTs = createdTs;
+      const overrideStart = orderId ? getSlaOverride(orderId) : NaN;
+      if (!Number.isNaN(overrideStart)) startTs = overrideStart;
+      const currentSec = Math.max(0, Math.floor((Date.now() - startTs) / 1000));
+      const initialLabel = formatDurationHMS(currentSec);
+      return `<span class="sla-container" data-orderid="${o.id}" data-created="${created}" data-created-ts="${createdTs}" data-status="${o.status}"><span class="sla-dot"></span><span class="sla-label">${initialLabel}</span><span class="sla-prev small" style="margin-left:4px;color:#888;"></span></span>`;
+    }
 
     function initSLAClock() {
       if (slaTimer) clearInterval(slaTimer);
@@ -6234,17 +6246,11 @@
           if (!Number.isNaN(overrideStart)) startTs = overrideStart;
           const diffMs = now - startTs;
           const currentSec = Math.max(0, Math.floor(diffMs / 1000));
-          const hh = String(Math.floor(currentSec / 3600)).padStart(2, '0');
-          const mm = String(Math.floor((currentSec % 3600) / 60)).padStart(2, '0');
-          const ss = String(currentSec % 60).padStart(2, '0');
-          label.textContent = `${hh}:${mm}:${ss}`;
+          label.textContent = formatDurationHMS(currentSec);
           if (prevEl) {
             const prevSec = orderId ? getSlaAccumulated(orderId) : 0;
             if (prevSec > 0) {
-              const phh = String(Math.floor(prevSec / 3600)).padStart(2, '0');
-              const pmm = String(Math.floor((prevSec % 3600) / 60)).padStart(2, '0');
-              const pss = String(prevSec % 60).padStart(2, '0');
-              prevEl.textContent = `(prev: ${phh}:${pmm}:${pss})`;
+              prevEl.textContent = `(prev: ${formatDurationHMS(prevSec)})`;
             } else {
               prevEl.textContent = '';
             }
