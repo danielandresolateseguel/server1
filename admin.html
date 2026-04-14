@@ -448,6 +448,7 @@
     .kitchen-card { background: var(--kds-card-bg); border: 1px solid var(--kds-border); border-radius: 12px; padding: 12px; box-shadow: 0 6px 16px rgba(0,0,0,0.08); display: grid; gap: 10px; }
     .kitchen-card .k-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
     .kitchen-card .k-title { font-weight: 800; color: #1f2937; }
+    .kitchen-card .k-new-badge { display:inline-flex; align-items:center; margin-left:8px; padding:2px 8px; border-radius:999px; background:#e8f5e9; color:#2e7d32; font-size:11px; font-weight:800; letter-spacing:0.02em; }
     .kitchen-card .k-meta { font-size: 12px; color: #6b7280; margin-top: 2px; }
     .kitchen-card .k-dest { font-size: 13px; color: #374151; }
     .kitchen-items { display: grid; gap: 6px; }
@@ -5328,6 +5329,7 @@
         const statusLabelText = (isMesa && o.status === 'en_camino') ? 'mesa' : o.status;
         const s = String(o.status || '').toLowerCase();
         const isPrepOrLater = ['preparacion', 'listo', 'en_camino', 'entregado'].includes(s);
+        const newBadge = s === 'pendiente' ? '<span class="k-new-badge">Nuevo</span>' : '';
         const lDisabled = !isPrepOrLater ? 'disabled style="opacity:0.3;cursor:not-allowed;"' : '';
         const prepBtn = `<button class="status-action preparacion" data-status="preparacion" aria-label="Preparación" data-tip="Preparación">P</button>`;
         const listoBtn = `<button class="status-action listo" data-status="listo" aria-label="Listo" data-tip="Listo" ${lDisabled}>L</button>`;
@@ -5351,7 +5353,7 @@
         card.innerHTML = `
           <div class="k-head">
             <div>
-              <div class="k-title">Pedido #${displayOrderNumber(o)}</div>
+              <div class="k-title">Pedido #${displayOrderNumber(o)}${newBadge}</div>
               <div class="k-meta">${formatARDate(o.created_at || '')} · ${o.order_type}</div>
               <div class="k-dest">Destino: ${(isMesa || isEspera) ? `<span class="pill pill-mesa">${destLabel}</span>` : destLabel}</div>
             </div>
