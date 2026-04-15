@@ -5303,6 +5303,9 @@
       const countElK = document.getElementById('kitchen-count');
       if (!box || !cardsEl || !countElK) return;
       if (box.style.display === 'none' || !box.open) return;
+      const role = String(currentUserRole || '').trim().toLowerCase();
+      const perms = currentUserPerms || {};
+      const canKitchenUpdate = !!isAuthed && (!!isOwnerUser || role === 'admin' || !!perms.orders_update_status);
       window.__kitchenLastActiveAll = Array.isArray(activeOrders) ? activeOrders : [];
       try { updateKitchenQuickFilterUI(); } catch(_) {}
       let list = (Array.isArray(activeOrders) ? activeOrders : []).filter(o => ['pendiente','preparacion','listo'].includes(String(o.status || '').toLowerCase()));
@@ -5370,13 +5373,17 @@
         `;
         const btns = Array.from(card.querySelectorAll('.status-action'));
         for (const b of btns) {
-          if (!isAuthed) b.disabled = true;
+          if (!isAuthed || !canKitchenUpdate) {
+            b.disabled = true;
+            b.style.opacity = '0.35';
+            b.style.cursor = 'not-allowed';
+          }
           b.addEventListener('mouseenter', () => showStatusTooltipFor(b));
           b.addEventListener('mouseleave', hideStatusTooltip);
           b.addEventListener('focus', () => showStatusTooltipFor(b));
           b.addEventListener('blur', hideStatusTooltip);
           b.addEventListener('click', async () => {
-            if (!isAuthed) return;
+            if (!isAuthed || !canKitchenUpdate) return;
             const newStatus = b.getAttribute('data-status') || '';
             if (!newStatus) return;
             const ok = await askConfirm('¿Confirmar cambio de estado?');
