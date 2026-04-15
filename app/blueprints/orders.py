@@ -763,6 +763,11 @@ def update_order_status(order_id):
     current_status, tenant_slug, order_type, current_delivery_status, delivered_at = row_check
     tenant_slug = str(tenant_slug or '')
     order_type = str(order_type or '').strip().lower()
+    current_status = str(current_status or '').strip().lower()
+
+    # Cuando el tenant exige aprobación, la transición inicial debe pasar por pendiente.
+    if current_status == 'por_aprobar' and new_status not in ('pendiente', 'cancelado'):
+        return jsonify({'error': 'el pedido debe aprobarse antes de avanzar de estado'}), 400
 
     if new_status == 'entregado':
         if session_tenant and tenant_slug and session_tenant != tenant_slug:
