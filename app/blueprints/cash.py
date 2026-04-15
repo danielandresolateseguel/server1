@@ -379,7 +379,7 @@ def cash_movements_list():
     session_tenant, actor, role, perms, owner = _ctx()
     if not _enforce_tenant(tenant_slug, session_tenant):
         return jsonify({'error': 'acceso denegado al tenant'}), 403
-    if not _has_perm(perms, owner, role, 'cash_view'):
+    if not (_has_perm(perms, owner, role, 'cash_view') or _has_perm(perms, owner, role, 'cash_manage')):
         return jsonify({'error': 'sin permisos'}), 403
     scope = _scope_for(role, owner=owner)
     session_id = request.args.get('session_id')
@@ -463,7 +463,7 @@ def cash_session_orders():
     session_tenant, actor, role, perms, owner = _ctx()
     if not _enforce_tenant(tenant_slug, session_tenant):
         return jsonify({'error': 'acceso denegado al tenant'}), 403
-    if not _has_perm(perms, owner, role, 'cash_view'):
+    if not (_has_perm(perms, owner, role, 'cash_view') or _has_perm(perms, owner, role, 'cash_manage')):
         return jsonify({'error': 'sin permisos'}), 403
     scope = _scope_for(role, owner=owner)
     session_id = request.args.get('session_id')
@@ -556,7 +556,7 @@ def cash_sessions_list():
     session_tenant, actor, role, perms, owner = _ctx()
     if not _enforce_tenant(tenant_slug, session_tenant):
         return jsonify({'error': 'acceso denegado al tenant'}), 403
-    if not _has_perm(perms, owner, role, 'cash_view'):
+    if not (_has_perm(perms, owner, role, 'cash_view') or _has_perm(perms, owner, role, 'cash_manage')):
         return jsonify({'error': 'sin permisos'}), 403
     scope = _scope_for(role, owner=owner)
     limit = int(request.args.get('limit') or 50)
@@ -701,7 +701,7 @@ def cash_sessions_export_csv():
     session_tenant, actor, role, perms, owner = _ctx()
     if not _enforce_tenant(tenant_slug, session_tenant):
         return jsonify({'error': 'acceso denegado al tenant'}), 403
-    if not _has_perm(perms, owner, role, 'cash_view'):
+    if not (_has_perm(perms, owner, role, 'cash_view') or _has_perm(perms, owner, role, 'cash_manage')):
         return jsonify({'error': 'sin permisos'}), 403
     scope = _scope_for(role, owner=owner)
     date_field = (request.args.get('date_field') or 'closed').strip().lower()
