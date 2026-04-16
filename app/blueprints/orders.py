@@ -1023,6 +1023,10 @@ def update_delivery_status(order_id):
     if str(st or '').strip().lower() == 'entregado' and new_status != 'delivered':
         return jsonify({'error': 'no se puede cambiar el estado de una orden entregada'}), 400
 
+    current_delivery_status_norm = str(current_delivery_status or '').strip().lower() or 'pending'
+    if new_status in ('delivered', 'failed') and current_delivery_status_norm != 'en_route':
+        return jsonify({'error': 'la orden debe estar en camino antes de marcarse como entregada o fallida'}), 400
+
     now = datetime.utcnow().isoformat()
     delivered_at = now if new_status == 'delivered' else None
 
